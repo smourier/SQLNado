@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using SqlNado.Utilities;
 
 namespace SqlNado.Temp
 {
@@ -28,7 +29,8 @@ namespace SqlNado.Temp
             using (var db = new SQLiteDatabase("chinook.db"))
             {
                 Console.WriteLine(db.FilePath);
-                var value = db.ExecuteScalar<int>("SELECT * FROM customers", "toto");
+                var value = db.Execute("SELECT name, rootpage, sql FROM sqlite_master WHERE type='table'");
+                value.ToTableString(Console.Out);
             }
         }
     }

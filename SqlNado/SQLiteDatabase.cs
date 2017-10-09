@@ -115,39 +115,70 @@ namespace SqlNado
         }
 
         public override string ToString() => FilePath;
-        public virtual SQLiteStatement PrepareStatement(string sql) => new SQLiteStatement(this, sql);
+
+        public SQLiteStatement PrepareStatement(string sql) => PrepareStatement(sql, null);
+        public virtual SQLiteStatement PrepareStatement(string sql, params object[] args)
+        {
+            var statement = new SQLiteStatement(this, sql);
+            if (args != null)
+            {
+                for (int i = 0; i < args.Length; i++)
+                {
+                    statement.BindParameter(i + 1, args[i]);
+                }
+            }
+            return statement;
+        }
 
         public T ExecuteScalar<T>(string sql, params object[] args) => ExecuteScalar(null, sql, default(T), args);
         public T ExecuteScalar<T>(string sql, T defaultValue, params object[] args) => ExecuteScalar(null, sql, defaultValue, args);
         public virtual T ExecuteScalar<T>(IFormatProvider provider, string sql, T defaultValue, params object[] args)
         {
-            using (var statement = PrepareStatement(sql))
+            using (var statement = PrepareStatement(sql, args))
             {
-                if (args != null)
-                {
-                    for (int i = 0; i < args.Length; i++)
-                    {
-                        statement.BindParameter(i + 1, args[i]);
-                    }
-                }
                 statement.StepOne();
                 return statement.GetColumnValue(provider, 0, defaultValue);
             }
         }
 
+        public object ExecuteScalar(string sql, params object[] args) => ExecuteScalar((IFormatProvider)null, sql, args);
+        public virtual object ExecuteScalar(IFormatProvider provider, string sql, params object[] args)
+        {
+            using (var statement = PrepareStatement(sql, args))
+            {
+                statement.StepOne();
+                return statement.GetColumnValue(0);
+            }
+        }
+
         public virtual int ExecuteNonQuery(string sql, params object[] args)
         {
-            using (var statement = PrepareStatement(sql))
+            using (var statement = PrepareStatement(sql, args))
             {
-                if (args != null)
-                {
-                    for (int i = 0; i < args.Length; i++)
-                    {
-                        statement.BindParameter(i + 1, args[i]);
-                    }
-                }
                 statement.StepOne();
                 return ChangesCount;
+            }
+        }
+
+        public virtual IEnumerable<object> Execute(string sql, params object[] args)
+        {
+            using (var statement = PrepareStatement(sql, args))
+            {
+                do
+                {
+                    var code = SQLiteDatabase._sqlite3_step(statement.Handle);
+                    if (code == SQLiteErrorCode.SQLITE_DONE)
+                        break;
+
+                    if (code == SQLiteErrorCode.SQLITE_ROW)
+                    {
+                        yield return statement.BuildRow();
+                        continue;
+                    }
+
+                    CheckError(code);
+                }
+                while (true);
             }
         }
 

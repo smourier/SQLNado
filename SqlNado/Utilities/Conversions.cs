@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -933,118 +934,6 @@ namespace SqlNado.Utilities
                     return false;
             }
             return true;
-        }
-
-        public static string ToStringTable<T>(this IEnumerable<T> enumerable) => ToStringTable(enumerable, (Func<T, IEnumerable<PropertyDescriptor>>)null, null, null);
-        public static string ToStringTable<T>(this IEnumerable<T> enumerable, params string[] propertyNames)
-        {
-            if (propertyNames == null || propertyNames == null)
-                return ToStringTable(enumerable);
-
-            return ToStringTable(enumerable, null, (p) => propertyNames.Contains(p.Name), null);
-        }
-
-        public static string ToStringTable<T>(this IEnumerable<T> enumerable, Func<PropertyDescriptor, T, string> toStringFunc, params string[] propertyNames)
-        {
-            if (propertyNames == null || propertyNames == null)
-                return ToStringTable(enumerable);
-
-            return ToStringTable(enumerable, null, (p) => propertyNames.Contains(p.Name), toStringFunc);
-        }
-
-        public static string ToStringTable<T>(this IEnumerable<T> enumerable,
-            Func<T, IEnumerable<PropertyDescriptor>> propertiesFunc,
-            Func<PropertyDescriptor, bool> filterFunc,
-            Func<PropertyDescriptor, T, string> toStringFunc)
-        {
-            if (enumerable == null)
-                throw new ArgumentNullException(nameof(enumerable));
-
-            if (propertiesFunc == null)
-            {
-                propertiesFunc = (o) =>
-                {
-                    return TypeDescriptor.GetProperties(o).OfType<PropertyDescriptor>()
-                    .Where(p => p.Attributes.OfType<BrowsableAttribute>().FirstOrDefault() == null || p.Attributes.OfType<BrowsableAttribute>().First().Browsable);
-                };
-            }
-
-            if (filterFunc == null)
-            {
-                filterFunc = (p) => true;
-            }
-
-            if (toStringFunc == null)
-            {
-                toStringFunc = (p, o) =>
-                {
-                    const int max = 50;
-                    object value = p.GetValue(o);
-                    if (value is string s)
-                        return s;
-
-                    if (value is byte[] bytes)
-                    {
-                        if (bytes.Length > (max - 1) / 2)
-                            return "0x" + BitConverter.ToString(bytes, 0, (max - 1) / 2).Replace("-", string.Empty) + "... (" + bytes.Length + ")";
-
-                        return "0x" + BitConverter.ToString(bytes, 0, Math.Min((max - 1) / 2, bytes.Length)).Replace("-", string.Empty);
-                    }
-
-                    s = string.Format("{0}", value);
-                    return s.Length < max ? s : s.Substring(0, max) + "...";
-                };
-            }
-
-            var first = enumerable.FirstOrDefault();
-            if (first == null)
-                return null;
-
-            var properties = propertiesFunc(first).Where(filterFunc).ToArray();
-            if (properties.Length == 0)
-                return null;
-
-            var columnLengths = properties.Select(p => p.Name.Length).ToArray();
-            var rows = new List<string[]>();
-            foreach (var row in enumerable)
-            {
-                string[] rowValues = new string[properties.Length];
-                for (int i = 0; i < properties.Length; i++)
-                {
-                    rowValues[i] = toStringFunc(properties[i], row);
-                    if (rowValues[i].Length > columnLengths[i])
-                    {
-                        columnLengths[i] = rowValues[i].Length;
-                    }
-                }
-                rows.Add(rowValues);
-            }
-
-            string fullLine = new string('-', columnLengths.Sum() + 1 + columnLengths.Length * (2 + 1));
-            var gridLine = new StringBuilder();
-            var sb = new StringBuilder(fullLine);
-            sb.AppendLine();
-            sb.Append('|');
-            gridLine.Append('|');
-            for (int i = 0; i < properties.Length; i++)
-            {
-                sb.AppendFormat(" {0," + columnLengths[i] + "} |", properties[i].Name);
-                gridLine.Append(new string('-', columnLengths[i] + 2) + '|');
-            }
-            sb.AppendLine();
-            sb.AppendLine(gridLine.ToString());
-            for (int r = 0; r < rows.Count; r++)
-            {
-                string[] rowValues = rows[r];
-                sb.Append('|');
-                for (int i = 0; i < properties.Length; i++)
-                {
-                    sb.AppendFormat(" {0," + columnLengths[i] + "} |", rowValues[i]);
-                }
-                sb.AppendLine();
-            }
-            sb.Append(fullLine);
-            return sb.ToString();
         }
     }
 }

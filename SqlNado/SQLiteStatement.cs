@@ -87,22 +87,44 @@ namespace SqlNado
         public void BindParameter(int index, object value) => BindParameter(index, value, null);
         public virtual void BindParameter(int index, object value, Func<SQLiteBindContext, SQLiteErrorCode> bindFunc)
         {
-            SQLiteType type = null;
-            if (bindFunc == null)
-            {
-                bindFunc = Database.GetType(value).BindFunc;
-            }
-
             var ctx = CreateBindContext();
-            ctx.Type = type; // may be null
             ctx.Index = index;
             ctx.Value = value;
+            BindParameter(ctx, bindFunc);
+        }
+
+        public void BindParameter(SQLiteBindContext context) => BindParameter(context, null);
+        public virtual void BindParameter(SQLiteBindContext context, Func<SQLiteBindContext, SQLiteErrorCode> bindFunc)
+        {
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+
+            if (context.Type == null)
+            {
+                context.Type = Database.GetType(context.Value);
+            }
+
+            if (bindFunc == null)
+            {
+                bindFunc = context.Type.BindFunc;
+            }
+
             CheckDisposed();
-            Database.CheckError(bindFunc(ctx));
+            Database.CheckError(bindFunc(context));
         }
 
         protected virtual SQLiteBindContext CreateBindContext() => new SQLiteBindContext(this);
-   
+
+        public virtual object[] BuildRow()
+        {
+            var row = new object[ColumnCount];
+            for (int i = 0; i < ColumnCount; i++)
+            {
+                row[i] = GetColumnValue(i);
+            }
+            return row;
+        }
+
         public int GetParameterIndex(string name)
         {
             if (name == null)
