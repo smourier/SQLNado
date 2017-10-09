@@ -26,7 +26,7 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
-            //for (int i = 0; i < 3000; i++)
+            //for (int i = 0; i < 128; i++)
             //{
             //    Console.WriteLine(i.ToString("X4") + ":" + (char)i);
             //}
@@ -38,6 +38,7 @@ namespace SqlNado.Temp
                 //var value = db.Execute("SELECT firstname, lastname FROM customers");
                 value.ToTableString(Console.Out);
 
+                //TableStringExtensions.ToTableString(10, db, Console.Out);
                 Console.WriteLine(TableStringExtensions.ToTableString(10, db));
             }
         }

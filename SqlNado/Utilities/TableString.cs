@@ -17,6 +17,10 @@ namespace SqlNado.Utilities
         public TableString()
         {
             IndentTabString = " ";
+            //DefaultAlignment = ColumnStringAlignment.Left;
+            //DefaultHeaderAlignment = DefaultAlignment;
+            UseBuiltinStyle(TableStringStyle.BoxDrawingSingle);
+            Padding = new TableStringPadding(1, 0);
         }
 
         public virtual void AddColumn(ColumnString column)
@@ -29,7 +33,84 @@ namespace SqlNado.Utilities
         }
 
         public string IndentTabString { get; set; }
+        public ColumnStringAlignment DefaultAlignment { get; set; }
+        public ColumnStringAlignment DefaultHeaderAlignment { get; set; }
         public virtual IReadOnlyList<ColumnString> Columns => _columns;
+        public virtual char TopLeftCharacter { get; set; }
+        public virtual char TopMiddleCharacter { get; set; }
+        public virtual char TopRightCharacter { get; set; }
+        public virtual char BottomLeftCharacter { get; set; }
+        public virtual char BottomMiddleCharacter { get; set; }
+        public virtual char BottomRightCharacter { get; set; }
+        public virtual char MiddleLeftCharacter { get; set; }
+        public virtual char MiddleMiddleCharacter { get; set; }
+        public virtual char MiddleRightCharacter { get; set; }
+        public virtual char VerticalCharacter { get; set; }
+        public virtual char HorizontalCharacter { get; set; }
+        public virtual TableStringPadding Padding { get; set; }
+
+        public virtual void UseUniformStyle(char c)
+        {
+            TopLeftCharacter = c;
+            TopMiddleCharacter = c;
+            TopRightCharacter = c;
+            BottomLeftCharacter = c;
+            BottomMiddleCharacter = c;
+            BottomRightCharacter = c;
+            MiddleLeftCharacter = c;
+            MiddleMiddleCharacter = c;
+            MiddleRightCharacter = c;
+            VerticalCharacter = c;
+            HorizontalCharacter = c;
+        }
+
+        public virtual void UseBuiltinStyle(TableStringStyle format)
+        {
+            switch (format)
+            {
+                case TableStringStyle.BoxDrawingDouble:
+                    TopLeftCharacter = '╔';
+                    TopMiddleCharacter = '╦';
+                    TopRightCharacter = '╗';
+                    BottomLeftCharacter = '╚';
+                    BottomMiddleCharacter = '╩';
+                    BottomRightCharacter = '╝';
+                    MiddleLeftCharacter = '╠';
+                    MiddleMiddleCharacter = '╬';
+                    MiddleRightCharacter = '╣';
+                    VerticalCharacter = '║';
+                    HorizontalCharacter = '═';
+                    break;
+
+                case TableStringStyle.BoxDrawingSingle:
+                    TopLeftCharacter = '┌';
+                    TopMiddleCharacter = '┬';
+                    TopRightCharacter = '┐';
+                    BottomLeftCharacter = '└';
+                    BottomMiddleCharacter = '┴';
+                    BottomRightCharacter = '┘';
+                    MiddleLeftCharacter = '├';
+                    MiddleMiddleCharacter = '┼';
+                    MiddleRightCharacter = '┤';
+                    VerticalCharacter = '│';
+                    HorizontalCharacter = '─';
+                    break;
+
+                default:
+                    TopLeftCharacter = '+';
+                    TopMiddleCharacter = '+';
+                    TopRightCharacter = '+';
+                    BottomLeftCharacter = '+';
+                    BottomMiddleCharacter = '+';
+                    BottomRightCharacter = '+';
+                    MiddleLeftCharacter = '+';
+                    MiddleMiddleCharacter = '+';
+                    MiddleRightCharacter = '+';
+                    VerticalCharacter = '|';
+                    HorizontalCharacter = '-';
+                    break;
+            }
+        }
 
         protected virtual void CreateColumns(object first)
         {
@@ -110,13 +191,20 @@ namespace SqlNado.Utilities
                 wr = writer;
             }
 
-            int[] columnLengths = null;
+            int[] columnSizes = null;
+
+            // add h padding if needed
+            int horizontalPadding = 0;
+            if (Padding != null)
+            {
+                horizontalPadding += Padding.Left + Padding.Right;
+            }
 
             // note: we scan one once, but we'll execute the loop twice. this is mandatory to compute lengths
             var rows = new List<string[]>();
             foreach (var row in enumerable)
             {
-                if (columnLengths == null)
+                if (columnSizes == null)
                 {
                     // create the columns with the first non-null row that will create at least one column
                     if (row == null)
@@ -126,7 +214,7 @@ namespace SqlNado.Utilities
                     if (Columns.Count == 0)
                         continue;
 
-                    columnLengths = Columns.Select(c => c.Name.Length).ToArray();
+                    columnSizes = Columns.Select(c => c.Name.Length).ToArray();
                 }
 
                 var rowValues = new string[Columns.Count];
@@ -136,45 +224,211 @@ namespace SqlNado.Utilities
                     var ctx = new TableStringContext(Columns[i]);
                     ctx.Row = row;
                     rowValues[i] = toStringFunc(ctx);
-                    if (rowValues[i].Length > columnLengths[i])
+
+                    int size = rowValues[i].Length;
+                    if (horizontalPadding > 0)
                     {
-                        columnLengths[i] = rowValues[i].Length;
+                        size += horizontalPadding;
+                    }
+
+                    if (size > columnSizes[i])
+                    {
+                        columnSizes[i] = size;
                     }
                 }
                 rows.Add(rowValues);
             }
 
             // no valid columns
-            if (columnLengths == null)
+            if (columnSizes == null)
                 return;
 
-            var fullLine = new string('-', columnLengths.Sum() + 1 + columnLengths.Length * (2 + 1));
-            var gridLine = new StringBuilder();
-            wr.WriteLine(fullLine);
-            wr.Write('|');
-            gridLine.Append('|');
-            for (int i = 0; i < Columns.Count; i++)
+            // top line (only once) and others
+            var bottomLine = new StringBuilder();
+            var middleLine = new StringBuilder();
+            var emptyLine = (Padding != null && Padding.HasVerticalPadding) ? new StringBuilder() : null;
+            wr.Write(TopLeftCharacter);
+            middleLine.Append(MiddleLeftCharacter);
+            bottomLine.Append(BottomLeftCharacter);
+            if (emptyLine != null)
             {
-                var fmt = string.Format(" {0," + columnLengths[i] + "} |", Columns[i].Name);
-                wr.Write(fmt);
-                gridLine.Append(new string('-', columnLengths[i] + 2) + '|');
+                emptyLine.Append(VerticalCharacter);
             }
 
-            wr.WriteLine();
-            wr.WriteLine(fullLine);
-            for (int r = 0; r < rows.Count; r++)
+            for (int i = 0; i < Columns.Count; i++)
             {
-                var rowValues = rows[r];
-                wr.Write('|');
+                if (i > 0)
+                {
+                    wr.Write(TopMiddleCharacter);
+                    middleLine.Append(MiddleMiddleCharacter);
+                    bottomLine.Append(BottomMiddleCharacter);
+                }
+
+                var bar = new string(HorizontalCharacter, columnSizes[i]);
+                wr.Write(bar);
+                middleLine.Append(bar);
+                bottomLine.Append(bar);
+                if (emptyLine != null)
+                {
+                    emptyLine.Append(new string(' ', columnSizes[i]));
+                    emptyLine.Append(VerticalCharacter);
+                }
+            }
+            wr.Write(TopRightCharacter);
+            wr.WriteLine();
+            middleLine.Append(MiddleRightCharacter);
+            bottomLine.Append(BottomRightCharacter);
+
+            if (Padding != null)
+            {
+                for (int l = 0; l < Padding.Top; l++)
+                {
+                    wr.WriteLine(emptyLine);
+                }
+            }
+
+            string leftPadding = Padding != null ? new string(' ', Padding.Left) : null;
+            string rightPadding = Padding != null ? new string(' ', Padding.Right) : null;
+
+            wr.Write(VerticalCharacter);
+            for (int i = 0; i < Columns.Count; i++)
+            {
+                if (leftPadding != null)
+                {
+                    wr.Write(leftPadding);
+                }
+                var alignment = Columns[i].HeaderAlignment == ColumnStringAlignment.Unspecified ? DefaultHeaderAlignment : Columns[i].HeaderAlignment;
+                string header = Align(Columns[i].Name, columnSizes[i] - horizontalPadding, alignment);
+                wr.Write(header);
+                if (rightPadding != null)
+                {
+                    wr.Write(rightPadding);
+                }
+                wr.Write(VerticalCharacter);
+            }
+            wr.WriteLine();
+
+            if (Padding != null)
+            {
+                for (int l = 0; l < Padding.Bottom; l++)
+                {
+                    wr.WriteLine(emptyLine);
+                }
+            }
+
+            for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+            {
+                wr.WriteLine(middleLine);
+                if (Padding != null)
+                {
+                    for (int l = 0; l < Padding.Top; l++)
+                    {
+                        wr.WriteLine(emptyLine);
+                    }
+                }
+
+                var rowValues = rows[rowIndex];
+                wr.Write(VerticalCharacter);
                 for (int i = 0; i < Columns.Count; i++)
                 {
-                    var fmt = string.Format(" {0," + columnLengths[i] + "} |", rowValues[i]);
-                    wr.Write(fmt);
+                    if (leftPadding != null)
+                    {
+                        wr.Write(leftPadding);
+                    }
+                    var alignment = Columns[i].Alignment == ColumnStringAlignment.Unspecified ? DefaultAlignment : Columns[i].Alignment;
+                    string value = Align(rowValues[i], columnSizes[i] - horizontalPadding, alignment);
+                    wr.Write(value);
+                    if (rightPadding != null)
+                    {
+                        wr.Write(rightPadding);
+                    }
+                    wr.Write(VerticalCharacter);
                 }
                 wr.WriteLine();
+
+                if (Padding != null)
+                {
+                    for (int l = 0; l < Padding.Bottom; l++)
+                    {
+                        wr.WriteLine(emptyLine);
+                    }
+                }
             }
-            wr.WriteLine(fullLine);
+
+            wr.WriteLine(bottomLine.ToString());
         }
+
+        public virtual string Align(string text, int maxLength, ColumnStringAlignment alignment)
+        {
+            string str;
+            switch (alignment)
+            {
+                case ColumnStringAlignment.Left:
+                    str = string.Format("{0,-" + maxLength + "}", text);
+                    break;
+
+                case ColumnStringAlignment.Center:
+                    int spaces = maxLength - text.Length;
+                    if (spaces == 0)
+                    {
+                        str = text;
+                    }
+                    else
+                    {
+                        int left = spaces - spaces / 2;
+                        int right = spaces - left;
+                        str = new string(' ', left) + text + new string(' ', right);
+                    }
+                    break;
+
+                default:
+                    str = string.Format("{0," + maxLength + "}", text);
+                    break;
+            }
+            return str;
+        }
+    }
+
+    public enum TableStringStyle
+    {
+        Ascii,
+        BoxDrawingDouble,
+        BoxDrawingSingle,
+    }
+
+    public class TableStringPadding
+    {
+        public TableStringPadding(int padding)
+        {
+            Left = padding;
+            Right = padding;
+            Top = padding;
+            Bottom = padding;
+        }
+
+        public TableStringPadding(int horizontalPadding, int verticalPadding)
+        {
+            Left = horizontalPadding;
+            Right = horizontalPadding;
+            Top = verticalPadding;
+            Bottom = verticalPadding;
+        }
+
+        public TableStringPadding(int left, int top, int right, int bottom)
+        {
+            Left = left;
+            Top = top;
+            Right = right;
+            Bottom = bottom;
+        }
+
+        public int Left { get; set; }
+        public int Right { get; set; }
+        public int Top { get; set; }
+        public int Bottom { get; set; }
+
+        public bool HasVerticalPadding => Top > 0 || Bottom > 0;
+        public bool HasHorizontalPadding => Left > 0 || Right > 0;
     }
 
     public class TableStringContext
@@ -241,6 +495,14 @@ namespace SqlNado.Utilities
         }
     }
 
+    public enum ColumnStringAlignment
+    {
+        Unspecified,
+        Right,
+        Left,
+        Center,
+    }
+
     public class ColumnString
     {
         public ColumnString(string name, Func<TableStringContext, object> getValueFunc)
@@ -259,6 +521,8 @@ namespace SqlNado.Utilities
         public Func<TableStringContext, object> GetValueFunc { get; }
         public int Index { get; internal set; }
         public int MaxLength { get; set; }
+        public ColumnStringAlignment Alignment { get; set; }
+        public ColumnStringAlignment HeaderAlignment { get; set; }
         public Func<TableStringContext, string> ToStringFunc { get; set; }
     }
 
@@ -299,7 +563,7 @@ namespace SqlNado.Utilities
 
         protected override void CreateColumns(object first)
         {
-            AddColumn(new ColumnString("Name", (c) => ((Tuple<string, object>)c.Row).Item1));
+            AddColumn(new ColumnString("Name", (c) => ((Tuple<string, object>)c.Row).Item1) { HeaderAlignment = ColumnStringAlignment.Left, Alignment = ColumnStringAlignment.Left });
             AddColumn(new ColumnString("Value", (c) => ((Tuple<string, object>)c.Row).Item2));
         }
 
