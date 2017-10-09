@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <None Update="chinook.db">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

@@ -26,11 +26,19 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
+            //for (int i = 0; i < 3000; i++)
+            //{
+            //    Console.WriteLine(i.ToString("X4") + ":" + (char)i);
+            //}
+            //return;
             using (var db = new SQLiteDatabase("chinook.db"))
             {
                 Console.WriteLine(db.FilePath);
                 var value = db.Execute("SELECT name, rootpage, sql FROM sqlite_master WHERE type='table'");
+                //var value = db.Execute("SELECT firstname, lastname FROM customers");
                 value.ToTableString(Console.Out);
+
+                Console.WriteLine(TableStringExtensions.ToTableString(10, db));
             }
         }
     }
