@@ -15,19 +15,23 @@ namespace SqlNado.Utilities
         private List<TableStringColumn> _columns = new List<TableStringColumn>();
         private int _minimumColumnWidth;
         private int _indent;
+        private int _defaultCellMaxLength;
 
         public TableString()
         {
             MinimumColumnWidth = 1;
             CanReduceCellPadding = true;
             IndentTabString = " ";
-            DefaultNewLineReplacement = "\u001A";
-            DefaultHyphens = "...";
-            //DefaultAlignment = ColumnStringAlignment.Left;
-            //DefaultHeaderAlignment = DefaultAlignment;
             UseBuiltinStyle(TableStringStyle.BoxDrawingSingle);
             CellPadding = new TableStringPadding(1, 0);
             MaximumWidth = 140;
+
+            DefaultCellAlignment = TableStringAlignment.Right;
+            DefaultHeaderCellAlignment = DefaultCellAlignment;
+            DefaultNewLineReplacement = "\u001A";
+            DefaultHyphens = "...";
+            DefaultCellMaxLength = int.MaxValue;
+            DefaultFormatProvider = null; // current culture
         }
 
         public virtual void AddColumn(TableStringColumn column)
@@ -65,7 +69,7 @@ namespace SqlNado.Utilities
         public TableStringAlignment DefaultHeaderCellAlignment { get; set; }
         public virtual string DefaultNewLineReplacement { get; set; }
         public virtual string DefaultHyphens { get; set; }
-        public virtual int DefaultCellMaxLength { get; set; }
+        public virtual int DefaultCellMaxLength { get => _defaultCellMaxLength; set => _defaultCellMaxLength = Math.Max(value, 1); }
         public virtual IFormatProvider DefaultFormatProvider { get; set; }
 
         public int MaximumNumberOfColumnsWithoutPadding
@@ -194,6 +198,8 @@ namespace SqlNado.Utilities
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
 
+            _columns.Clear();
+
             // something to write?
             if (enumerable == null)
                 return;
@@ -216,8 +222,9 @@ namespace SqlNado.Utilities
             }
 
             var rows = new List<TableStringCell[]>();
-            int[] columnWidths = ComputeColumnWidths(enumerable, rows);
-            if (columnWidths == null) // no valid columns
+            var header = new List<TableStringCell>();
+            int columnsCount = ComputeColumnWidths(enumerable, header, rows);
+            if (columnsCount == 0) // no valid columns
                 return;
 
             // top line (only once) and others
@@ -232,7 +239,7 @@ namespace SqlNado.Utilities
                 emptyLine.Append(VerticalCharacter);
             }
 
-            for (int i = 0; i < Columns.Count; i++)
+            for (int i = 0; i < columnsCount; i++)
             {
                 if (i > 0)
                 {
@@ -241,13 +248,13 @@ namespace SqlNado.Utilities
                     bottomLine.Append(BottomMiddleCharacter);
                 }
 
-                var bar = new string(HorizontalCharacter, columnWidths[i]);
+                var bar = new string(HorizontalCharacter, Columns[i].Width);
                 wr.Write(bar);
                 middleLine.Append(bar);
                 bottomLine.Append(bar);
                 if (emptyLine != null)
                 {
-                    emptyLine.Append(new string(' ', columnWidths[i]));
+                    emptyLine.Append(new string(' ', Columns[i].Width));
                     emptyLine.Append(VerticalCharacter);
                 }
             }
@@ -269,15 +276,15 @@ namespace SqlNado.Utilities
 
             wr.Write(VerticalCharacter);
             int hp = HorizontalPadding;
-            for (int i = 0; i < Columns.Count; i++)
+            for (int i = 0; i < columnsCount; i++)
             {
                 if (leftPadding != null)
                 {
                     wr.Write(leftPadding);
                 }
 
-                string header = Align(Columns[i].Name, columnWidths[i] - hp, Columns[i].HeaderAlignment);
-                wr.Write(header);
+                string headerCell = Columns[i].ComputeDisplayStrings(header[i])[0];
+                wr.Write(headerCell);
                 if (rightPadding != null)
                 {
                     wr.Write(rightPadding);
@@ -307,14 +314,14 @@ namespace SqlNado.Utilities
 
                 var cells = rows[rowIndex];
                 wr.Write(VerticalCharacter);
-                for (int i = 0; i < Columns.Count; i++)
+                for (int i = 0; i < columnsCount; i++)
                 {
                     if (leftPadding != null)
                     {
                         wr.Write(leftPadding);
                     }
 
-                    string value = Align(cells[i].Text, columnWidths[i] - hp, Columns[i].Alignment);
+                    string value = Columns[i].ComputeDisplayStrings(cells[i])[0];
                     wr.Write(value);
                     if (rightPadding != null)
                     {
@@ -338,14 +345,19 @@ namespace SqlNado.Utilities
 
         private int HorizontalPadding => CellPadding != null ? CellPadding.Horizontal : 0;
 
-        protected virtual int[] ComputeColumnWidths(IEnumerable enumerable, IList<TableStringCell[]> rows)
+        protected virtual int ComputeColumnWidths(IEnumerable enumerable, IList<TableStringCell> header, IList<TableStringCell[]> rows)
         {
             if (enumerable == null)
                 throw new ArgumentNullException(nameof(enumerable));
 
+            if (header == null)
+                throw new ArgumentNullException(nameof(header));
+
             if (rows == null)
                 throw new ArgumentNullException(nameof(rows));
 
+            header.Clear();
+            rows.Clear();
             int[] desiredPaddedColumnWidths = null; // with h padding
             var hp = HorizontalPadding;
             foreach (var row in enumerable)
@@ -361,9 +373,31 @@ namespace SqlNado.Utilities
                         continue;
 
                     desiredPaddedColumnWidths = new int[Math.Min(Columns.Count, MaximumNumberOfColumns)];
+
+                    // compute header rows
+                    for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                    {
+                        var cell = CreateCell(Columns[i], Columns[i]);
+                        header.Add(cell);
+                        cell.ComputeText();
+
+                        int size = cell.DesiredColumnWith;
+                        if (size != int.MaxValue)
+                        {
+                            if (hp > 0)
+                            {
+                                size += hp;
+                            }
+                        }
+
+                        if (size > desiredPaddedColumnWidths[i])
+                        {
+                            desiredPaddedColumnWidths[i] = size;
+                        }
+                    }
                 }
 
-                var cells = new TableStringCell[Columns.Count];
+                var cells = new TableStringCell[desiredPaddedColumnWidths.Length];
                 for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
                 {
                     object value = Columns[i].GetValueFunc(Columns[i], row);
@@ -388,55 +422,103 @@ namespace SqlNado.Utilities
                 rows.Add(cells);
             }
 
-            if (MaximumWidth > 0)
+            if (MaximumWidth <= 0)
+            {
+                for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                {
+                    Columns[i].Width = desiredPaddedColumnWidths[i];
+                }
+            }
+            else
             {
                 int maxWidth = MaximumWidth - Indent;
+                var unpadded = new bool[desiredPaddedColumnWidths.Length];
                 int desiredWidth = desiredPaddedColumnWidths.Sum();
                 if (desiredWidth > maxWidth)
                 {
+                    if (CanReduceCellPadding)
+                    {
+                        int diff = desiredWidth - maxWidth;
+                        int paddingSize = desiredPaddedColumnWidths.Length * hp;
+
+                        // remove padding from last column to first
+                        for (int i = desiredPaddedColumnWidths.Length - 1; i >= 0; i--)
+                        {
+                            unpadded[i] = true;
+                            diff -= hp;
+                            if (diff <= 0)
+                                break;
+                        }
+                    }
+
+                    int availableWidth = maxWidth;
+                    do
+                    {
+                        var uncomputedColumns = Columns.Take(desiredPaddedColumnWidths.Length).Where(c => c.Width < 0).ToArray();
+                        if (uncomputedColumns.Length == 0)
+                            break;
+
+                        int avgWidth = availableWidth / uncomputedColumns.Length;
+                        int computed = 0;
+                        foreach (var column in uncomputedColumns)
+                        {
+                            if (desiredPaddedColumnWidths[column.Index] <= avgWidth)
+                            {
+                                column.Width = desiredPaddedColumnWidths[column.Index];
+                                if (unpadded[column.Index])
+                                {
+                                    column.Width -= hp;
+                                }
+                                availableWidth -= column.Width;
+                                computed++;
+                            }
+                        }
+
+                        if (computed == 0)
+                        {
+                            avgWidth = availableWidth / uncomputedColumns.Length;
+                            foreach (var column in uncomputedColumns)
+                            {
+                                column.Width = avgWidth;
+                                if (!unpadded[column.Index])
+                                {
+                                    column.Width += hp;
+                                }
+                                availableWidth -= column.Width;
+                            }
+                        }
+                    }
+                    while (true);
+
+                    // adjust line column, because of roundings
+                    int totalWidth = Columns.Take(desiredPaddedColumnWidths.Length).Sum(c => c.Width);
+                    if (totalWidth < maxWidth)
+                    {
+                        Columns[desiredPaddedColumnWidths.Length - 1].Width += maxWidth - totalWidth;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                    {
+                        Columns[i].Width = desiredPaddedColumnWidths[i];
+                    }
                 }
             }
-            return desiredPaddedColumnWidths;
+            return desiredPaddedColumnWidths.Length;
         }
 
         protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object> getValueFunc) => new TableStringColumn(this, name, getValueFunc);
 
         protected virtual TableStringCell CreateCell(TableStringColumn column, object value)
         {
+            if (value != null && value.Equals(column))
+                return new HeaderTableStringCell(column);
+
             if (value is byte[] bytes)
                 return new TableStringCell(column, bytes);
 
             return new TableStringCell(column, value);
-        }
-
-        public virtual string Align(string text, int maxLength, TableStringAlignment alignment)
-        {
-            string str;
-            switch (alignment)
-            {
-                case TableStringAlignment.Left:
-                    str = string.Format("{0,-" + maxLength + "}", text);
-                    break;
-
-                case TableStringAlignment.Center:
-                    int spaces = maxLength - (text != null ? text.Length : 0);
-                    if (spaces == 0)
-                    {
-                        str = text;
-                    }
-                    else
-                    {
-                        int left = spaces - spaces / 2;
-                        int right = spaces - left;
-                        str = new string(' ', left) + text + new string(' ', right);
-                    }
-                    break;
-
-                default:
-                    str = string.Format("{0," + maxLength + "}", text);
-                    break;
-            }
-            return str;
         }
     }
 
@@ -600,6 +682,7 @@ namespace SqlNado.Utilities
         private TableStringAlignment? _aligment;
         private TableStringAlignment? _headerAligment;
         private string _hyphens;
+        private int _width = -1;
         private string _newLineReplacement;
 
         public TableStringColumn(TableString table, string name, Func<TableStringColumn, object, object> getValueFunc)
@@ -616,19 +699,67 @@ namespace SqlNado.Utilities
             Table = table;
             GetValueFunc = getValueFunc;
             Name = name;
+            Width = -1;
         }
 
         public TableString Table { get; }
         public string Name { get; }
         public Func<TableStringColumn, object, object> GetValueFunc { get; }
         public int Index { get; internal set; }
+        public int Width { get => _width; internal set => _width = Math.Min(MaxLength, value); }
 
-        public virtual int MaxLength { get => _maxLength.HasValue ? _maxLength.Value : Table.DefaultCellMaxLength; set => _maxLength = value; }
-        public virtual string Hyphens { get => _hyphens != null ? _hyphens : Table.DefaultHyphens; set => _hyphens = value; }
-        public virtual string NewLineReplacement { get => _newLineReplacement != null ? _newLineReplacement : Table.DefaultNewLineReplacement; set => _newLineReplacement = value; }
-        public virtual IFormatProvider FormatProvider { get => _formatProvider != null ? _formatProvider : Table.DefaultFormatProvider; set => _formatProvider = value; }
-        public virtual TableStringAlignment Alignment { get => _aligment.HasValue ? _aligment.Value : Table.DefaultCellAlignment; set => _aligment = value; }
-        public virtual TableStringAlignment HeaderAlignment { get => _headerAligment.HasValue ? _headerAligment.Value : Table.DefaultHeaderCellAlignment; set => _headerAligment = value; }
+        public virtual int MaxLength { get => _maxLength ?? Table.DefaultCellMaxLength; set => _maxLength = value; }
+        public virtual string Hyphens { get => _hyphens ?? Table.DefaultHyphens; set => _hyphens = value; }
+        public virtual string NewLineReplacement { get => _newLineReplacement ?? Table.DefaultNewLineReplacement; set => _newLineReplacement = value; }
+        public virtual IFormatProvider FormatProvider { get => _formatProvider ?? Table.DefaultFormatProvider; set => _formatProvider = value; }
+        public virtual TableStringAlignment Alignment { get => _aligment ?? Table.DefaultCellAlignment; set => _aligment = value; }
+        public virtual TableStringAlignment HeaderAlignment { get => _headerAligment ?? Table.DefaultHeaderCellAlignment; set => _headerAligment = value; }
+
+        public override string ToString() => Name;
+
+        public virtual string[] ComputeDisplayStrings(TableStringCell cell)
+        {
+            if (cell == null)
+                throw new ArgumentNullException(nameof(cell));
+
+            if (cell.Text == null)
+                return new string[] { null };
+
+            if (cell.Text.Length > Width)
+                return new string[] { cell.Text.Substring(0, Width) };
+
+            return new string[] { cell.Text };
+        }
+
+        //public virtual string Align(string text, int maxLength, TableStringAlignment alignment)
+        //{
+        //    string str;
+        //    switch (alignment)
+        //    {
+        //        case TableStringAlignment.Left:
+        //            str = string.Format("{0,-" + maxLength + "}", text);
+        //            break;
+
+        //        case TableStringAlignment.Center:
+        //            int spaces = maxLength - (text != null ? text.Length : 0);
+        //            if (spaces == 0)
+        //            {
+        //                str = text;
+        //            }
+        //            else
+        //            {
+        //                int left = spaces - spaces / 2;
+        //                int right = spaces - left;
+        //                str = new string(' ', left) + text + new string(' ', right);
+        //            }
+        //            break;
+
+        //        default:
+        //            str = string.Format("{0," + maxLength + "}", text);
+        //            break;
+        //    }
+        //    return str;
+        //}
     }
 
     public class TableStringCell
@@ -660,6 +791,8 @@ namespace SqlNado.Utilities
             }
         }
 
+        public override string ToString() => Text;
+
         public virtual void ComputeText()
         {
             if (!(Value is string s))
@@ -667,6 +800,14 @@ namespace SqlNado.Utilities
                 s = string.Format(Column.FormatProvider, "{0}", Value);
             }
             Text = s;
+        }
+    }
+
+    public class HeaderTableStringCell : TableStringCell
+    {
+        public HeaderTableStringCell(TableStringColumn column)
+            : base(column, column?.Name)
+        {
         }
     }
 

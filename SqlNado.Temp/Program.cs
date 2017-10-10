@@ -36,6 +36,24 @@ namespace SqlNado.Temp
                 Console.WriteLine(db.FilePath);
                 var value = db.Execute("SELECT name, rootpage, sql FROM sqlite_master WHERE type='table'");
                 //var value = db.Execute("SELECT firstname, lastname FROM customers");
+
+                for (int i = 0; i < 199; i++)
+                {
+                    if ((i % 10) == 0)
+                    {
+                        Console.Write((i / 10) % 10);
+                    }
+                    else
+                    {
+                        Console.Write(' ');
+                    }
+                }
+                Console.WriteLine();
+                for (int i = 0; i < 199; i++)
+                {
+                    Console.Write(i % 10);
+                }
+                Console.WriteLine();
                 value.ToTableString(Console.Out);
 
                 //TableStringExtensions.ToTableString(10, db, Console.Out);
