@@ -35,7 +35,7 @@ namespace SqlNado.Temp
                 //var value = db.Execute("SELECT firstname, lastname FROM customers");
 
                 //TableString.DefaultMaximumWidth = 120;
-                for (int i = 0; i < TableString.DefaultMaximumWidth - 1; i++)
+                for (int i = 0; i < TableString.GlobalMaximumWidth - 1; i++)
                 {
                     if ((i % 10) == 0)
                     {
@@ -47,7 +47,7 @@ namespace SqlNado.Temp
                     }
                 }
                 Console.WriteLine();
-                for (int i = 0; i < TableString.DefaultMaximumWidth - 1; i++)
+                for (int i = 0; i < TableString.GlobalMaximumWidth - 1; i++)
                 {
                     Console.Write(i % 10);
                 }
@@ -58,9 +58,11 @@ namespace SqlNado.Temp
                 Console.WriteLine(TableStringExtensions.ToTableString(10, x));
                 //TableStringExtensions.ToTableString(10, x, Console.Out);
                 TableStringExtensions.ToTableString(0, x, Console.Out);
-                return;
+                //return;
+                TableStringExtensions.ToTableString(10, db, Console.Out);
                 Console.WriteLine(TableStringExtensions.ToTableString(10, db));
 
+                TableString.GlobalHeaderForegroundColor = ConsoleColor.Yellow;
                 var dic = new Dictionary<string, object>();
                 dic.Add("thing", "stuff");
                 dic.Add("stuff", DateTime.Now);

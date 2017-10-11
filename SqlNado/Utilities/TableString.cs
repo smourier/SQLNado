@@ -25,6 +25,10 @@ namespace SqlNado.Utilities
         private char _defaultNewLineReplacement;
         private char _defaultNonPrintableReplacement;
         private string _defaultHyphens;
+        private ConsoleColor? _defaultHeaderForegroundColor;
+        private ConsoleColor? _defaultHeaderBackgroundColor;
+        private ConsoleColor? _defaultForegroundColor;
+        private ConsoleColor? _defaultBackgroundColor;
 
         public TableString()
         {
@@ -34,8 +38,8 @@ namespace SqlNado.Utilities
             TabString = "    ";
             UseBuiltinStyle(TableStringStyle.BoxDrawingSingle);
             CellPadding = new TableStringPadding(1, 0);
-            MaximumWidth = DefaultMaximumWidth;
-            MaximumRowHeight = 4;
+            MaximumWidth = GlobalMaximumWidth;
+            MaximumRowHeight = 50;
             MaximumByteArrayDisplayCount = 64;
 
             DefaultCellAlignment = TableStringAlignment.Left;
@@ -45,7 +49,7 @@ namespace SqlNado.Utilities
             DefaultHyphens = "...";
             DefaultCellMaxLength = int.MaxValue;
             DefaultFormatProvider = null; // current culture
-            DefaultHeaderForegroundColor = ConsoleColor.White;
+            GlobalHeaderForegroundColor = ConsoleColor.White;
         }
 
         public virtual void AddColumn(TableStringColumn column)
@@ -64,7 +68,6 @@ namespace SqlNado.Utilities
         public int MaximumRowHeight { get => _maximumRowHeight; set => _maximumRowHeight = Math.Max(value, 1); }
         public int MinimumColumnWidth { get => _minimumColumnWidth; set => _minimumColumnWidth = Math.Max(value, AbsoluteMinimumColumnWidth); }
         public int MaximumByteArrayDisplayCount { get => _maximumByteArrayDisplayCount; set => _maximumByteArrayDisplayCount = Math.Max(value, 0); }
-        public static int DefaultMaximumWidth { get => _defaultMaximumWidth; set => _defaultMaximumWidth = Math.Max(value, AbsoluteMinimumColumnWidth); }
         public virtual IReadOnlyList<TableStringColumn> Columns => _columns;
         public virtual char TopLeftCharacter { get; set; }
         public virtual char TopMiddleCharacter { get; set; }
@@ -89,10 +92,17 @@ namespace SqlNado.Utilities
         public virtual string DefaultHyphens { get => _defaultHyphens; set => _defaultHyphens = value ?? string.Empty; }
         public virtual int DefaultCellMaxLength { get => _defaultCellMaxLength; set => _defaultCellMaxLength = Math.Max(value, 1); }
         public virtual IFormatProvider DefaultFormatProvider { get; set; }
-        public virtual ConsoleColor? DefaultHeaderForegroundColor { get; set; }
-        public virtual ConsoleColor? DefaultHeaderBackgroundColor { get; set; }
-        public virtual ConsoleColor? DefaultForegroundColor { get; set; }
-        public virtual ConsoleColor? DefaultBackgroundColor { get; set; }
+        public virtual ConsoleColor? DefaultHeaderForegroundColor { get => _defaultHeaderForegroundColor ?? GlobalHeaderForegroundColor; set => _defaultHeaderForegroundColor = value; }
+        public virtual ConsoleColor? DefaultHeaderBackgroundColor { get => _defaultHeaderBackgroundColor ?? GlobalHeaderBackgroundColor; set => _defaultHeaderBackgroundColor = value; }
+        public virtual ConsoleColor? DefaultForegroundColor { get => _defaultForegroundColor ?? GlobalForegroundColor; set => _defaultForegroundColor = value; }
+        public virtual ConsoleColor? DefaultBackgroundColor { get => _defaultBackgroundColor ?? GlobalBackgroundColor; set => _defaultBackgroundColor = value; }
+
+        public static int GlobalMaximumWidth { get => _defaultMaximumWidth; set => _defaultMaximumWidth = Math.Max(value, AbsoluteMinimumColumnWidth); }
+        public static int ConsoleMaximumNumberOfColumns => new TableString { MaximumWidth = Console.WindowWidth }.MaximumNumberOfColumnsWithoutPadding;
+        public static ConsoleColor? GlobalHeaderForegroundColor { get; set; }
+        public static ConsoleColor? GlobalHeaderBackgroundColor { get; set; }
+        public static ConsoleColor? GlobalForegroundColor { get; set; }
+        public static ConsoleColor? GlobalBackgroundColor { get; set; }
 
         public int MaximumNumberOfColumnsWithoutPadding
         {
@@ -305,7 +315,7 @@ namespace SqlNado.Utilities
 
             var rows = new List<TableStringCell[]>();
             var headerCells = new List<TableStringCell>();
-            int columnsCount = ComputeColumnWidths(enumerable, headerCells, rows);
+            int columnsCount = ComputeColumnWidths(writer, enumerable, headerCells, rows);
             if (columnsCount == 0) // no valid columns
                 return;
 
@@ -449,8 +459,11 @@ namespace SqlNado.Utilities
             wr.WriteLine(bottomLine.ToString());
         }
 
-        protected virtual int ComputeColumnWidths(IEnumerable enumerable, IList<TableStringCell> header, IList<TableStringCell[]> rows)
+        protected virtual int ComputeColumnWidths(TextWriter writer, IEnumerable enumerable, IList<TableStringCell> header, IList<TableStringCell[]> rows)
         {
+            if (writer == null)
+                throw new ArgumentNullException(nameof(writer));
+
             if (enumerable == null)
                 throw new ArgumentNullException(nameof(enumerable));
 
@@ -544,6 +557,13 @@ namespace SqlNado.Utilities
 
                 int borderWidth = ColumnBorderWidth + desiredPaddedColumnWidths.Length * ColumnBorderWidth;
                 int maxWidth = MaximumWidth - Indent - borderWidth;
+
+                // this is a small trick. When we may be outputing to the console with another textwriter, 
+                // just remove one to avoid the auto WriteLine effect from the console
+                if (!IsInConsoleMode(writer) && Console.WindowWidth == MaximumWidth)
+                {
+                    maxWidth--;
+                }
                 int desiredWidth = desiredPaddedColumnWidths.Sum();
                 if (desiredWidth > maxWidth)
                 {
@@ -638,7 +658,7 @@ namespace SqlNado.Utilities
         }
 
         protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object> getValueFunc) => new TableStringColumn(this, name, getValueFunc);
-        public virtual bool IsInConsoleMode(TextWriter writer) => writer == Console.Out;
+        public virtual bool IsInConsoleMode(TextWriter writer) => writer == Console.Out || writer is ConsoleModeTextWriter;
 
         public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, string text) => WriteWithColor(writer, foreground, Console.BackgroundColor, text);
         public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, ConsoleColor background, string text)
