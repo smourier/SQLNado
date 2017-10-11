@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using SqlNado.Utilities;
 
 namespace SqlNado.Temp
@@ -26,10 +28,8 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
-            //for (int i = 0; i < 128; i++)
-            //{
-            //    Console.WriteLine(i.ToString("X4") + ":" + (char)i);
-            //}
+            //Console.OutputEncoding = Encoding.UTF8;
+            //var c = Console.Out;
             //return;
             using (var db = new SQLiteDatabase("chinook.db"))
             {
@@ -37,7 +37,8 @@ namespace SqlNado.Temp
                 var value = db.Execute("SELECT name, rootpage, sql FROM sqlite_master WHERE type='table'");
                 //var value = db.Execute("SELECT firstname, lastname FROM customers");
 
-                for (int i = 0; i < 199; i++)
+                TableString.DefaultMaximumWidth = 120;
+                for (int i = 0; i < TableString.DefaultMaximumWidth - 1; i++)
                 {
                     if ((i % 10) == 0)
                     {
@@ -49,15 +50,23 @@ namespace SqlNado.Temp
                     }
                 }
                 Console.WriteLine();
-                for (int i = 0; i < 199; i++)
+                for (int i = 0; i < TableString.DefaultMaximumWidth - 1; i++)
                 {
                     Console.Write(i % 10);
                 }
                 Console.WriteLine();
-                value.ToTableString(Console.Out);
+                //value.ToTableString(Console.Out);
 
-                //TableStringExtensions.ToTableString(10, db, Console.Out);
+                var x = new { Test = new string('x', 100) };
+                Console.WriteLine(TableStringExtensions.ToTableString(10, x));
+                TableStringExtensions.ToTableString(10, x, Console.Out);
+                return;
                 Console.WriteLine(TableStringExtensions.ToTableString(10, db));
+
+                var dic = new Dictionary<string, object>();
+                dic.Add("thing", "stuff");
+                dic.Add("stuff", DateTime.Now);
+                dic.ToTableString(Console.Out);
             }
         }
     }
