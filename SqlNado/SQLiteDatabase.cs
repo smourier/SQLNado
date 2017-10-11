@@ -166,7 +166,7 @@ namespace SqlNado
             {
                 do
                 {
-                    var code = SQLiteDatabase._sqlite3_step(statement.Handle);
+                    var code = _sqlite3_step(statement.Handle);
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                         break;
 

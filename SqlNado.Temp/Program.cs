@@ -30,43 +30,8 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("chinook.db"))
             {
-                Console.WriteLine(db.FilePath);
-                var value = db.Execute("SELECT name, rootpage, sql FROM sqlite_master WHERE type='table'");
-                //var value = db.Execute("SELECT firstname, lastname FROM customers");
-
-                //TableString.DefaultMaximumWidth = 120;
-                for (int i = 0; i < TableString.GlobalMaximumWidth - 1; i++)
-                {
-                    if ((i % 10) == 0)
-                    {
-                        Console.Write((i / 10) % 10);
-                    }
-                    else
-                    {
-                        Console.Write(' ');
-                    }
-                }
-                Console.WriteLine();
-                for (int i = 0; i < TableString.GlobalMaximumWidth - 1; i++)
-                {
-                    Console.Write(i % 10);
-                }
-                Console.WriteLine();
+                var value = db.Execute("SELECT * FROM sqlite_master WHERE type='table'");
                 value.ToTableString(Console.Out);
-
-                var x = new { Test = new string('x', 100) };
-                Console.WriteLine(TableStringExtensions.ToTableString(10, x));
-                //TableStringExtensions.ToTableString(10, x, Console.Out);
-                TableStringExtensions.ToTableString(0, x, Console.Out);
-                //return;
-                TableStringExtensions.ToTableString(10, db, Console.Out);
-                Console.WriteLine(TableStringExtensions.ToTableString(10, db));
-
-                TableString.GlobalHeaderForegroundColor = ConsoleColor.Yellow;
-                var dic = new Dictionary<string, object>();
-                dic.Add("thing", "stuff");
-                dic.Add("stuff", DateTime.Now);
-                dic.ToTableString(Console.Out);
             }
         }
     }
