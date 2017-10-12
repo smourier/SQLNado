@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
@@ -540,6 +541,9 @@ namespace SqlNado.Utilities
                 rows.Add(cells);
             }
 
+            if (desiredPaddedColumnWidths == null) // no columns
+                return 0;
+
             if (MaximumWidth <= 0)
             {
                 for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
@@ -694,6 +698,18 @@ namespace SqlNado.Utilities
                 return;
             }
 
+            if (IsKeyValuePairEnumerable(first.GetType(), out Type keyType, out Type valueType, out Type enumerableType))
+            {
+                var enumerable = (IEnumerable)Cast(enumerableType, first);
+                foreach (var kvp in enumerable)
+                {
+                    var pi = kvp.GetType().GetProperty("Key");
+                    string key = pi.GetValue(kvp).ToString();
+                    AddColumn(new KeyValuePairTableColumnString(this, keyType, valueType, key));
+                }
+                return;
+            }
+
             foreach (var property in first.GetType().GetProperties())
             {
                 var browsable = property.GetCustomAttribute<BrowsableAttribute>();
@@ -702,6 +718,41 @@ namespace SqlNado.Utilities
 
                 AddColumn(new PropertyInfoTableColumnString(this, property));
             }
+        }
+
+        internal static object Cast(Type type, object value)
+        {
+            var parameter = Expression.Parameter(typeof(object));
+            var block = Expression.Block(Expression.Convert(Expression.Convert(parameter, value.GetType()), type));
+            var func = Expression.Lambda(block, parameter).Compile();
+            return func.DynamicInvoke(value);
+        }
+
+        private static bool IsKeyValuePairEnumerable(Type inputType, out Type keyType, out Type valueType, out Type enumerableType)
+        {
+            keyType = null;
+            valueType = null;
+            enumerableType = null;
+            foreach (Type type in inputType.GetInterfaces().Where(i => i.IsGenericType && typeof(IEnumerable<>).IsAssignableFrom(i.GetGenericTypeDefinition())))
+            {
+                Type[] args = type.GetGenericArguments();
+                if (args.Length != 1)
+                    continue;
+
+                Type kvp = args[0];
+                if (!kvp.IsGenericType || !typeof(KeyValuePair<,>).IsAssignableFrom(kvp.GetGenericTypeDefinition()))
+                    continue;
+
+                Type[] kvpArgs = kvp.GetGenericArguments();
+                if (kvpArgs.Length == 2)
+                {
+                    keyType = kvpArgs[0];
+                    valueType = kvpArgs[1];
+                    enumerableType = type;
+                    return true;
+                }
+            }
+            return false;
         }
 
         protected virtual TableStringCell CreateCell(TableStringColumn column, object value)
@@ -1119,6 +1170,20 @@ namespace SqlNado.Utilities
         public bool AddValueTypeColumn { get; set; }
         public object Object { get; }
 
+        internal static object GetValue(PropertyInfo property, object obj)
+        {
+            object value;
+            try
+            {
+                value = property.GetValue(obj);
+            }
+            catch (Exception e)
+            {
+                value = "* ERROR * " + e.Message;
+            }
+            return value;
+        }
+
         private IEnumerable<Tuple<string, object>> Values
         {
             get
@@ -1128,15 +1193,7 @@ namespace SqlNado.Utilities
                     if (!property.CanRead)
                         continue;
 
-                    object value;
-                    try
-                    {
-                        value = property.GetValue(Object);
-                    }
-                    catch (Exception e)
-                    {
-                        value = "* ERROR * " + e.Message;
-                    }
+                    object value = GetValue(property, Object);
                     yield return new Tuple<string, object>(property.Name, value);
                 }
             }
@@ -1187,11 +1244,36 @@ namespace SqlNado.Utilities
         public int ArrayIndex { get; } // could be different from column's index
     }
 
+    public class KeyValuePairTableColumnString : TableStringColumn
+    {
+        public KeyValuePairTableColumnString(TableString table, Type keyType, Type valueType, string name)
+            : base(table, name, (c, r) =>
+            {
+                var objs = new object[] { name, null};
+                bool b = (bool)((KeyValuePairTableColumnString)c).Method.Invoke(r, objs);
+                return b ? objs[1] : null;
+            })
+        {
+            if (keyType == null)
+                throw new ArgumentNullException(nameof(keyType));
+
+            if (valueType == null)
+                throw new ArgumentNullException(nameof(valueType));
+
+            var type = typeof(IDictionary<,>).MakeGenericType(keyType, valueType);
+            Method = type.GetMethod("TryGetValue");
+            if (Method == null)
+                throw new NotSupportedException();
+        }
+
+        public MethodInfo Method { get; }
+    }
+
     public class PropertyInfoTableColumnString : TableStringColumn
     {
         // yes, performance could be inproved (delegates, etc.)
         public PropertyInfoTableColumnString(TableString table, PropertyInfo property)
-            : base(table, property?.Name, (c, r) => ((PropertyInfoTableColumnString)c).Property.GetValue(r))
+            : base(table, property?.Name, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableColumnString)c).Property, r))
         {
             Property = property;
         }

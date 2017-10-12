@@ -39,10 +39,14 @@ namespace SqlNado.Temp
             //o.Name = "toto";
             //o.Whatever = 12;
 
+            //dynamic o3 = new ExpandoObject();
+            //o3.stuff = "xxtoto";
+            //o3.Name = 1234;
+
             //var s = new SQLiteRow(0, new[] { "zz" }, new object[] { 123 });
             //object o2 = s;
 
-            //TableStringExtensions.ToTableString(o2, Console.Out);
+            //TableStringExtensions.ToTableString(new object[] { o, o3 }, Console.Out);
         }
     }
 }
