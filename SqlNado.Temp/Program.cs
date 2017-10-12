@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Dynamic;
 using System.Text;
 using SqlNado.Utilities;
 
@@ -30,9 +31,18 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("chinook.db"))
             {
-                var value = db.Execute("SELECT * FROM sqlite_master WHERE type='table'");
+                var value = db.ExecuteAsRows("SELECT * FROM sqlite_master WHERE type='table'");
                 value.ToTableString(Console.Out);
             }
+
+            //dynamic o = new ExpandoObject();
+            //o.Name = "toto";
+            //o.Whatever = 12;
+
+            //var s = new SQLiteRow(0, new[] { "zz" }, new object[] { 123 });
+            //object o2 = s;
+
+            //TableStringExtensions.ToTableString(o2, Console.Out);
         }
     }
 }

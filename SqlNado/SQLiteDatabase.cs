@@ -160,7 +160,7 @@ namespace SqlNado
             }
         }
 
-        public virtual IEnumerable<object> Execute(string sql, params object[] args)
+        public virtual IEnumerable<object[]> Execute(string sql, params object[] args)
         {
             using (var statement = PrepareStatement(sql, args))
             {
@@ -172,7 +172,43 @@ namespace SqlNado
 
                     if (code == SQLiteErrorCode.SQLITE_ROW)
                     {
-                        yield return statement.BuildRow();
+                        yield return statement.BuildRow().ToArray();
+                        continue;
+                    }
+
+                    CheckError(code);
+                }
+                while (true);
+            }
+        }
+
+        public virtual IEnumerable<SQLiteRow> ExecuteAsRows(string sql, params object[] args)
+        {
+            int index = 0;
+            string[] names = null;
+            using (var statement = PrepareStatement(sql, args))
+            {
+                do
+                {
+                    var code = _sqlite3_step(statement.Handle);
+                    if (code == SQLiteErrorCode.SQLITE_DONE)
+                        break;
+
+                    if (code == SQLiteErrorCode.SQLITE_ROW)
+                    {
+                        object[] values;
+                        if (index == 0)
+                        {
+                            values = statement.BuildRow(out names);
+                        }
+                        else
+                        {
+                            values = statement.BuildRow().ToArray();
+                        }
+
+                        var row = new SQLiteRow(index, names, values);
+                        yield return row;
+                        index++;
                         continue;
                     }
 

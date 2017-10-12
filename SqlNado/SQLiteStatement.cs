@@ -115,11 +115,21 @@ namespace SqlNado
 
         protected virtual SQLiteBindContext CreateBindContext() => new SQLiteBindContext(this);
 
-        public virtual object[] BuildRow()
+        public virtual IEnumerable<object> BuildRow()
         {
-            var row = new object[ColumnCount];
             for (int i = 0; i < ColumnCount; i++)
             {
+                yield return GetColumnValue(i);
+            }
+        }
+
+        public virtual object[] BuildRow(out string[] names)
+        {
+            var row = new object[ColumnCount];
+            names = new string[ColumnCount];
+            for (int i = 0; i < ColumnCount; i++)
+            {
+                names[i] = GetColumnName(i);
                 row[i] = GetColumnValue(i);
             }
             return row;

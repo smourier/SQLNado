@@ -41,6 +41,7 @@ namespace SqlNado.Utilities
             MaximumWidth = GlobalMaximumWidth;
             MaximumRowHeight = 50;
             MaximumByteArrayDisplayCount = 64;
+            //CellWrap = true;
 
             DefaultCellAlignment = TableStringAlignment.Left;
             DefaultHeaderCellAlignment = DefaultCellAlignment;
@@ -87,7 +88,7 @@ namespace SqlNado.Utilities
         // default column settings
         public TableStringAlignment DefaultCellAlignment { get; set; }
         public TableStringAlignment DefaultHeaderCellAlignment { get; set; }
-        public virtual char DefaultNewLineReplacement { get => _defaultNewLineReplacement; set => _defaultNewLineReplacement = ToPrintable(value); }
+        public virtual char DefaultNewLineReplacement { get => _defaultNewLineReplacement; set => _defaultNewLineReplacement = value; }
         public virtual char DefaultNonPrintableReplacement { get => _defaultNonPrintableReplacement; set => _defaultNonPrintableReplacement = ToPrintable(value); }
         public virtual string DefaultHyphens { get => _defaultHyphens; set => _defaultHyphens = value ?? string.Empty; }
         public virtual int DefaultCellMaxLength { get => _defaultCellMaxLength; set => _defaultCellMaxLength = Math.Max(value, 1); }
@@ -824,7 +825,7 @@ namespace SqlNado.Utilities
 
         public virtual int MaxLength { get => _maxLength ?? Table.DefaultCellMaxLength; set => _maxLength = value; }
         public virtual string Hyphens { get => _hyphens ?? Table.DefaultHyphens; set => _hyphens = value; }
-        public virtual char NewLineReplacement { get => _newLineReplacement ?? Table.DefaultNewLineReplacement; set => _newLineReplacement = Table.ToPrintable(value); }
+        public virtual char NewLineReplacement { get => _newLineReplacement ?? Table.DefaultNewLineReplacement; set => _newLineReplacement = value; }
         public virtual char NonPrintableReplacement { get => _nonPrintableReplacement ?? Table.DefaultNonPrintableReplacement; set => _nonPrintableReplacement = Table.ToPrintable(value); }
         public virtual IFormatProvider FormatProvider { get => _formatProvider ?? Table.DefaultFormatProvider; set => _formatProvider = value; }
         public virtual TableStringAlignment Alignment { get => _aligment ?? Table.DefaultCellAlignment; set => _aligment = value; }
@@ -969,8 +970,8 @@ namespace SqlNado.Utilities
                                 break;
                             }
 
-                            dline = line.Substring(pos, segmentWidth) + Column.NewLineReplacement;
-                            lines.Add(Align(EscapeTextLine(dline)));
+                            dline = line.Substring(pos, segmentWidth);
+                            lines.Add(Align(EscapeTextLine(dline) + Column.NewLineReplacement));
                             pos += segmentWidth;
                         }
                         while (true);
