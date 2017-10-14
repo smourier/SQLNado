@@ -684,39 +684,70 @@ namespace SqlNado.Utilities
             }
         }
 
+        protected virtual bool ScanProperties(object first)
+        {
+            if (first == null)
+                throw new ArgumentNullException(nameof(first));
+
+            if (first is Guid || first is TimeSpan || first is DateTimeOffset || first is Uri)
+                return false;
+
+            var tc = Type.GetTypeCode(first.GetType());
+            if (tc == TypeCode.Object)
+                return true;
+
+            return false;
+        }
+
         protected virtual void AddColumns(object first)
         {
             if (first == null)
                 throw new ArgumentNullException(nameof(first));
 
-            if (first is Array array)
+            bool scanObject = ScanProperties(first);
+            if (scanObject)
             {
-                for (int i = 0; i < array.Length; i++)
+                if (first is Array array)
                 {
-                    AddColumn(new ArrayItemTableColumnString(this, i));
+                    for (int i = 0; i < array.Length; i++)
+                    {
+                        AddColumn(new ArrayItemTableStringColumn(this, i));
+                    }
+                    return;
                 }
-                return;
+
+                if (IsKeyValuePairEnumerable(first.GetType(), out Type keyType, out Type valueType, out Type enumerableType))
+                {
+                    var enumerable = (IEnumerable)Cast(enumerableType, first);
+                    foreach (var kvp in enumerable)
+                    {
+                        var pi = kvp.GetType().GetProperty("Key");
+                        string key = pi.GetValue(kvp).ToString();
+                        AddColumn(new KeyValuePairTableStringColumn(this, keyType, valueType, key));
+                    }
+                    return;
+                }
+
+                foreach (var property in first.GetType().GetProperties())
+                {
+                    var browsable = property.GetCustomAttribute<BrowsableAttribute>();
+                    if (browsable != null && !browsable.Browsable)
+                        continue;
+
+                    if (!property.CanRead)
+                        continue;
+
+                    if (property.GetIndexParameters().Length > 0)
+                        continue;
+
+                    AddColumn(new PropertyInfoTableStringColumn(this, property));
+                }
             }
 
-            if (IsKeyValuePairEnumerable(first.GetType(), out Type keyType, out Type valueType, out Type enumerableType))
+            // no columns? ok let's use the object itself (it'll be a one line table)
+            if (Columns.Count == 0)
             {
-                var enumerable = (IEnumerable)Cast(enumerableType, first);
-                foreach (var kvp in enumerable)
-                {
-                    var pi = kvp.GetType().GetProperty("Key");
-                    string key = pi.GetValue(kvp).ToString();
-                    AddColumn(new KeyValuePairTableColumnString(this, keyType, valueType, key));
-                }
-                return;
-            }
-
-            foreach (var property in first.GetType().GetProperties())
-            {
-                var browsable = property.GetCustomAttribute<BrowsableAttribute>();
-                if (browsable != null && !browsable.Browsable)
-                    continue;
-
-                AddColumn(new PropertyInfoTableColumnString(this, property));
+                AddColumn(new ValueTableStringColumn(this));
             }
         }
 
@@ -995,7 +1026,7 @@ namespace SqlNado.Utilities
             {
                 TextLines = new string[] { null };
             }
-            else if (Text.Length <= Column.WidthWithoutPadding)
+            else if (_split == null && Text.Length <= Column.WidthWithoutPadding)
             {
                 TextLines = new string[] { Align(EscapeTextLine(Text)) };
             }
@@ -1160,58 +1191,100 @@ namespace SqlNado.Utilities
     {
         public ObjectTableString(object obj)
         {
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-
+            // we support obj = null
             Object = obj;
-            AddValueTypeColumn = true;
+            ExpandEnumerable = true;
+            AddArrayRow = true;
         }
 
         public bool AddValueTypeColumn { get; set; }
+        public bool AddArrayRow { get; set; }
+        public bool ExpandEnumerable { get; set; }
         public object Object { get; }
 
         internal static object GetValue(PropertyInfo property, object obj)
         {
             object value;
+
             try
             {
                 value = property.GetValue(obj);
+                if (value is IEnumerable enumerable)
+                    return GetValue(enumerable);
             }
             catch (Exception e)
             {
-                value = "* ERROR * " + e.Message;
+                value = "#ERR: " + e.Message;
             }
             return value;
         }
 
-        private IEnumerable<Tuple<string, object>> Values
+        private static string GetValue(IEnumerable enumerable)
+        {
+            if (enumerable is string s)
+                return s;
+
+            return string.Join(Environment.NewLine, enumerable.Cast<object>());
+        }
+
+        private IEnumerable<Tuple<object, object>> Values
         {
             get
             {
-                foreach (var property in Object.GetType().GetProperties())
+                int i = 0;
+                var array = Object as Array;
+                if (Object != null && !(Object is string))
                 {
-                    if (!property.CanRead)
-                        continue;
+                    foreach (var property in Object.GetType().GetProperties())
+                    {
+                        if (!property.CanRead)
+                            continue;
 
-                    object value = GetValue(property, Object);
-                    yield return new Tuple<string, object>(property.Name, value);
+                        if (property.GetIndexParameters().Length > 0)
+                            continue;
+
+                        // this one will cause unwanted array dumps
+                        if (array != null && property.Name == nameof(Array.SyncRoot))
+                            continue;
+
+                        object value = GetValue(property, Object);
+                        yield return new Tuple<object, object>(property.Name, value);
+                        i++;
+                    }
+                }
+
+                // no columns? let's return the object itself (we support null)
+                if (i == 0)
+                {
+                    yield return new Tuple<object, object>(Object?.GetType(), Object);
+                }
+                else if (AddArrayRow && array != null)
+                {
+                    yield return new Tuple<object, object>("<values>", string.Join(Environment.NewLine, array.Cast<object>()));
                 }
             }
         }
 
         protected override void AddColumns(object first)
         {
-            var nameColumn = CreateColumn("Name", (c, r) => ((Tuple<string, object>)r).Item1);
+            string firstColumnName = "Name";
+            object item1 = ((Tuple<object, object>)first).Item1;
+            if (item1 == null || item1 is Type)
+            {
+                firstColumnName = "Type";
+            }
+
+            var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object, object>)r).Item1 ?? "<null>");
             nameColumn.HeaderAlignment = TableStringAlignment.Left;
             nameColumn.Alignment = nameColumn.HeaderAlignment;
             AddColumn(nameColumn);
-            AddColumn(CreateColumn("Value", (c, r) => ((Tuple<string, object>)r).Item2));
+            AddColumn(CreateColumn("Value", (c, r) => ((Tuple<object, object>)r).Item2));
 
             if (AddValueTypeColumn)
             {
                 var typeColumn = CreateColumn("Type", (c, r) =>
                  {
-                     object value = ((Tuple<string, object>)r).Item2;
+                     object value = ((Tuple<object, object>)r).Item2;
                      if (value == null)
                          return null;
 
@@ -1233,10 +1306,18 @@ namespace SqlNado.Utilities
         }
     }
 
-    public class ArrayItemTableColumnString : TableStringColumn
+    public class ValueTableStringColumn : TableStringColumn
     {
-        public ArrayItemTableColumnString(TableString table, int index)
-            : base(table, "#" + index.ToString(), (c, r) => ((Array)r).GetValue(((ArrayItemTableColumnString)c).ArrayIndex))
+        public ValueTableStringColumn(TableString table)
+            : base(table, "Value", (c, r) => r)
+        {
+        }
+    }
+
+    public class ArrayItemTableStringColumn : TableStringColumn
+    {
+        public ArrayItemTableStringColumn(TableString table, int index)
+            : base(table, "#" + index.ToString(), (c, r) => ((Array)r).GetValue(((ArrayItemTableStringColumn)c).ArrayIndex))
         {
             ArrayIndex = index;
         }
@@ -1244,13 +1325,13 @@ namespace SqlNado.Utilities
         public int ArrayIndex { get; } // could be different from column's index
     }
 
-    public class KeyValuePairTableColumnString : TableStringColumn
+    public class KeyValuePairTableStringColumn : TableStringColumn
     {
-        public KeyValuePairTableColumnString(TableString table, Type keyType, Type valueType, string name)
+        public KeyValuePairTableStringColumn(TableString table, Type keyType, Type valueType, string name)
             : base(table, name, (c, r) =>
             {
                 var objs = new object[] { name, null};
-                bool b = (bool)((KeyValuePairTableColumnString)c).Method.Invoke(r, objs);
+                bool b = (bool)((KeyValuePairTableStringColumn)c).Method.Invoke(r, objs);
                 return b ? objs[1] : null;
             })
         {
@@ -1269,11 +1350,11 @@ namespace SqlNado.Utilities
         public MethodInfo Method { get; }
     }
 
-    public class PropertyInfoTableColumnString : TableStringColumn
+    public class PropertyInfoTableStringColumn : TableStringColumn
     {
         // yes, performance could be inproved (delegates, etc.)
-        public PropertyInfoTableColumnString(TableString table, PropertyInfo property)
-            : base(table, property?.Name, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableColumnString)c).Property, r))
+        public PropertyInfoTableStringColumn(TableString table, PropertyInfo property)
+            : base(table, property?.Name, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableStringColumn)c).Property, r))
         {
             Property = property;
         }

@@ -31,8 +31,10 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("chinook.db"))
             {
-                var value = db.ExecuteAsRows("SELECT * FROM sqlite_master WHERE type='table'");
-                value.ToTableString(Console.Out);
+                //var value = db.ExecuteAsRows("SELECT * FROM sqlite_master WHERE type='table'");
+                //value.ToTableString(Console.Out);
+                var table = db.GetObjectTable<Customer>();
+                TableStringExtensions.ToTableString(true, Console.Out);
             }
 
             //dynamic o = new ExpandoObject();
@@ -48,5 +50,13 @@ namespace SqlNado.Temp
 
             //TableStringExtensions.ToTableString(new object[] { o, o3 }, Console.Out);
         }
+    }
+
+    public class Customer
+    {
+        [SQLiteColumn(IsPrimaryKey = true)]
+        public Guid Id { get; }
+        public string Name { get; }
+        public int Age { get; set; }
     }
 }

@@ -16,6 +16,7 @@ namespace SqlNado
         private static IntPtr _module;
         private IntPtr _handle;
         private ConcurrentDictionary<Type, SQLiteType> _types = new ConcurrentDictionary<Type, SQLiteType>();
+        private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
 
         public SQLiteDatabase(string filePath)
             : this(filePath, SQLiteOpenFlags.SQLITE_OPEN_READWRITE | SQLiteOpenFlags.SQLITE_OPEN_CREATE)
@@ -112,14 +113,53 @@ namespace SqlNado
         protected virtual void AddDefaultTypes()
         {
             AddType(SQLiteType.ObjectToString);
+            // TODO: add others
+        }
+
+        public bool Save(object obj) => Save(obj, null);
+        public virtual bool Save(object obj, SQLiteSaveOptions options)
+        {
+            if (obj == null)
+                return false;
+
+            var table = GetObjectTable(obj.GetType());
+            if (options.SynchronizeSchema)
+            {
+                table.Synchronize();
+            }
+            return false;
+        }
+
+        public SQLiteObjectTable GetObjectTable<T>() => GetObjectTable(typeof(T));
+        public virtual SQLiteObjectTable GetObjectTable(Type type)
+        {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+
+            if (!_objectTables.TryGetValue(type, out SQLiteObjectTable table))
+            {
+                table = BuildObjectTable(type);
+                table = _objectTables.AddOrUpdate(type, table, (k, o) => o);
+            }
+            return table;
+        }
+
+        protected virtual SQLiteObjectTable BuildObjectTable(Type type)
+        {
+            var builder = CreateObjectTableBuilder(type);
+            return builder.Build();
         }
 
         public override string ToString() => FilePath;
 
+        protected virtual SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type) => new SQLiteObjectTableBuilder(this, type);
+        protected virtual SQLiteStatement CreateStatement(string sql) => new SQLiteStatement(this, sql);
+        protected virtual SQLiteRow CreateRow(int index, string[] names, object[] values) => new SQLiteRow(index, names, values);
+
         public SQLiteStatement PrepareStatement(string sql) => PrepareStatement(sql, null);
         public virtual SQLiteStatement PrepareStatement(string sql, params object[] args)
         {
-            var statement = new SQLiteStatement(this, sql);
+            var statement = CreateStatement(sql);
             if (args != null)
             {
                 for (int i = 0; i < args.Length; i++)
@@ -206,7 +246,7 @@ namespace SqlNado
                             values = statement.BuildRow().ToArray();
                         }
 
-                        var row = new SQLiteRow(index, names, values);
+                        var row = CreateRow(index, names, values);
                         yield return row;
                         index++;
                         continue;

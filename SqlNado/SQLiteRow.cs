@@ -15,6 +15,9 @@ namespace SqlNado
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
 
+            if (names.Length != values.Length)
+                throw new ArgumentException(null, nameof(values));
+
             Index = index;
             Names = names;
             Values = values;
