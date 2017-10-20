@@ -16,6 +16,7 @@ namespace SqlNado
         public virtual bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
         public virtual bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
         public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
+        public virtual Func<SQLiteObjectColumn, object, object> GetValueFunc { get; set; }
 
         int IComparable.CompareTo(object obj) => CompareTo(obj as SQLiteColumnAttribute);
 

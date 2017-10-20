@@ -6,7 +6,7 @@ namespace SqlNado
 {
     public class SQLiteObjectColumn
     {
-        public SQLiteObjectColumn(SQLiteObjectTable table, string name)
+        public SQLiteObjectColumn(SQLiteObjectTable table, string name, Func<SQLiteObjectColumn, object, object> getValueFunc)
         {
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
@@ -14,15 +14,22 @@ namespace SqlNado
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
+            if (getValueFunc == null)
+                throw new ArgumentNullException(nameof(getValueFunc));
+
             Table = table;
             Name = name;
+            GetValueFunc = getValueFunc;
         }
 
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
+        public Func<SQLiteObjectColumn, object, object> GetValueFunc { get; }
         public virtual bool IsNullable  { get; set; }
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
+
+        public virtual object GetValue(object obj) => GetValueFunc(this, obj);
 
         public override string ToString()
         {
@@ -44,14 +51,14 @@ namespace SqlNado
             return s;
         }
 
-        public virtual void CopyAttributes(SQLiteColumnAttribute attributes)
+        public virtual void CopyAttributes(SQLiteColumnAttribute attribute)
         {
-            if (attributes == null)
-                throw new ArgumentNullException(nameof(attributes));
+            if (attribute == null)
+                throw new ArgumentNullException(nameof(attribute));
 
-            IsReadOnly = attributes.IsReadOnly;
-            IsNullable = attributes.IsNullable;
-            IsPrimaryKey = attributes.IsPrimaryKey;
+            IsReadOnly = attribute.IsReadOnly;
+            IsNullable = attribute.IsNullable;
+            IsPrimaryKey = attribute.IsPrimaryKey;
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using SqlNado.Utilities;
+using System.Linq.Expressions;
 
 namespace SqlNado
 {
@@ -24,7 +25,8 @@ namespace SqlNado
         public Type Type { get; }
 
         protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name);
-        protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name) => new SQLiteObjectColumn(table, name);
+        protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name,
+            Func<SQLiteObjectColumn, object, object> getValueFunc) => new SQLiteObjectColumn(table, name, getValueFunc);
 
         public virtual SQLiteObjectTable Build()
         {
@@ -32,14 +34,11 @@ namespace SqlNado
             var list = EnumerateColumnAttributes().ToList();
             list.Sort();
 
-            foreach (var attributes in list)
+            foreach (var attribute in list)
             {
-                if (table.Columns.Any(c => c.Name.EqualsIgnoreCase(attributes.Name)))
-                    throw new SqlNadoException("0007: There is already a '" + attributes.Name + "' column in the '" + table.Name + "' table.");
-
-                var column = CreateObjectColumn(table, attributes.Name);
-                table.Columns.Add(column);
-                column.CopyAttributes(attributes);
+                var column = CreateObjectColumn(table, attribute.Name, attribute.GetValueFunc);
+                table.AddColumn(column);
+                column.CopyAttributes(attribute);
             }
             return table;
         }
@@ -84,6 +83,11 @@ namespace SqlNado
             if (!att._isReadOnly.HasValue)
             {
                 att.IsReadOnly = !property.CanWrite;
+            }
+
+            if (att.GetValueFunc == null)
+            {
+                att.GetValueFunc = (c, o) => property.GetValue(o);
             }
 
             return att;

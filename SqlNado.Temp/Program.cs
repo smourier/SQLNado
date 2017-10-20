@@ -34,7 +34,8 @@ namespace SqlNado.Temp
                 //var value = db.ExecuteAsRows("SELECT * FROM sqlite_master WHERE type='table'");
                 //value.ToTableString(Console.Out);
                 var table = db.GetObjectTable<Customer>();
-                TableStringExtensions.ToTableString(true, Console.Out);
+                var rows = db.ExecuteAsRows("SELECT * FROM customers");
+                TableStringExtensions.ToTableString(rows, Console.Out);
             }
 
             //dynamic o = new ExpandoObject();

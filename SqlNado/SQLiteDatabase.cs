@@ -116,6 +116,42 @@ namespace SqlNado
             // TODO: add others
         }
 
+        public virtual int DeleteAll<T>()
+        {
+            var table = GetObjectTable(typeof(T));
+            if (table == null)
+                return 0;
+
+            return DeleteAll(table.Name);
+        }
+
+        public virtual int DeleteAll(string tableName)
+        {
+            if (tableName == null)
+                throw new ArgumentNullException(nameof(tableName));
+
+            string sql = "DELETE FROM " + SQLiteStatement.EscapeName(tableName);
+            return ExecuteNonQuery(sql);
+        }
+
+        public bool Delete(object obj) => Delete(obj, null);
+        public virtual bool Delete(object obj, SQLiteDeleteOptions options)
+        {
+            if (obj == null)
+                return false;
+
+            var table = GetObjectTable(obj.GetType());
+            if (!table.HasPrimaryKey)
+                throw new SqlNadoException("0008: Cannot delete object from table '" + table.Name + "' as it does not define a primary key.");
+
+            var pk = table.GetPrimaryKeyValues(obj);
+            if (pk == null)
+                throw new InvalidOperationException();
+
+            string sql = "DELETE FROM " + SQLiteStatement.EscapeName(table.Name) + " WHERE " + table.BuildWherePrimaryKeyStatement();
+            return ExecuteNonQuery(sql, pk) > 0;
+        }
+
         public bool Save(object obj) => Save(obj, null);
         public virtual bool Save(object obj, SQLiteSaveOptions options)
         {

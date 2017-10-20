@@ -322,6 +322,14 @@ namespace SqlNado
             while (true);
         }
 
+        public static string EscapeName(string name)
+        {
+            if (name == null)
+                return null;
+
+            return "\"" + name.Replace("\"", "\"\"") + "\"";
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
