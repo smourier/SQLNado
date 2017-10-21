@@ -4,8 +4,7 @@ using System.Text;
 
 namespace SqlNado
 {
-    public class SQLiteSaveOptions
+    public class SQLiteDeleteOptions
     {
-        public bool SynchronizeSchema { get; set; }
     }
 }

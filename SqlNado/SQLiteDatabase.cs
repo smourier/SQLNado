@@ -166,6 +166,81 @@ namespace SqlNado
             return false;
         }
 
+        public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
+        public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
+        public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions<T> options, params object[] args)
+        {
+            var table = GetObjectTable(typeof(T));
+            if (table.LoadAction == null)
+                throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
+
+            if (sql == null)
+            {
+                sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
+            }
+
+            using (var statement = PrepareStatement(sql, args))
+            {
+                do
+                {
+                    var code = _sqlite3_step(statement.Handle);
+                    if (code == SQLiteErrorCode.SQLITE_DONE)
+                        break;
+
+                    if (code == SQLiteErrorCode.SQLITE_ROW)
+                    {
+                        var obj = table.Load(statement, options);
+                        if (obj != null)
+                            yield return obj;
+
+                        continue;
+                    }
+
+                    CheckError(code);
+                }
+                while (true);
+            }
+        }
+
+        public IEnumerable<object> LoadAll(Type objectType) => Load(objectType, null, null, null);
+        public IEnumerable<object> Load(Type objectType, string sql, params object[] args) => Load(objectType, sql, null, args);
+        public virtual IEnumerable<object> Load(Type objectType, string sql, SQLiteLoadOptions options, params object[] args)
+        {
+            if (objectType == null)
+                throw new ArgumentNullException(nameof(objectType));
+
+            var table = GetObjectTable(objectType);
+            if (table.LoadAction == null)
+                throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
+
+            if (sql == null)
+            {
+                sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
+            }
+
+            using (var statement = PrepareStatement(sql, args))
+            {
+                do
+                {
+                    var code = _sqlite3_step(statement.Handle);
+                    if (code == SQLiteErrorCode.SQLITE_DONE)
+                        break;
+
+                    if (code == SQLiteErrorCode.SQLITE_ROW)
+                    {
+                        var obj = table.Load(objectType, statement, options);
+                        if (obj != null)
+                            yield return obj;
+
+                        continue;
+                    }
+
+                    CheckError(code);
+                }
+                while (true);
+            }
+        }
+
         public SQLiteObjectTable GetObjectTable<T>() => GetObjectTable(typeof(T));
         public virtual SQLiteObjectTable GetObjectTable(Type type)
         {
@@ -261,7 +336,6 @@ namespace SqlNado
         public virtual IEnumerable<SQLiteRow> ExecuteAsRows(string sql, params object[] args)
         {
             int index = 0;
-            string[] names = null;
             using (var statement = PrepareStatement(sql, args))
             {
                 do
@@ -272,17 +346,8 @@ namespace SqlNado
 
                     if (code == SQLiteErrorCode.SQLITE_ROW)
                     {
-                        object[] values;
-                        if (index == 0)
-                        {
-                            values = statement.BuildRow(out names);
-                        }
-                        else
-                        {
-                            values = statement.BuildRow().ToArray();
-                        }
-
-                        var row = CreateRow(index, names, values);
+                        object[] values = statement.BuildRow().ToArray();
+                        var row = CreateRow(index, statement.ColumnsNames, values);
                         yield return row;
                         index++;
                         continue;

@@ -26,20 +26,49 @@ namespace SqlNado
 
         protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name,
-            Func<SQLiteObjectColumn, object, object> getValueFunc) => new SQLiteObjectColumn(table, name, getValueFunc);
+            Func<object, object> getValueFunc,
+            Action<object, object> setValueAction) => new SQLiteObjectColumn(table, name, getValueFunc, setValueAction);
 
         public virtual SQLiteObjectTable Build()
         {
-            var table = CreateObjectTable(Type.Name);
-            var list = EnumerateColumnAttributes().ToList();
-            list.Sort();
-
-            foreach (var attribute in list)
+            string name = Type.Name;
+            var typeAtt = Type.GetCustomAttribute<SQLiteTableAttribute>();
+            if (typeAtt != null)
             {
-                var column = CreateObjectColumn(table, attribute.Name, attribute.GetValueFunc);
+                if (!string.IsNullOrWhiteSpace(typeAtt.Name))
+                {
+                    name = typeAtt.Name;
+                }
+            }
+
+            var table = CreateObjectTable(name);
+            var attributes = EnumerateColumnAttributes().ToList();
+            attributes.Sort();
+
+            var statementParameter = Expression.Parameter(typeof(SQLiteStatement));
+            var optionsParameter = Expression.Parameter(typeof(SQLiteLoadOptions));
+            var instanceParameter = Expression.Parameter(typeof(object));
+            var expressions = new List<Expression>();
+
+            foreach (var attribute in attributes)
+            {
+                var column = CreateObjectColumn(table, attribute.Name,
+                    attribute.GetValueExpression.Compile(),
+                    attribute.SetValueExpression?.Compile());
                 table.AddColumn(column);
                 column.CopyAttributes(attribute);
+
+                if (attribute.SetValueExpression != null)
+                {
+                }
             }
+
+            var body = Expression.Block(expressions);
+            var lambda = Expression.Lambda<Action<SQLiteStatement, SQLiteLoadOptions, object>>(body,
+                statementParameter,
+                optionsParameter,
+                instanceParameter);
+            table.LoadAction = lambda.Compile();
             return table;
         }
 
@@ -85,9 +114,37 @@ namespace SqlNado
                 att.IsReadOnly = !property.CanWrite;
             }
 
-            if (att.GetValueFunc == null)
+            if (att.GetValueExpression == null)
             {
-                att.GetValueFunc = (c, o) => property.GetValue(o);
+                // equivalent of
+                // att.GetValueFunc = (o) => property.GetValue(o);
+
+                var instanceParameter = Expression.Parameter(typeof(object));
+                var instance = Expression.Convert(instanceParameter, property.DeclaringType);
+                Expression getValue = Expression.Property(instance, property);
+                if (property.PropertyType != typeof(object))
+                {
+                    getValue = Expression.Convert(getValue, typeof(object));
+                }
+                var lambda = Expression.Lambda<Func<object, object>>(getValue, instanceParameter);
+                att.GetValueExpression = lambda;
+            }
+
+            if (!att.IsReadOnly && att.SetValueExpression == null && property.SetMethod != null)
+            {
+                // equivalent of
+                // att.SetValueAction = (o, v) => property.SetValue(o, v);
+
+                var instanceParameter = Expression.Parameter(typeof(object));
+                var valueParameter = Expression.Parameter(typeof(object));
+                var instance = Expression.Convert(instanceParameter, property.DeclaringType);
+                Expression setValue = Expression.Property(instance, property.SetMethod);
+                if (property.PropertyType != typeof(object))
+                {
+                    setValue = Expression.Convert(setValue, typeof(object));
+                }
+                var lambda = Expression.Lambda<Action<object, object>>(setValue, instanceParameter, valueParameter);
+                att.SetValueExpression = lambda;
             }
 
             return att;

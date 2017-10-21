@@ -10,6 +10,7 @@ namespace SqlNado
     {
         private IntPtr _handle;
         private Dictionary<string, int> _columnsIndices;
+        private string[] _columnsNames;
 
         public SQLiteStatement(SQLiteDatabase db, string sql)
         {
@@ -29,7 +30,26 @@ namespace SqlNado
         public string Sql { get; }
         public IntPtr Handle => _handle;
 
-        public virtual IReadOnlyDictionary<string, int> ColumnsIndices
+        public string[] ColumnsNames
+        {
+            get
+            {
+                if (_columnsNames == null)
+                {
+                    _columnsNames = new string[ColumnCount];
+                    if (Handle != IntPtr.Zero)
+                    {
+                        for (int i = 0; i < _columnsNames.Length; i++)
+                        {
+                            _columnsNames[i] = GetColumnName(i);
+                        }
+                    }
+                }
+                return _columnsNames;
+            }
+        }
+
+        public IReadOnlyDictionary<string, int> ColumnsIndices
         {
             get
             {
@@ -121,18 +141,6 @@ namespace SqlNado
             {
                 yield return GetColumnValue(i);
             }
-        }
-
-        public virtual object[] BuildRow(out string[] names)
-        {
-            var row = new object[ColumnCount];
-            names = new string[ColumnCount];
-            for (int i = 0; i < ColumnCount; i++)
-            {
-                names[i] = GetColumnName(i);
-                row[i] = GetColumnValue(i);
-            }
-            return row;
         }
 
         public int GetParameterIndex(string name)

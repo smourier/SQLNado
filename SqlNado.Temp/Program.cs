@@ -34,8 +34,12 @@ namespace SqlNado.Temp
                 //var value = db.ExecuteAsRows("SELECT * FROM sqlite_master WHERE type='table'");
                 //value.ToTableString(Console.Out);
                 var table = db.GetObjectTable<Customer>();
-                var rows = db.ExecuteAsRows("SELECT * FROM customers");
-                TableStringExtensions.ToTableString(rows, Console.Out);
+                var pk = table.GetValues(new Customer());
+
+                var tables = db.LoadAll<Table>();
+                tables.ToTableString(Console.Out);
+                //var rows = db.ExecuteAsRows("SELECT * FROM customers");
+                TableStringExtensions.ToTableString(table, Console.Out);
             }
 
             //dynamic o = new ExpandoObject();
@@ -53,8 +57,25 @@ namespace SqlNado.Temp
         }
     }
 
+    [SQLiteTable(Name = "sqlite_master")]
+    public class Table
+    {
+        public string Type { get; set; }
+        public string Name { get; set; }
+        public string TableName { get; set; }
+        public int RootPage { get; set; }
+        public string Sql { get; set; }
+    }
+
     public class Customer
     {
+        public Customer()
+        {
+            Id = Guid.NewGuid();
+            Age = 20;
+            Name = "Customer" + Environment.TickCount;
+        }
+
         [SQLiteColumn(IsPrimaryKey = true)]
         public Guid Id { get; }
         public string Name { get; }

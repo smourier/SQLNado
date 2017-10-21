@@ -6,7 +6,9 @@ namespace SqlNado
 {
     public class SQLiteObjectColumn
     {
-        public SQLiteObjectColumn(SQLiteObjectTable table, string name, Func<SQLiteObjectColumn, object, object> getValueFunc)
+        public SQLiteObjectColumn(SQLiteObjectTable table, string name,
+            Func<object, object> getValueFunc,
+            Action<object, object> setValueAction)
         {
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
@@ -20,16 +22,27 @@ namespace SqlNado
             Table = table;
             Name = name;
             GetValueFunc = getValueFunc;
+            SetValueAction = setValueAction; // can be null for RO props
         }
 
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
-        public Func<SQLiteObjectColumn, object, object> GetValueFunc { get; }
+        public int Index { get; internal set; }
+        public Func<object, object> GetValueFunc { get; }
+        public Action<object, object> SetValueAction { get; }
         public virtual bool IsNullable  { get; set; }
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
 
-        public virtual object GetValue(object obj) => GetValueFunc(this, obj);
+        public virtual object GetValue(object obj) => GetValueFunc(obj);
+
+        public virtual void SetValue(object obj, object value)
+        {
+            if (SetValueAction == null)
+                throw new InvalidOperationException();
+
+            SetValueAction(obj, value);
+        }
 
         public override string ToString()
         {
