@@ -207,6 +207,19 @@ namespace SqlNado
             return bytes;
         }
 
+        public bool TryGetColumnValue(string name, out object value)
+        {
+            int i = GetColumnIndex(name);
+            if (i < 0)
+            {
+                value = null;
+                return false;
+            }
+
+            value = GetColumnValue(i);
+            return true;
+        }
+
         public object GetColumnValue(string name)
         {
             int i = GetColumnIndex(name);

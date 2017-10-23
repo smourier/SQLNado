@@ -1,8 +1,7 @@
-﻿using SqlNado.Utilities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using SqlNado.Utilities;
 
 namespace SqlNado
 {
@@ -79,7 +78,7 @@ namespace SqlNado
         public virtual T CreateInstance<T>(SQLiteLoadOptions<T> options)
         {
             if (options?.CreateInstanceFunc != null)
-                return options.CreateInstanceFunc(options);
+                return (T)options.CreateInstanceFunc(typeof(T), options);
 
             return (T)CreateInstance(typeof(T), options);
         }

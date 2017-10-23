@@ -39,6 +39,25 @@ namespace SqlNado
         public IntPtr Handle => _handle;
         public string FilePath { get; }
         public IReadOnlyDictionary<Type, SQLiteType> Types => _types;
+        public IEnumerable<SQLiteTable> Tables
+        {
+            get
+            {
+                var options = new SQLiteLoadOptions<SQLiteTable>(this);
+                options.CreateInstanceFunc = (t, o) => new SQLiteTable(this);
+                return Load<SQLiteTable>("WHERE type='table'", options);
+            }
+        }
+
+        public IEnumerable<SQLiteTable> Indices
+        {
+            get
+            {
+                var options = new SQLiteLoadOptions<SQLiteTable>(this);
+                options.CreateInstanceFunc = (t, o) => new SQLiteTable(this);
+                return Load<SQLiteTable>("WHERE type='index'", options);
+            }
+        }
 
         public virtual int TotalChangesCount
         {
@@ -174,9 +193,20 @@ namespace SqlNado
             if (table.LoadAction == null)
                 throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
 
-            if (sql == null)
+            sql = sql.Nullify();
+            if (sql == null || sql.StartsWith("WHERE", StringComparison.OrdinalIgnoreCase))
             {
-                sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
+                string newsql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
+                if (sql != null)
+                {
+                    newsql += sql;
+                }
+                sql = newsql;
+            }
+
+            if (options == null)
+            {
+                options = new SQLiteLoadOptions<T>(this);
             }
 
             using (var statement = PrepareStatement(sql, args))

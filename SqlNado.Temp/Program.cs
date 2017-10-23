@@ -36,8 +36,8 @@ namespace SqlNado.Temp
                 var table = db.GetObjectTable<Customer>();
                 var pk = table.GetValues(new Customer());
 
-                var tables = db.LoadAll<Table>();
-                tables.ToTableString(Console.Out);
+                db.Tables.ToTableString(Console.Out);
+                db.Indices.ToTableString(Console.Out);
                 //var rows = db.ExecuteAsRows("SELECT * FROM customers");
                 TableStringExtensions.ToTableString(table, Console.Out);
             }
@@ -62,6 +62,7 @@ namespace SqlNado.Temp
     {
         public string Type { get; set; }
         public string Name { get; set; }
+        [SQLiteColumn(Name = "tbl_name")]
         public string TableName { get; set; }
         public int RootPage { get; set; }
         public string Sql { get; set; }
@@ -78,7 +79,7 @@ namespace SqlNado.Temp
 
         [SQLiteColumn(IsPrimaryKey = true)]
         public Guid Id { get; }
-        public string Name { get; }
+        public string Name { get; set; }
         public int Age { get; set; }
     }
 }

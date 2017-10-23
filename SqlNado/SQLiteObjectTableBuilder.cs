@@ -50,6 +50,10 @@ namespace SqlNado
             var instanceParameter = Expression.Parameter(typeof(object));
             var expressions = new List<Expression>();
 
+            var variables = new List<ParameterExpression>();
+            var valueParameter = Expression.Variable(typeof(object), "value");
+            variables.Add(valueParameter);
+
             foreach (var attribute in attributes)
             {
                 var column = CreateObjectColumn(table, attribute.Name,
@@ -60,10 +64,25 @@ namespace SqlNado
 
                 if (attribute.SetValueExpression != null)
                 {
+                    var tryGetValue = Expression.Call(statementParameter, nameof(SQLiteStatement.TryGetColumnValue), null,
+                        Expression.Constant(attribute.Name),
+                        valueParameter);
+
+                    var ifTrue = Expression.Invoke(attribute.SetValueExpression,
+                        instanceParameter,
+                        valueParameter);
+
+                    var test = Expression.Condition(Expression.Equal(tryGetValue, Expression.Constant(true)), ifTrue, Expression.Empty());
+                    expressions.Add(test);
                 }
             }
 
-            var body = Expression.Block(expressions);
+            if (expressions.Count > 0)
+            {
+                expressions.Insert(0, valueParameter);
+            }
+
+            var body = Expression.Block(variables, expressions);
             var lambda = Expression.Lambda<Action<SQLiteStatement, SQLiteLoadOptions, object>>(body,
                 statementParameter,
                 optionsParameter,
@@ -138,11 +157,13 @@ namespace SqlNado
                 var instanceParameter = Expression.Parameter(typeof(object));
                 var valueParameter = Expression.Parameter(typeof(object));
                 var instance = Expression.Convert(instanceParameter, property.DeclaringType);
-                Expression setValue = Expression.Property(instance, property.SetMethod);
+
+                Expression methodValueParameter = valueParameter;
                 if (property.PropertyType != typeof(object))
                 {
-                    setValue = Expression.Convert(setValue, typeof(object));
+                    methodValueParameter = Expression.Convert(valueParameter, property.PropertyType);
                 }
+                Expression setValue = Expression.Call(instance, property.SetMethod, methodValueParameter);
                 var lambda = Expression.Lambda<Action<object, object>>(setValue, instanceParameter, valueParameter);
                 att.SetValueExpression = lambda;
             }

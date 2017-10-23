@@ -21,6 +21,7 @@ namespace SqlNado
         public virtual Expression<Func<object, object>> GetValueExpression { get; set; }
         public virtual Expression<Action<object, object>> SetValueExpression { get; set; }
 
+        public override string ToString() => Name;
         int IComparable.CompareTo(object obj) => CompareTo(obj as SQLiteColumnAttribute);
 
         public virtual int CompareTo(SQLiteColumnAttribute other)

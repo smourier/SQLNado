@@ -43,6 +43,7 @@ namespace SqlNado.Utilities
             MaximumRowHeight = 50;
             MaximumByteArrayDisplayCount = 64;
             //CellWrap = true;
+            ThrowOnPropertyGetError = true;
 
             DefaultCellAlignment = TableStringAlignment.Left;
             DefaultHeaderCellAlignment = DefaultCellAlignment;
@@ -71,6 +72,7 @@ namespace SqlNado.Utilities
         public int MinimumColumnWidth { get => _minimumColumnWidth; set => _minimumColumnWidth = Math.Max(value, AbsoluteMinimumColumnWidth); }
         public int MaximumByteArrayDisplayCount { get => _maximumByteArrayDisplayCount; set => _maximumByteArrayDisplayCount = Math.Max(value, 0); }
         public virtual IReadOnlyList<TableStringColumn> Columns => _columns;
+        public virtual bool ThrowOnPropertyGetError { get; set; }
         public virtual char TopLeftCharacter { get; set; }
         public virtual char TopMiddleCharacter { get; set; }
         public virtual char TopRightCharacter { get; set; }
@@ -1202,19 +1204,28 @@ namespace SqlNado.Utilities
         public bool ExpandEnumerable { get; set; }
         public object Object { get; }
 
-        internal static object GetValue(PropertyInfo property, object obj)
+        internal static object GetValue(PropertyInfo property, object obj, bool throwOnError)
         {
             object value;
-
-            try
+            if (throwOnError)
             {
                 value = property.GetValue(obj);
                 if (value is IEnumerable enumerable)
                     return GetValue(enumerable);
+
             }
-            catch (Exception e)
+            else
             {
-                value = "#ERR: " + e.Message;
+                try
+                {
+                    value = property.GetValue(obj);
+                    if (value is IEnumerable enumerable)
+                        return GetValue(enumerable);
+                }
+                catch (Exception e)
+                {
+                    value = "#ERR: " + e.Message;
+                }
             }
             return value;
         }
@@ -1247,7 +1258,7 @@ namespace SqlNado.Utilities
                         if (array != null && property.Name == nameof(Array.SyncRoot))
                             continue;
 
-                        object value = GetValue(property, Object);
+                        object value = GetValue(property, Object, ThrowOnPropertyGetError);
                         yield return new Tuple<object, object>(property.Name, value);
                         i++;
                     }
@@ -1354,7 +1365,7 @@ namespace SqlNado.Utilities
     {
         // yes, performance could be inproved (delegates, etc.)
         public PropertyInfoTableStringColumn(TableString table, PropertyInfo property)
-            : base(table, property?.Name, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableStringColumn)c).Property, r))
+            : base(table, property?.Name, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableStringColumn)c).Property, r, table.ThrowOnPropertyGetError))
         {
             Property = property;
         }
