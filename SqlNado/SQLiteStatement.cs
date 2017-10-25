@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading;
 using SqlNado.Utilities;
@@ -220,6 +221,22 @@ namespace SqlNado
             return true;
         }
 
+        public virtual string GetNullifiedColumnValue(string name)
+        {
+            int i = GetColumnIndex(name);
+            if (i < 0)
+                return null;
+
+            var value = GetColumnValue(i);
+            if (value == null)
+                return null;
+
+            if (value is byte[] bytes)
+                return Conversions.ToHexa(bytes).Nullify();
+
+            return string.Format(CultureInfo.InvariantCulture, "{0}", value).Nullify();
+        }
+
         public object GetColumnValue(string name)
         {
             int i = GetColumnIndex(name);
@@ -271,6 +288,7 @@ namespace SqlNado
             return value;
         }
 
+        public T GetColumnValue<T>(string name, T defaultValue) => GetColumnValue(null, name, defaultValue);
         public virtual T GetColumnValue<T>(IFormatProvider provider, string name, T defaultValue)
         {
             if (name == null)
@@ -283,6 +301,7 @@ namespace SqlNado
             return GetColumnValue(provider, index, defaultValue);
         }
 
+        public T GetColumnValue<T>(int index, T defaultValue) => GetColumnValue(null, index, defaultValue);
         public virtual T GetColumnValue<T>(IFormatProvider provider, int index, T defaultValue)
         {
             object rawValue = GetColumnValue(index);

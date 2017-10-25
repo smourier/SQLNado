@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using SqlNado.Utilities;
 using System.Linq.Expressions;
+using System.ComponentModel;
 
 namespace SqlNado
 {
@@ -25,9 +26,9 @@ namespace SqlNado
         public Type Type { get; }
 
         protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name);
-        protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name,
+        protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType,
             Func<object, object> getValueFunc,
-            Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, getValueFunc, setValueAction);
+            Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, getValueFunc, setValueAction);
 
         public virtual SQLiteObjectTable Build()
         {
@@ -56,7 +57,7 @@ namespace SqlNado
 
             foreach (var attribute in attributes)
             {
-                var column = CreateObjectColumn(table, attribute.Name,
+                var column = CreateObjectColumn(table, attribute.Name, attribute.DataType,
                     attribute.GetValueExpression.Compile(),
                     attribute.SetValueExpression?.Compile());
                 table.AddColumn(column);
@@ -105,6 +106,42 @@ namespace SqlNado
             }
         }
 
+        // see http://www.sqlite.org/datatype3.html
+        public virtual string GetDefaultDataType(Type type)
+        {
+            if (type == typeof(int) || type == typeof(long) ||
+                type == typeof(short) || type == typeof(sbyte) || type == typeof(byte) ||
+                type == typeof(uint) || type == typeof(ushort) || type == typeof(ulong) ||
+                type.IsEnum || type == typeof(TimeSpan))
+                return "INTEGER";
+
+            if (type == typeof(float) || type == typeof(double))
+                return "REAL";
+
+            if (type == typeof(decimal))
+                return "NUMERIC";
+
+            if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
+                return "DATETIME";
+
+            if (type == typeof(byte[]))
+                return "BLOB";
+
+            if (type == typeof(Guid))
+            {
+                if (!Database.CreateTableOptions.DeclareGuidAsString)
+                    return "BLOB";
+
+                return "TEXT";
+            }
+
+            // we use a specific type (not recognized specifically by sqlite) to remember it's a boolean avalue
+            if (type == typeof(bool))
+                return "BOOL";
+
+            return "TEXT";
+        }
+
         protected virtual SQLiteColumnAttribute GetColumnAttribute(PropertyInfo property)
         {
             if (property == null)
@@ -122,6 +159,21 @@ namespace SqlNado
             if (string.IsNullOrWhiteSpace(att.Name))
             {
                 att.Name = property.Name;
+            }
+
+            if (string.IsNullOrWhiteSpace(att.DataType))
+            {
+                att.DataType = GetDefaultDataType(property.PropertyType);
+            }
+
+            if (!att._hasDefaultValue.HasValue)
+            {
+                var defAtt = property.GetCustomAttribute<DefaultValueAttribute>();
+                if (defAtt != null)
+                {
+                    att.HasDefaultValue = true;
+                    att.DefaultValue = defAtt.Value;
+                }
             }
 
             if (!att._isNullable.HasValue)
@@ -183,8 +235,18 @@ namespace SqlNado
                         convertedValue);
 
                     var ifTrue = Expression.Call(instance, property.SetMethod, Expression.Convert(convertedValue, property.PropertyType));
+                    Expression ifFalse;
 
-                    setValue = Expression.Condition(Expression.Equal(tryConvert, Expression.Constant(true)), ifTrue, Expression.Empty());
+                    if (att.HasDefaultValue)
+                    {
+                        ifFalse = Expression.Call(instance, property.SetMethod, Expression.Convert(Expression.Constant(att.DefaultValue), property.PropertyType));
+                    }
+                    else
+                    {
+                        ifFalse = Expression.Empty();
+                    }
+
+                    setValue = Expression.Condition(Expression.Equal(tryConvert, Expression.Constant(true)), ifTrue, ifFalse);
                 }
                 else
                 {

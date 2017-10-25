@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Text;
 using SqlNado.Utilities;
 
 namespace SqlNado
@@ -9,7 +10,6 @@ namespace SqlNado
     public class SQLiteObjectTable
     {
         private List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
-        private List<SQLiteObjectColumn> _primaryKey = new List<SQLiteObjectColumn>();
 
         public SQLiteObjectTable(SQLiteDatabase database, string name)
         {
@@ -26,9 +26,10 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public string Name { get; }
         public virtual IReadOnlyList<SQLiteObjectColumn> Columns => _columns;
-        public virtual IReadOnlyList<SQLiteObjectColumn> PrimaryKey => _primaryKey;
+        public virtual IEnumerable<SQLiteObjectColumn> PrimaryKey => _columns.Where(c => c.IsPrimaryKey);
         public virtual string EscapedName => SQLiteStatement.EscapeName(Name);
-        public bool HasPrimaryKey => PrimaryKey.Count > 0;
+        public bool HasPrimaryKey => _columns.Any(c => c.IsPrimaryKey);
+        public bool Exists => Database.TableExists(Name);
         [Browsable(false)]
         public Action<SQLiteStatement, SQLiteLoadOptions, object> LoadAction { get; set; }
 
@@ -44,10 +45,6 @@ namespace SqlNado
 
             column.Index = _columns.Count;
             _columns.Add(column);
-            if (column.IsPrimaryKey)
-            {
-                _primaryKey.Add(column);
-            }
         }
 
         public virtual string BuildWherePrimaryKeyStatement() => string.Join(",", PrimaryKey.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
@@ -71,21 +68,27 @@ namespace SqlNado
         public virtual object[] GetValues(object obj) => GetValues(obj, Columns);
         public virtual object[] GetPrimaryKeyValues(object obj) => GetValues(obj, PrimaryKey);
 
-        public virtual T CreateInstance<T>(SQLiteLoadOptions<T> options)
+        public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions<T> options)
         {
-            if (options?.CreateInstanceFunc != null)
-                return (T)options.CreateInstanceFunc(typeof(T), options);
+            if (statement == null)
+                throw new ArgumentNullException(nameof(statement));
 
-            return (T)CreateInstance(typeof(T), options);
+            if (options?.GetInstanceFunc != null)
+                return (T)options.GetInstanceFunc(typeof(T), statement, options);
+
+            return (T)GetInstance(typeof(T), statement, options);
         }
 
-        public virtual object CreateInstance(Type type, SQLiteLoadOptions options)
+        public virtual object GetInstance(Type type, SQLiteStatement statement, SQLiteLoadOptions options)
         {
+            if (statement == null)
+                throw new ArgumentNullException(nameof(statement));
+
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            if (options?.CreateInstanceFunc != null)
-                return options.CreateInstanceFunc(type, options);
+            if (options?.GetInstanceFunc != null)
+                return options.GetInstanceFunc(type, statement, options);
 
             return Activator.CreateInstance(type);
         }
@@ -95,7 +98,7 @@ namespace SqlNado
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
 
-            var instance = (T)CreateInstance(typeof(T), options);
+            var instance = (T)GetInstance(typeof(T), statement, options);
             LoadAction(statement, options, instance);
             return instance;
         }
@@ -108,15 +111,32 @@ namespace SqlNado
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
 
-            var instance = CreateInstance(objectType, options);
+            var instance = GetInstance(objectType, statement, options);
             LoadAction(statement, options, instance);
             return instance;
         }
 
-        public virtual void Synchronize()
+        public virtual int Synchronize()
         {
             if (Columns.Count == 0)
                 throw new SqlNadoException("0006: Object table '" + Name + "' has no columns.");
+
+            if (!Exists)
+            {
+                string sql = "CREATE TABLE " + EscapedName + " (";
+                sql += string.Join(",", Columns.Select(c => c.CreateSql));
+
+                string pk = string.Join(",", PrimaryKey.Select(c => c.EscapedName));
+                if (!string.IsNullOrWhiteSpace(pk))
+                {
+                    sql += ",PRIMARY KEY (" + pk + ")";
+                }
+
+                sql += ")";
+                return Database.ExecuteNonQuery(sql);
+            }
+
+            return 0;
         }
     }
 }

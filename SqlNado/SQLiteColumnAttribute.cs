@@ -9,14 +9,18 @@ namespace SqlNado
         internal bool? _isNullable;
         internal bool? _isPrimaryKey;
         internal bool? _isReadOnly;
+        internal bool? _hasDefaultValue;
         internal int? _sortOrder;
 
         public virtual string Name { get; set; }
+        public virtual string DataType { get; set; }
         public virtual bool Ignore { get; set; }
         public virtual bool IsPrimaryKey { get => _isPrimaryKey ?? false; set => _isPrimaryKey = value; }
         public virtual bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
         public virtual bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
+        public virtual bool HasDefaultValue { get => _hasDefaultValue ?? false; set => _hasDefaultValue = value; }
         public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
+        public virtual object DefaultValue { get; set; }
 
         public virtual Expression<Func<object, object>> GetValueExpression { get; set; }
         public virtual Expression<Action<SQLiteLoadOptions, object, object>> SetValueExpression { get; set; }

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using SqlNado.Utilities;
 
 namespace SqlNado
 {
@@ -32,7 +33,7 @@ namespace SqlNado
         ICollection<object> IDictionary<string, object>.Values => Values;
         bool ICollection<KeyValuePair<string, object>>.IsReadOnly => true;
 
-        bool IDictionary<string, object>.ContainsKey(string key) => Names.Any(n => string.Compare(n, key, StringComparison.OrdinalIgnoreCase) == 0);
+        bool IDictionary<string, object>.ContainsKey(string key) => Names.Any(n => n.EqualsIgnoreCase(key));
 
         object IDictionary<string, object>.this[string key]
         {
@@ -56,7 +57,7 @@ namespace SqlNado
         {
             for (int i = 0; i < Count; i++)
             {
-                if (string.Compare(Names[i], item.Key, StringComparison.OrdinalIgnoreCase) != 0)
+                if (!Names[i].EqualsIgnoreCase(item.Key))
                     continue;
 
                 if (Values[i] == null)
@@ -97,7 +98,7 @@ namespace SqlNado
 
             for (int i = 0; i < Count; i++)
             {
-                if (string.Compare(key, Names[i], StringComparison.OrdinalIgnoreCase) == 0)
+                if (key.EqualsIgnoreCase(Names[i]))
                 {
                     value = Values[i];
                     return true;

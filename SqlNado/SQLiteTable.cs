@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using SqlNado.Utilities;
 
 namespace SqlNado
 {
@@ -25,6 +26,24 @@ namespace SqlNado
         public int RootPage { get; internal set; }
         public string Sql { get; internal set; }
 
+        public void Delete() => Database.DeleteTable(Name);
+
+        public SQLiteColumn GetColumn(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            return Columns.FirstOrDefault(c => name.EqualsIgnoreCase(c.Name));
+        }
+
+        public SQLiteIndex GetIndex(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            return Indices.FirstOrDefault(i => name.EqualsIgnoreCase(i.Name));
+        }
+
         public IEnumerable<SQLiteColumn> Columns
         {
             get
@@ -33,8 +52,21 @@ namespace SqlNado
                     return Enumerable.Empty<SQLiteColumn>();
 
                 var options = new SQLiteLoadOptions<SQLiteColumn>(Database);
-                options.CreateInstanceFunc = (t, o) => new SQLiteColumn(this);
+                options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
                 return Database.Load("PRAGMA table_info(" + SQLiteStatement.EscapeName(Name) + ")", options);
+            }
+        }
+
+        public IEnumerable<SQLiteIndex> Indices
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(Name))
+                    return Enumerable.Empty<SQLiteIndex>();
+
+                var options = new SQLiteLoadOptions<SQLiteIndex>(Database);
+                options.GetInstanceFunc = (t, s, o) => new SQLiteIndex(this);
+                return Database.Load("PRAGMA index_list(" + SQLiteStatement.EscapeName(Name) + ")", options);
             }
         }
 

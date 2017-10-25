@@ -35,14 +35,20 @@ namespace SqlNado.Temp
                 //var value = db.ExecuteAsRows("SELECT * FROM sqlite_master WHERE type='table'");
                 //value.ToTableString(Console.Out);
                 var table = db.GetObjectTable<Customer>();
-                var pk = table.GetValues(new Customer());
+                //var pk = table.GetValues(new Customer());
 
-                db.Tables.ToTableString(Console.Out);
-                db.Indices.ToTableString(Console.Out);
+
+                Console.WriteLine("exists: " + db.TableExists("customeR"));
+                db.DeleteTable("customeRzz");
+                //var existing = db.GetTable(table.Name);
+                //TableStringExtensions.ToTableString(existing.Indices, Console.Out);
+                TableStringExtensions.ToTableString(db.ExecuteAsRows("PRAGMA index_info( sqlite_autoindex_Customer_1)"), Console.Out);
+
+                //db.Tables.ToTableString(Console.Out);
+                //db.Indices.ToTableString(Console.Out);
                 //var rows = db.ExecuteAsRows("SELECT * FROM customers");
                 TableStringExtensions.ToTableString(table, Console.Out);
-
-                Console.WriteLine(db.TableExists("custOmeRs"));
+                table.Synchronize();
             }
 
             //dynamic o = new ExpandoObject();
@@ -83,6 +89,7 @@ namespace SqlNado.Temp
         [SQLiteColumn(IsPrimaryKey = true)]
         public Guid Id { get; }
         public string Name { get; set; }
+        [SQLiteColumn(IsPrimaryKey = true)]
         public int Age { get; set; }
     }
 }

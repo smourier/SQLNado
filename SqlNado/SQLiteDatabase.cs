@@ -28,6 +28,7 @@ namespace SqlNado
             if (filePath == null)
                 throw new ArgumentNullException(nameof(filePath));
 
+            CreateTableOptions = new SQLiteCreateTableOptions();
             HookNativeProcs();
             filePath = Path.GetFullPath(filePath);
             CheckError(_sqlite3_open_v2(filePath, out _handle, flags, IntPtr.Zero));
@@ -39,12 +40,14 @@ namespace SqlNado
         public IntPtr Handle => _handle;
         public string FilePath { get; }
         public IReadOnlyDictionary<Type, SQLiteType> Types => _types;
+        public SQLiteCreateTableOptions CreateTableOptions { get; }
+
         public IEnumerable<SQLiteTable> Tables
         {
             get
             {
                 var options = new SQLiteLoadOptions<SQLiteTable>(this);
-                options.CreateInstanceFunc = (t, o) => new SQLiteTable(this);
+                options.GetInstanceFunc = (t, s, o) => new SQLiteTable(this);
                 return Load("WHERE type='table'", options);
             }
         }
@@ -54,7 +57,7 @@ namespace SqlNado
             get
             {
                 var options = new SQLiteLoadOptions<SQLiteTable>(this);
-                options.CreateInstanceFunc = (t, o) => new SQLiteTable(this);
+                options.GetInstanceFunc = (t, s, o) => new SQLiteTable(this);
                 return Load("WHERE type='index'", options);
             }
         }
@@ -84,6 +87,22 @@ namespace SqlNado
                 CheckDisposed();
                 return _sqlite3_last_insert_rowid(Handle);
             }
+        }
+
+        public SQLiteTable GetTable(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            return Tables.FirstOrDefault(t => name.EqualsIgnoreCase(t.Name));
+        }
+
+        public virtual void DeleteTable(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
         }
 
         public virtual bool TableExists(string name)
@@ -447,7 +466,7 @@ namespace SqlNado
                 string bd = AppDomain.CurrentDomain.BaseDirectory;
                 string rsp = AppDomain.CurrentDomain.RelativeSearchPath;
                 string bitness = IntPtr.Size == 8 ? "64" : "86";
-                bool searchRsp = rsp != null && string.Compare(bd, rsp, StringComparison.OrdinalIgnoreCase) != 0;
+                bool searchRsp = rsp != null && !bd.EqualsIgnoreCase(rsp);
 
                 // look for an env variable
                 string env = GetEnvironmentVariable("SQLNADO_SQLITE_X" + bitness + "_DLL");
