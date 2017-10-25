@@ -76,12 +76,13 @@ namespace SqlNado.Utilities
                 return new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(text)));
             }
         }
+
         public static string ToHexa(this byte[] bytes) => bytes != null ? ToHexa(bytes, 0, bytes.Length) : "0x";
         public static string ToHexa(this byte[] bytes, int count) => ToHexa(bytes, 0, count);
         public static string ToHexa(this byte[] bytes, int offset, int count)
         {
             if (bytes == null)
-                return "0x";
+                return null;
 
             if (offset < 0)
                 throw new ArgumentException(null, nameof(offset));
@@ -98,7 +99,8 @@ namespace SqlNado.Utilities
             {
                 sb.Append(bytes[i].ToString("X2"));
             }
-            return "0x" + sb.ToString();
+
+            return sb.ToString();
         }
 
         public static string ToHexaDump(string text) => ToHexaDump(text, null);

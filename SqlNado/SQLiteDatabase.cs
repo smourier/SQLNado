@@ -42,6 +42,18 @@ namespace SqlNado
         public IReadOnlyDictionary<Type, SQLiteType> Types => _types;
         public SQLiteCreateTableOptions CreateTableOptions { get; }
 
+        public bool EnforceForeignKeys
+        {
+            get
+            {
+                return ExecuteScalar<bool>("PRAGMA foreign_keys");
+            }
+            set
+            {
+                ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0) + ";");
+            }
+        }
+
         public IEnumerable<SQLiteTable> Tables
         {
             get
@@ -89,6 +101,8 @@ namespace SqlNado
             }
         }
 
+        public SQLiteTable GetTable<T>() => GetObjectTable<T>()?.Table;
+        public SQLiteTable GetTable(Type type) => GetObjectTable(type)?.Table;
         public SQLiteTable GetTable(string name)
         {
             if (name == null)
@@ -105,12 +119,20 @@ namespace SqlNado
             ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
         }
 
+        public virtual void DeleteTempTables()
+        {
+            foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable.TempTablePrefix)).ToArray())
+            {
+                table.Delete();
+            }
+        }
+
         public virtual bool TableExists(string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            return ExecuteScalar(null, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1 COLLATE NOCASE", 0, name) > 0;
+            return ExecuteScalar(null, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1 COLLATE NOCASE LIMIT 1", 0, name) > 0;
         }
 
         private static Type GetObjectType(object obj)
@@ -215,11 +237,17 @@ namespace SqlNado
             if (obj == null)
                 return false;
 
+            if (options == null)
+            {
+                options = new SQLiteSaveOptions();
+            }
+
             var table = GetObjectTable(obj.GetType());
             if (options.SynchronizeSchema)
             {
-                table.Synchronize();
+                table.Synchronize(options);
             }
+            table.Save(obj, options);
             return false;
         }
 

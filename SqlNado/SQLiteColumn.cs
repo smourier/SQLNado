@@ -23,6 +23,7 @@ namespace SqlNado
         public bool IsNotNullable { get; internal set; }
         [SQLiteColumn(Name = "dflt_value")]
         public object DefaultValue { get; internal set; }
+        public string EscapedName => SQLiteStatement.EscapeName(Name);
 
         public override string ToString() => Name;
     }

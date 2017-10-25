@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Dynamic;
+using System.Linq;
 using System.Text;
 using SqlNado.Utilities;
 
@@ -32,23 +33,16 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("chinook.db"))
             {
-                //var value = db.ExecuteAsRows("SELECT * FROM sqlite_master WHERE type='table'");
-                //value.ToTableString(Console.Out);
+                db.DeleteTempTables();
+                db.Tables.ToTableString(Console.Out);
+                Console.WriteLine(db.EnforceForeignKeys);
                 var table = db.GetObjectTable<Customer>();
-                //var pk = table.GetValues(new Customer());
+                var o = new SQLiteSaveOptions { DeleteUnusedColumns = true };
 
-
-                Console.WriteLine("exists: " + db.TableExists("customeR"));
-                db.DeleteTable("customeRzz");
-                //var existing = db.GetTable(table.Name);
-                //TableStringExtensions.ToTableString(existing.Indices, Console.Out);
-                TableStringExtensions.ToTableString(db.ExecuteAsRows("PRAGMA index_info( sqlite_autoindex_Customer_1)"), Console.Out);
-
-                //db.Tables.ToTableString(Console.Out);
-                //db.Indices.ToTableString(Console.Out);
-                //var rows = db.ExecuteAsRows("SELECT * FROM customers");
-                TableStringExtensions.ToTableString(table, Console.Out);
-                table.Synchronize();
+                var c = new Customer();
+                c.Name = "Name" + DateTime.Now;
+                db.Save(c);
+                db.Tables.ToTableString(Console.Out);
             }
 
             //dynamic o = new ExpandoObject();
@@ -77,7 +71,7 @@ namespace SqlNado.Temp
         public string Sql { get; set; }
     }
 
-    public class Customer
+    public class Customer : ISQLiteObject
     {
         public Customer()
         {
@@ -89,7 +83,16 @@ namespace SqlNado.Temp
         [SQLiteColumn(IsPrimaryKey = true)]
         public Guid Id { get; }
         public string Name { get; set; }
-        [SQLiteColumn(IsPrimaryKey = true)]
         public int Age { get; set; }
+        [SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
+        public DateTime CreationDate { get; set; }
+
+        public void OnLoadAction(SQLiteObjectAction action, SQLiteStatement statement, SQLiteLoadOptions options)
+        {
+        }
+
+        public void OnSaveAction(SQLiteObjectAction action, SQLiteSaveOptions options)
+        {
+        }
     }
 }

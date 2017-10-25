@@ -13,7 +13,8 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public IFormatProvider FormatProvider { get; set; }
+        public IFormatProvider FormatProvider {get; set; }
+        public bool ObjectEventsDisabled { get; set; }
         public Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
     }
 

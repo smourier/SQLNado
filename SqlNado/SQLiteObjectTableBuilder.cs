@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using SqlNado.Utilities;
 using System.Linq.Expressions;
-using System.ComponentModel;
 
 namespace SqlNado
 {
@@ -43,6 +42,11 @@ namespace SqlNado
             }
 
             var table = CreateObjectTable(name);
+            if (typeAtt != null)
+            {
+                table.DisableRowId = typeAtt.DisableRowId;
+            }
+
             var attributes = EnumerateColumnAttributes().ToList();
             attributes.Sort();
 
@@ -166,16 +170,6 @@ namespace SqlNado
                 att.DataType = GetDefaultDataType(property.PropertyType);
             }
 
-            if (!att._hasDefaultValue.HasValue)
-            {
-                var defAtt = property.GetCustomAttribute<DefaultValueAttribute>();
-                if (defAtt != null)
-                {
-                    att.HasDefaultValue = true;
-                    att.DefaultValue = defAtt.Value;
-                }
-            }
-
             if (!att._isNullable.HasValue)
             {
                 att.IsNullable = !property.PropertyType.IsValueType;
@@ -237,14 +231,14 @@ namespace SqlNado
                     var ifTrue = Expression.Call(instance, property.SetMethod, Expression.Convert(convertedValue, property.PropertyType));
                     Expression ifFalse;
 
-                    if (att.HasDefaultValue)
-                    {
-                        ifFalse = Expression.Call(instance, property.SetMethod, Expression.Convert(Expression.Constant(att.DefaultValue), property.PropertyType));
-                    }
-                    else
-                    {
+                    //if (att.HasDefaultValue)
+                    //{
+                    //    ifFalse = Expression.Call(instance, property.SetMethod, Expression.Convert(Expression.Constant(att.DefaultValue), property.PropertyType));
+                    //}
+                    //else
+                    //{
                         ifFalse = Expression.Empty();
-                    }
+                    //}
 
                     setValue = Expression.Condition(Expression.Equal(tryConvert, Expression.Constant(true)), ifTrue, ifFalse);
                 }

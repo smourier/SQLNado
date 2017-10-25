@@ -42,7 +42,7 @@ namespace SqlNado.Utilities
             MaximumWidth = GlobalMaximumWidth;
             MaximumRowHeight = 50;
             MaximumByteArrayDisplayCount = 64;
-            //CellWrap = true;
+            CellWrap = true;
             ThrowOnPropertyGetError = true;
 
             DefaultCellAlignment = TableStringAlignment.Left;

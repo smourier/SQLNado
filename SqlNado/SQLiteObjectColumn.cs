@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Globalization;
+using SqlNado.Utilities;
 
 namespace SqlNado
 {
@@ -31,7 +32,7 @@ namespace SqlNado
 
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
-        public string EscapedName => "[" + Name + "]";
+        public string EscapedName => SQLiteStatement.EscapeName(Name);
         public string DataType { get; }
         public int Index { get; internal set; }
         [Browsable(false)]
@@ -42,7 +43,38 @@ namespace SqlNado
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
         public virtual bool HasDefaultValue { get; set; }
+        public virtual bool IsDefaultValueIntrinsic { get; set; }
         public virtual object DefaultValue { get; set; }
+        public bool HasNonConstantDefaultValue => HasDefaultValue && IsDefaultValueIntrinsic;
+
+        public virtual bool IsSynchronized(SQLiteColumn column)
+        {
+            if (column == null)
+                throw new ArgumentNullException(nameof(column));
+
+            if (!Name.EqualsIgnoreCase(column.Name))
+                return false;
+
+            if (column.IsNotNullable != column.IsNotNullable)
+                return false;
+
+            if (column.DefaultValue != null)
+            {
+                if (DefaultValue == null)
+                    return false;
+
+                if (!column.DefaultValue.Equals(DefaultValue))
+                    return false;
+            }
+
+            if (column.IsPrimaryKey != IsPrimaryKey)
+                return false;
+
+            if (column.Type != DataType)
+                return false;
+
+            return true;
+        }
 
         public virtual object GetValue(object obj) => GetValueFunc(obj);
 
@@ -65,9 +97,16 @@ namespace SqlNado
                     sql += " NOT NULL";
                 }
 
-                if (HasDefaultValue)
+                if (HasDefaultValue && DefaultValue != null)
                 {
-                    sql += " DEFAULT " + DefaultValue;
+                    if (IsDefaultValueIntrinsic)
+                    {
+                        sql += " DEFAULT " + DefaultValue;
+                    }
+                    else
+                    {
+                        sql += " DEFAULT " + SQLiteStatement.ToLiteral(DefaultValue);
+                    }
                 }
                 return sql;
             }
@@ -91,9 +130,16 @@ namespace SqlNado
                 s += " (R)";
             }
 
-            if (HasDefaultValue)
+            if (HasDefaultValue && DefaultValue != null)
             {
-                s += " (D:" + DefaultValue + ")";
+                if (IsDefaultValueIntrinsic)
+                {
+                    s += " (D:" + DefaultValue + ")";
+                }
+                else
+                {
+                    s += " (D:" + SQLiteStatement.ToLiteral(DefaultValue) + ")";
+                }
             }
             return s;
         }
@@ -110,6 +156,7 @@ namespace SqlNado
             if (HasDefaultValue)
             {
                 DefaultValue = attribute.DefaultValue;
+                IsDefaultValueIntrinsic = attribute.IsDefaultValueIntrinsic;
             }
         }
     }
