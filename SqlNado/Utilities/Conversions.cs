@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -304,6 +305,19 @@ namespace SqlNado.Utilities
                 return true;
             }
 
+            Type nullableType = null;
+            if (conversionType.IsGenericType && conversionType.GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                nullableType = conversionType.GenericTypeArguments[0];
+                if (input == null)
+                {
+                    value = null;
+                    return true;
+                }
+
+                return TryChangeType(input, nullableType, provider, out value);
+            }
+
             value = conversionType.IsValueType ? Activator.CreateInstance(conversionType) : null;
             if (input == null)
                 return !conversionType.IsValueType;
@@ -320,6 +334,16 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(Guid))
             {
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 16)
+                        return false;
+
+                    value = new Guid(bytes);
+                    return true;
+                }
+
                 string svalue = string.Format(provider, "{0}", input).Nullify();
                 if (svalue != null && Guid.TryParse(svalue, out Guid guid))
                 {
@@ -347,6 +371,19 @@ namespace SqlNado.Utilities
                 return false;
             }
 
+            if (conversionType == typeof(bool))
+            {
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 1)
+                        return false;
+
+                    value = BitConverter.ToBoolean(bytes, 0);
+                    return true;
+                }
+            }
+
             if (conversionType == typeof(int))
             {
                 if (inputType == typeof(uint))
@@ -370,6 +407,16 @@ namespace SqlNado.Utilities
                 if (inputType == typeof(byte))
                 {
                     value = unchecked((int)(byte)input);
+                    return true;
+                }
+
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 4)
+                        return false;
+
+                    value = BitConverter.ToInt32(bytes, 0);
                     return true;
                 }
             }
@@ -399,6 +446,34 @@ namespace SqlNado.Utilities
                     value = unchecked((long)(byte)input);
                     return true;
                 }
+
+                if (inputType == typeof(DateTime))
+                {
+                    value = ((DateTime)input).Ticks;
+                    return true;
+                }
+
+                if (inputType == typeof(TimeSpan))
+                {
+                    value = ((TimeSpan)input).Ticks;
+                    return true;
+                }
+
+                if (inputType == typeof(DateTimeOffset))
+                {
+                    value = ((DateTimeOffset)input).Ticks;
+                    return true;
+                }
+
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 8)
+                        return false;
+
+                    value = BitConverter.ToInt64(bytes, 0);
+                    return true;
+                }
             }
 
             if (conversionType == typeof(short))
@@ -424,6 +499,16 @@ namespace SqlNado.Utilities
                 if (inputType == typeof(byte))
                 {
                     value = unchecked((short)(byte)input);
+                    return true;
+                }
+
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 2)
+                        return false;
+
+                    value = BitConverter.ToInt16(bytes, 0);
                     return true;
                 }
             }
@@ -453,6 +538,16 @@ namespace SqlNado.Utilities
                     value = unchecked((sbyte)(byte)input);
                     return true;
                 }
+
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 1)
+                        return false;
+
+                    value = unchecked((sbyte)bytes[0]);
+                    return true;
+                }
             }
 
             if (conversionType == typeof(uint))
@@ -478,6 +573,16 @@ namespace SqlNado.Utilities
                 if (inputType == typeof(sbyte))
                 {
                     value = unchecked((uint)(sbyte)input);
+                    return true;
+                }
+
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 4)
+                        return false;
+
+                    value = BitConverter.ToUInt32(bytes, 0);
                     return true;
                 }
             }
@@ -507,6 +612,16 @@ namespace SqlNado.Utilities
                     value = unchecked((ulong)(sbyte)input);
                     return true;
                 }
+
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 8)
+                        return false;
+
+                    value = BitConverter.ToUInt64(bytes, 0);
+                    return true;
+                }
             }
 
             if (conversionType == typeof(ushort))
@@ -532,6 +647,16 @@ namespace SqlNado.Utilities
                 if (inputType == typeof(sbyte))
                 {
                     value = unchecked((ushort)(sbyte)input);
+                    return true;
+                }
+
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 2)
+                        return false;
+
+                    value = BitConverter.ToUInt16(bytes, 0);
                     return true;
                 }
             }
@@ -561,6 +686,203 @@ namespace SqlNado.Utilities
                     value = unchecked((byte)(sbyte)input);
                     return true;
                 }
+
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 1)
+                        return false;
+
+                    value = bytes[0];
+                    return true;
+                }
+            }
+
+            if (conversionType == typeof(DateTime))
+            {
+                if (inputType == typeof(long))
+                {
+                    value = new DateTime((long)input);
+                    return true;
+                }
+
+                if (inputType == typeof(DateTimeOffset))
+                {
+                    value = ((DateTimeOffset)input).DateTime;
+                    return true;
+                }
+            }
+
+            if (conversionType == typeof(TimeSpan))
+            {
+                if (inputType == typeof(long))
+                {
+                    value = new TimeSpan((long)input);
+                    return true;
+                }
+            }
+
+            if (conversionType == typeof(char))
+            {
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 2)
+                        return false;
+
+                    value = BitConverter.ToChar(bytes, 0);
+                    return true;
+                }
+            }
+
+            if (conversionType == typeof(float))
+            {
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 4)
+                        return false;
+
+                    value = BitConverter.ToSingle(bytes, 0);
+                    return true;
+                }
+            }
+
+            if (conversionType == typeof(double))
+            {
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 8)
+                        return false;
+
+                    value = BitConverter.ToDouble(bytes, 0);
+                    return true;
+                }
+            }
+
+            if (conversionType == typeof(DateTimeOffset))
+            {
+                if (inputType == typeof(DateTime))
+                {
+                    value = new DateTimeOffset((DateTime)input);
+                    return true;
+                }
+
+                if (inputType == typeof(long))
+                {
+                    value = new DateTimeOffset(new DateTime((long)input));
+                    return true;
+                }
+            }
+
+            if (conversionType == typeof(byte[]))
+            {
+                if (inputType == typeof(int))
+                {
+                    value = BitConverter.GetBytes((int)input);
+                    return true;
+                }
+
+                if (inputType == typeof(long))
+                {
+                    value = BitConverter.GetBytes((long)input);
+                    return true;
+                }
+
+                if (inputType == typeof(short))
+                {
+                    value = BitConverter.GetBytes((short)input);
+                    return true;
+                }
+
+                if (inputType == typeof(uint))
+                {
+                    value = BitConverter.GetBytes((uint)input);
+                    return true;
+                }
+
+                if (inputType == typeof(ulong))
+                {
+                    value = BitConverter.GetBytes((ulong)input);
+                    return true;
+                }
+
+                if (inputType == typeof(ushort))
+                {
+                    value = BitConverter.GetBytes((ushort)input);
+                    return true;
+                }
+
+                if (inputType == typeof(bool))
+                {
+                    value = BitConverter.GetBytes((bool)input);
+                    return true;
+                }
+
+                if (inputType == typeof(char))
+                {
+                    value = BitConverter.GetBytes((char)input);
+                    return true;
+                }
+
+                if (inputType == typeof(float))
+                {
+                    value = BitConverter.GetBytes((float)input);
+                    return true;
+                }
+
+                if (inputType == typeof(double))
+                {
+                    value = BitConverter.GetBytes((double)input);
+                    return true;
+                }
+
+                if (inputType == typeof(byte))
+                {
+                    value = new byte[] { (byte)input };
+                    return true;
+                }
+
+                if (inputType == typeof(sbyte))
+                {
+                    value = new byte[] { unchecked((byte)(sbyte)input) };
+                    return true;
+                }
+
+                if (inputType == typeof(Guid))
+                {
+                    value = ((Guid)input).ToByteArray();
+                    return true;
+                }
+            }
+
+            var tc = TypeDescriptor.GetConverter(conversionType);
+            if (tc != null && tc.CanConvertFrom(inputType))
+            {
+                try
+                {
+                    value = tc.ConvertFrom(null, provider as CultureInfo, input);
+                    return true;
+                }
+                catch
+                {
+                    // continue;
+                }
+            }
+
+            tc = TypeDescriptor.GetConverter(inputType);
+            if (tc != null && tc.CanConvertTo(conversionType))
+            {
+                try
+                {
+                    value = tc.ConvertTo(null, provider as CultureInfo, input, conversionType);
+                    return true;
+                }
+                catch
+                {
+                    // continue;
+                }
             }
 
             if (input is IConvertible convertible)
@@ -572,7 +894,7 @@ namespace SqlNado.Utilities
                 }
                 catch
                 {
-                    return false;
+                    // continue
                 }
             }
 
