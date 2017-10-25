@@ -45,7 +45,7 @@ namespace SqlNado
             {
                 var options = new SQLiteLoadOptions<SQLiteTable>(this);
                 options.CreateInstanceFunc = (t, o) => new SQLiteTable(this);
-                return Load<SQLiteTable>("WHERE type='table'", options);
+                return Load("WHERE type='table'", options);
             }
         }
 
@@ -55,7 +55,7 @@ namespace SqlNado
             {
                 var options = new SQLiteLoadOptions<SQLiteTable>(this);
                 options.CreateInstanceFunc = (t, o) => new SQLiteTable(this);
-                return Load<SQLiteTable>("WHERE type='index'", options);
+                return Load("WHERE type='index'", options);
             }
         }
 
@@ -84,6 +84,14 @@ namespace SqlNado
                 CheckDisposed();
                 return _sqlite3_last_insert_rowid(Handle);
             }
+        }
+
+        public virtual bool TableExists(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            return ExecuteScalar(null, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1 COLLATE NOCASE", 0, name) > 0;
         }
 
         private static Type GetObjectType(object obj)
@@ -128,6 +136,17 @@ namespace SqlNado
                 _types.AddOrUpdate(handledType, type, (k, o) => type);
             }
         }
+
+        public virtual SQLiteType RemoveType(Type type)
+        {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+
+            _types.TryRemove(type, out SQLiteType value);
+            return value;
+        }
+
+        public virtual void ClearTypes() => _types.Clear();
 
         protected virtual void AddDefaultTypes()
         {

@@ -30,13 +30,6 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
-            //int? input = null;
-            Rectangle rect = new Rectangle(10, 20, 30, 40);
-            var input = "10; 20; 30; 40";
-            Console.WriteLine(Conversions.TryChangeType(input, typeof(Rectangle), out object value));
-            //Console.WriteLine(Conversions.TryChangeType(value, typeof(int), out value));
-            TableStringExtensions.ToTableString(value, Console.Out);
-            return;
             using (var db = new SQLiteDatabase("chinook.db"))
             {
                 //var value = db.ExecuteAsRows("SELECT * FROM sqlite_master WHERE type='table'");
@@ -48,6 +41,8 @@ namespace SqlNado.Temp
                 db.Indices.ToTableString(Console.Out);
                 //var rows = db.ExecuteAsRows("SELECT * FROM customers");
                 TableStringExtensions.ToTableString(table, Console.Out);
+
+                Console.WriteLine(db.TableExists("custOmeRs"));
             }
 
             //dynamic o = new ExpandoObject();

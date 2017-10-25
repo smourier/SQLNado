@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using SqlNado.Utilities;
 
@@ -28,6 +29,7 @@ namespace SqlNado
         public virtual IReadOnlyList<SQLiteObjectColumn> PrimaryKey => _primaryKey;
         public virtual string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool HasPrimaryKey => PrimaryKey.Count > 0;
+        [Browsable(false)]
         public Action<SQLiteStatement, SQLiteLoadOptions, object> LoadAction { get; set; }
 
         public override string ToString() => Name;
@@ -48,15 +50,9 @@ namespace SqlNado
             }
         }
 
-        public virtual string BuildWherePrimaryKeyStatement()
-        {
-            return string.Join(",", PrimaryKey.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
-        }
+        public virtual string BuildWherePrimaryKeyStatement() => string.Join(",", PrimaryKey.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
 
-        public virtual string BuildColumnsStatement()
-        {
-            return string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name)));
-        }
+        public virtual string BuildColumnsStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name)));
 
         public virtual object[] GetValues(object obj, IEnumerable<SQLiteObjectColumn> columns)
         {

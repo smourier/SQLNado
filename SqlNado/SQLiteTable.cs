@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 
 namespace SqlNado
 {
     [SQLiteTable(Name = "sqlite_master")]
-    public class SQLiteTable
+    public sealed class SQLiteTable
     {
-        public SQLiteTable(SQLiteDatabase database)
+        internal SQLiteTable(SQLiteDatabase database)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -28,9 +29,12 @@ namespace SqlNado
         {
             get
             {
+                if (string.IsNullOrWhiteSpace(Name))
+                    return Enumerable.Empty<SQLiteColumn>();
+
                 var options = new SQLiteLoadOptions<SQLiteColumn>(Database);
                 options.CreateInstanceFunc = (t, o) => new SQLiteColumn(this);
-                return Database.Load<SQLiteColumn>("PRAGMA table_info(" + SQLiteStatement.EscapeName(Name) + ")", options);
+                return Database.Load("PRAGMA table_info(" + SQLiteStatement.EscapeName(Name) + ")", options);
             }
         }
 

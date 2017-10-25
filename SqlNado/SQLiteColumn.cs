@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace SqlNado
 {
-    public class SQLiteColumn
+    public sealed class SQLiteColumn
     {
-        public SQLiteColumn(SQLiteTable table)
+        internal SQLiteColumn(SQLiteTable table)
         {
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
@@ -21,5 +19,7 @@ namespace SqlNado
         public string Type { get; internal set; }
         [SQLiteColumn(Name = "notnull")]
         public bool IsNotNullable { get; internal set; }
+
+        public override string ToString() => Name;
     }
 }

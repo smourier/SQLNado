@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.ComponentModel;
 
 namespace SqlNado
 {
@@ -8,7 +7,7 @@ namespace SqlNado
     {
         public SQLiteObjectColumn(SQLiteObjectTable table, string name,
             Func<object, object> getValueFunc,
-            Action<object, object> setValueAction)
+            Action<SQLiteLoadOptions, object, object> setValueAction)
         {
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
@@ -28,20 +27,22 @@ namespace SqlNado
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
         public int Index { get; internal set; }
+        [Browsable(false)]
         public Func<object, object> GetValueFunc { get; }
-        public Action<object, object> SetValueAction { get; }
+        [Browsable(false)]
+        public Action<SQLiteLoadOptions, object, object> SetValueAction { get; }
         public virtual bool IsNullable  { get; set; }
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
 
         public virtual object GetValue(object obj) => GetValueFunc(obj);
 
-        public virtual void SetValue(object obj, object value)
+        public virtual void SetValue(SQLiteLoadOptions options, object obj, object value)
         {
             if (SetValueAction == null)
                 throw new InvalidOperationException();
 
-            SetValueAction(obj, value);
+            SetValueAction(options, obj, value);
         }
 
         public override string ToString()

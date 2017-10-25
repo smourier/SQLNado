@@ -1254,6 +1254,10 @@ namespace SqlNado.Utilities
                         if (property.GetIndexParameters().Length > 0)
                             continue;
 
+                        var browsable = property.GetCustomAttribute<BrowsableAttribute>();
+                        if (browsable != null && !browsable.Browsable)
+                            continue;
+
                         // this one will cause unwanted array dumps
                         if (array != null && property.Name == nameof(Array.SyncRoot))
                             continue;

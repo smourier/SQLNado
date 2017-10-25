@@ -19,7 +19,7 @@ namespace SqlNado
         public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
 
         public virtual Expression<Func<object, object>> GetValueExpression { get; set; }
-        public virtual Expression<Action<object, object>> SetValueExpression { get; set; }
+        public virtual Expression<Action<SQLiteLoadOptions, object, object>> SetValueExpression { get; set; }
 
         public override string ToString() => Name;
         int IComparable.CompareTo(object obj) => CompareTo(obj as SQLiteColumnAttribute);
