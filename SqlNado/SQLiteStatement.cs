@@ -92,8 +92,7 @@ namespace SqlNado
             }
         }
 
-        public void BindParameter(string name, object value) => BindParameter(name, value, null);
-        public virtual void BindParameter(string name, object value, Func<SQLiteBindContext, SQLiteErrorCode> bindFunc)
+        public virtual void BindParameter(string name, object value)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -102,39 +101,52 @@ namespace SqlNado
             if (index == 0)
                 throw new SqlNadoException("0005: Parameter '" + name + "' was not found.");
 
-            BindParameter(index, value, bindFunc);
+            BindParameter(index, value);
         }
 
-        public void BindParameter(int index, object value) => BindParameter(index, value, null);
-        public virtual void BindParameter(int index, object value, Func<SQLiteBindContext, SQLiteErrorCode> bindFunc)
+        public virtual void BindParameter(int index, object value)
         {
-            var ctx = CreateBindContext();
-            ctx.Index = index;
-            ctx.Value = value;
-            BindParameter(ctx, bindFunc);
+            SQLiteErrorCode code;
+            if (value == null)
+            {
+                code = BindParameterNull(index);
+            }
+            else
+            {
+                var type = Database.GetType(value); // never null
+                var ctx = Database.CreateBindContext();
+                ctx.Statement = this;
+                ctx.Value = value;
+                ctx.Index = index;
+                code = type.BindFunc(ctx);
+            }
+            Database.CheckError(code);
         }
 
-        public void BindParameter(SQLiteBindContext context) => BindParameter(context, null);
-        public virtual void BindParameter(SQLiteBindContext context, Func<SQLiteBindContext, SQLiteErrorCode> bindFunc)
+        // https://sqlite.org/c3ref/bind_blob.html
+        public SQLiteErrorCode BindParameter(int index, string value)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
-
-            if (context.Type == null)
-            {
-                context.Type = Database.GetType(context.Value);
-            }
-
-            if (bindFunc == null)
-            {
-                bindFunc = context.Type.BindFunc;
-            }
+            if (value == null)
+                return BindParameterNull(index);
 
             CheckDisposed();
-            Database.CheckError(bindFunc(context));
+            return SQLiteDatabase._sqlite3_bind_text16(Handle, index, value, value.Length * 2, IntPtr.Zero);
         }
 
-        protected virtual SQLiteBindContext CreateBindContext() => new SQLiteBindContext(this);
+        public SQLiteErrorCode BindParameter(int index, byte[] value)
+        {
+            if (value == null)
+                return BindParameterNull(index);
+
+            CheckDisposed();
+            return SQLiteDatabase._sqlite3_bind_blob(Handle, index, value, value.Length, IntPtr.Zero);
+        }
+
+        public SQLiteErrorCode BindParameter(int index, bool value) => SQLiteDatabase._sqlite3_bind_int(Handle, index, value ? 1 : 0);
+        public SQLiteErrorCode BindParameter(int index, int value) => SQLiteDatabase._sqlite3_bind_int(Handle, index, value);
+        public SQLiteErrorCode BindParameter(int index, long value) => SQLiteDatabase._sqlite3_bind_int64(Handle, index, value);
+        public SQLiteErrorCode BindParameter(int index, double value) => SQLiteDatabase._sqlite3_bind_double(Handle, index, value);
+        public SQLiteErrorCode BindParameterNull(int index) => SQLiteDatabase._sqlite3_bind_null(Handle, index);
 
         public virtual IEnumerable<object> BuildRow()
         {
@@ -253,22 +265,22 @@ namespace SqlNado
             SQLiteColumnType type = GetColumnType(index);
             switch (type)
             {
-                case SQLiteColumnType.SQLITE_BLOB:
+                case SQLiteColumnType.BLOB:
                     byte[] bytes = GetColumnByteArray(index);
                     value = bytes;
                     break;
 
-                case SQLiteColumnType.SQLITE_TEXT:
+                case SQLiteColumnType.TEXT:
                     string s = GetColumnString(index);
                     value = s;
                     break;
 
-                case SQLiteColumnType.SQLITE_FLOAT:
+                case SQLiteColumnType.REAL:
                     double d = GetColumnDouble(index);
                     value = d;
                     break;
 
-                case SQLiteColumnType.SQLITE_INTEGER:
+                case SQLiteColumnType.INTEGER:
                     long l = GetColumnInt64(index);
                     if (l >= int.MinValue && l <= int.MaxValue)
                     {
@@ -288,8 +300,7 @@ namespace SqlNado
             return value;
         }
 
-        public T GetColumnValue<T>(string name, T defaultValue) => GetColumnValue(null, name, defaultValue);
-        public virtual T GetColumnValue<T>(IFormatProvider provider, string name, T defaultValue)
+        public virtual T GetColumnValue<T>(string name, T defaultValue)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -298,14 +309,13 @@ namespace SqlNado
             if (index < 0)
                 return defaultValue;
 
-            return GetColumnValue(provider, index, defaultValue);
+            return GetColumnValue(index, defaultValue);
         }
 
-        public T GetColumnValue<T>(int index, T defaultValue) => GetColumnValue(null, index, defaultValue);
-        public virtual T GetColumnValue<T>(IFormatProvider provider, int index, T defaultValue)
+        public virtual T GetColumnValue<T>(int index, T defaultValue)
         {
             object rawValue = GetColumnValue(index);
-            if (!Conversions.TryChangeType(rawValue, provider, out T value))
+            if (!Conversions.TryChangeType(rawValue, CultureInfo.InvariantCulture, out T value))
                 return defaultValue;
 
             return value;

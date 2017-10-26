@@ -34,37 +34,7 @@ namespace SqlNado.Utilities
             return null;
         }
 
-        public static long ToPositiveFileTime(DateTime dt)
-        {
-            var ft = ToFileTimeUtc(dt.ToUniversalTime());
-            return ft < 0 ? 0 : ft;
-        }
-
-        public static long ToPositiveFileTimeUtc(DateTime dt)
-        {
-            var ft = ToFileTimeUtc(dt);
-            return ft < 0 ? 0 : ft;
-        }
-
-        // can return negative numbers
-        public static long ToFileTime(DateTime dt) => ToFileTimeUtc(dt.ToUniversalTime());
-        public static long ToFileTimeUtc(DateTime dt)
-        {
-            const long ticksPerMillisecond = 10000;
-            const long ticksPerSecond = ticksPerMillisecond * 1000;
-            const long ticksPerMinute = ticksPerSecond * 60;
-            const long ticksPerHour = ticksPerMinute * 60;
-            const long ticksPerDay = ticksPerHour * 24;
-            const int daysPerYear = 365;
-            const int daysPer4Years = daysPerYear * 4 + 1;
-            const int daysPer100Years = daysPer4Years * 25 - 1;
-            const int daysPer400Years = daysPer100Years * 4 + 1;
-            const int daysTo1601 = daysPer400Years * 4;
-            const long fileTimeOffset = daysTo1601 * ticksPerDay;
-            long ticks = dt.Kind == DateTimeKind.Local ? dt.ToUniversalTime().Ticks : dt.Ticks;
-            ticks -= fileTimeOffset;
-            return ticks;
-        }
+        public static double ToJulianDayNumbers(this DateTime date) => date.ToOADate() + 2415018.5;
 
         public static Guid ComputeGuidHash(string text)
         {
@@ -75,6 +45,23 @@ namespace SqlNado.Utilities
             {
                 return new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(text)));
             }
+        }
+
+        public static decimal ToDecimal(this byte[] bytes)
+        {
+            if (bytes == null || bytes.Length != 16)
+                throw new ArgumentException(null, nameof(bytes));
+
+            var ints = new int[4];
+            Buffer.BlockCopy(bytes, 0, ints, 0, 16);
+            return new decimal(ints);
+        }
+
+        public static byte[] ToBytes(this decimal dec)
+        {
+            var bytes = new byte[16];
+            Buffer.BlockCopy(decimal.GetBits(dec), 0, bytes, 0, 16);
+            return bytes;
         }
 
         public static string ToHexa(this byte[] bytes) => bytes != null ? ToHexa(bytes, 0, bytes.Length) : "0x";
@@ -700,6 +687,19 @@ namespace SqlNado.Utilities
                 }
             }
 
+            if (conversionType == typeof(decimal))
+            {
+                if (inputType == typeof(byte[]))
+                {
+                    var bytes = (byte[])input;
+                    if (bytes.Length != 16)
+                        return false;
+
+                    value = ToDecimal(bytes);
+                    return true;
+                }
+            }
+
             if (conversionType == typeof(DateTime))
             {
                 if (inputType == typeof(long))
@@ -849,6 +849,12 @@ namespace SqlNado.Utilities
                 if (inputType == typeof(sbyte))
                 {
                     value = new byte[] { unchecked((byte)(sbyte)input) };
+                    return true;
+                }
+
+                if (inputType == typeof(decimal))
+                {
+                    value = ((decimal)value).ToBytes();
                     return true;
                 }
 

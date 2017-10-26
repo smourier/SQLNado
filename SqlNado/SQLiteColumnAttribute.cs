@@ -16,7 +16,9 @@ namespace SqlNado
 
         public virtual string Name { get; set; }
         public virtual string DataType { get; set; }
+        public virtual string Collation { get; set; }
         public virtual bool Ignore { get; set; }
+        public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
         public virtual bool AutoIncrements { get => _autoIncrements ?? false; set => _autoIncrements = value; }
         public virtual bool IsPrimaryKey { get => _isPrimaryKey ?? false; set => _isPrimaryKey = value; }
         public virtual bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }

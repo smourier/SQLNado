@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 
 namespace SqlNado
 {
@@ -23,6 +24,7 @@ namespace SqlNado
         public bool IsNotNullable { get; internal set; }
         [SQLiteColumn(Name = "dflt_value")]
         public object DefaultValue { get; internal set; }
+        [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool IsRowId { get; internal set; }
 

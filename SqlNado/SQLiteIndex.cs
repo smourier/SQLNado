@@ -1,56 +1,30 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.ComponentModel;
 
 namespace SqlNado
 {
+    [SQLiteTable(Name = "sqlite_master")]
     public sealed class SQLiteIndex
     {
-        internal SQLiteIndex(SQLiteTable table)
+        internal SQLiteIndex(SQLiteDatabase database)
         {
-            if (table == null)
-                throw new ArgumentNullException(nameof(table));
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
 
-            Table = table;
+            Database = database;
         }
 
-        public SQLiteTable Table { get; }
-        [SQLiteColumn(Name = "seq")]
-        public int Ordinal { get; internal set; }
-        [SQLiteColumn(Name = "unique")]
-        public bool IsUnique { get; internal set; }
-        [SQLiteColumn(Name = "partial")]
-        public bool IsPartial { get; internal set; }
+        [Browsable(false)] // remove from tablestring dumps
+        public SQLiteDatabase Database { get; }
         public string Name { get; internal set; }
-        public string Origin { get; internal set; }
-
-        public IEnumerable<SQLiteColumn> Columns
-        {
-            get
-            {
-                var list = IndexColumns.ToList();
-                list.Sort();
-                foreach (var col in list)
-                {
-                    if (col.Name == null)
-                        continue;
-
-                    var column = Table.GetColumn(col.Name);
-                    if (column != null)
-                        yield return column;
-                }
-            }
-        }
-
-        public IEnumerable<SQLiteIndexColumn> IndexColumns
-        {
-            get
-            {
-                var options = new SQLiteLoadOptions<SQLiteIndexColumn>(Table.Database);
-                options.GetInstanceFunc = (t, s, o) => new SQLiteIndexColumn(this);
-                return Table.Database.Load("PRAGMA index_xinfo(" + Name + ")", options);
-            }
-        }
+        [SQLiteColumn(Name = "tbl_name")]
+        public string TableName { get; internal set; }
+        public int RootPage { get; internal set; }
+        public string Sql { get; internal set; }
+        [Browsable(false)]
+        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public SQLiteTable Table => TableName != null ? Database.GetTable(TableName) : null;
+        public SQLiteTableIndex TableIndex => Table?.GetIndex(Name);
 
         public override string ToString() => Name;
     }

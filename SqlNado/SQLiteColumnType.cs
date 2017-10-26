@@ -2,10 +2,10 @@
 {
     public enum SQLiteColumnType
     {
-        SQLITE_INTEGER = 1,
-        SQLITE_FLOAT = 2,
-        SQLITE_TEXT = 3,
-        SQLITE_BLOB = 4,
-        SQLITE_NULL = 5,
+        INTEGER = 1,
+        REAL = 2,
+        TEXT = 3,
+        BLOB = 4,
+        NULL = 5,
     }
 }

@@ -280,7 +280,7 @@ namespace SqlNado.Utilities
                 }
 #if DEBUG
                 if (Column > MaximumWidth)
-                    throw new NotSupportedException();
+                    throw new InvalidOperationException();
 #endif
             }
         }
@@ -1047,7 +1047,7 @@ namespace SqlNado.Utilities
                         do
                         {
                             string dline;
-                            if (pos + segmentWidth >= line.Length)
+                            if (pos + segmentWidth >= line.Length || (split.Length == 1 && split[0].Length <= Column.WidthWithoutPadding))
                             {
                                 dline = line.Substring(pos);
                                 lines.Add(Align(EscapeTextLine(line.Substring(pos))));

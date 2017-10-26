@@ -34,25 +34,29 @@ namespace SqlNado.Temp
             using (var db = new SQLiteDatabase("chinook.db"))
             {
                 db.DeleteTempTables();
+                db.DeleteTable<Customer>();
                 //db.Tables.ToTableString(Console.Out);
                 //Console.WriteLine(db.EnforceForeignKeys);
                 //var table = db.GetObjectTable<Customer>();
                 //var o = new SQLiteSaveOptions { DeleteUnusedColumns = true };
 
-                //var c = new Customer();
-                //c.Name = "Name" + DateTime.Now;
-                //db.Save(c);
-                //db.Tables.ToTableString(Console.Out);
+                var c = new Customer();
+                c.Name = "Name" + DateTime.Now;
+                db.Save(c);
+                var ot = db.GetObjectTable<Customer>();
+                TableStringExtensions.ToTableString(ot, Console.Out);
+                TableStringExtensions.ToTableString(c, Console.Out);
 
-                db.DeleteTable("t");
-                db.ExecuteNonQuery("CREATE TABLE t(x INTEGER PRIMARY KEY, y, z) WITHOUT ROWID;");
-                db.ExecuteAsRows("PRAGMA index_xinfo(sqlite_autoindex_t_1)").ToTableString(Console.Out);
-                //db.ExecuteAsRows("SELECT rowid,* FROM invoices limit 10").ToTableString(Console.Out);
-                var table = db.GetTable("t");
-                Console.WriteLine(table.Sql);
-                table.Columns.ToTableString(Console.Out);
-                table.Indices.ToTableString(Console.Out);
+                //db.DeleteTable("t");
+                //db.ExecuteNonQuery("CREATE TABLE t(x INTEGER PRIMARY KEY, y, z) WITHOUT ROWID;");
+                //db.ExecuteAsRows("PRAGMA index_xinfo(sqlite_autoindex_t_1)").ToTableString(Console.Out);
+                ////db.ExecuteAsRows("SELECT rowid,* FROM invoices limit 10").ToTableString(Console.Out);
+                var table = db.GetTable<Customer>();
+                //Console.WriteLine(table.Sql);
+                //table.Columns.ToTableString(Console.Out);
+                //table.Indices.ToTableString(Console.Out);
                 TableStringExtensions.ToTableString(table, Console.Out);
+                TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
             }
         }
     }
@@ -85,17 +89,21 @@ namespace SqlNado.Temp
     {
         public Customer()
         {
-            Id = Guid.NewGuid();
-            Age = 20;
+            //Age = 20;
             Name = "Customer" + Environment.TickCount;
+            Id = Guid.NewGuid();
+            CreationDate = DateTime.Now;
         }
 
         [SQLiteColumn(IsPrimaryKey = true)]
         public Guid Id { get; }
         public string Name { get; set; }
+        [SQLiteColumn(AutomaticType = SQLiteAutomaticColumnType.Random)]
         public int Age { get; set; }
         [SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
         public DateTime CreationDate { get; set; }
+
+        public object[] PrimaryKey => new object[] { Id };
 
         public bool OnLoadAction(SQLiteObjectAction action, SQLiteStatement statement, SQLiteLoadOptions options)
         {

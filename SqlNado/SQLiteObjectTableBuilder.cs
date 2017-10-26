@@ -59,6 +59,7 @@ namespace SqlNado
             var valueParameter = Expression.Variable(typeof(object), "value");
             variables.Add(valueParameter);
 
+            var possibleRowIdColumns = new List<SQLiteObjectColumn>();
             foreach (var attribute in attributes)
             {
                 var column = CreateObjectColumn(table, attribute.Name, attribute.DataType,
@@ -66,6 +67,11 @@ namespace SqlNado
                     attribute.SetValueExpression?.Compile());
                 table.AddColumn(column);
                 column.CopyAttributes(attribute);
+
+                if (column.CanBeRowId)
+                {
+                    possibleRowIdColumns.Add(column);
+                }
 
                 if (attribute.SetValueExpression != null)
                 {
@@ -81,6 +87,11 @@ namespace SqlNado
                     var test = Expression.Condition(Expression.Equal(tryGetValue, Expression.Constant(true)), ifTrue, Expression.Empty());
                     expressions.Add(test);
                 }
+            }
+
+            if (possibleRowIdColumns.Count == 1)
+            {
+                possibleRowIdColumns[0].IsRowId = true;
             }
 
             if (expressions.Count > 0)
@@ -116,34 +127,56 @@ namespace SqlNado
             if (type == typeof(int) || type == typeof(long) ||
                 type == typeof(short) || type == typeof(sbyte) || type == typeof(byte) ||
                 type == typeof(uint) || type == typeof(ushort) || type == typeof(ulong) ||
-                type.IsEnum || type == typeof(TimeSpan))
-                return "INTEGER";
+                type.IsEnum || type == typeof(bool))
+                return SQLiteColumnType.INTEGER.ToString();
 
             if (type == typeof(float) || type == typeof(double))
-                return "REAL";
-
-            if (type == typeof(decimal))
-                return "NUMERIC";
-
-            if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
-                return "DATETIME";
+                return SQLiteColumnType.REAL.ToString();
 
             if (type == typeof(byte[]))
-                return "BLOB";
+                return SQLiteColumnType.BLOB.ToString();
+
+            if (type == typeof(decimal))
+            {
+                if (Database.TypeOptions.DecimalAsBlob)
+                    return SQLiteColumnType.BLOB.ToString();
+
+                return SQLiteColumnType.TEXT.ToString();
+            }
+
+            if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
+            {
+                if (Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.Ticks ||
+                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.FileTime ||
+                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.FileTimeUtc ||
+                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.UnixTimeSeconds ||
+                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.UnixTimeMilliseconds)
+                    return SQLiteColumnType.INTEGER.ToString();
+
+                if (Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.OleAutomation ||
+                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.JulianDayNumbers)
+                    return SQLiteColumnType.INTEGER.ToString();
+
+                return SQLiteColumnType.TEXT.ToString();
+            }
 
             if (type == typeof(Guid))
             {
-                if (!Database.CreateTableOptions.DeclareGuidAsString)
-                    return "BLOB";
+                if (Database.TypeOptions.GuidAsBlob)
+                    return SQLiteColumnType.BLOB.ToString();
 
-                return "TEXT";
+                return SQLiteColumnType.TEXT.ToString();
             }
 
-            // we use a specific type (not recognized specifically by sqlite) to remember it's a boolean avalue
-            if (type == typeof(bool))
-                return "BOOL";
+            if (type == typeof(TimeSpan))
+            {
+                if (Database.TypeOptions.TimeSpanAsInt64)
+                    return SQLiteColumnType.INTEGER.ToString();
 
-            return "TEXT";
+                return SQLiteColumnType.TEXT.ToString();
+            }
+
+            return SQLiteColumnType.TEXT.ToString();
         }
 
         protected virtual SQLiteColumnAttribute GetColumnAttribute(PropertyInfo property)
@@ -167,7 +200,20 @@ namespace SqlNado
 
             if (string.IsNullOrWhiteSpace(att.DataType))
             {
-                att.DataType = GetDefaultDataType(property.PropertyType);
+                if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df)
+                {
+                    if (df.EqualsIgnoreCase("CURRENT_TIME") ||
+                        df.EqualsIgnoreCase("CURRENT_DATE") ||
+                        df.EqualsIgnoreCase("CURRENT_TIMESTAMP"))
+                    {
+                        att.DataType = SQLiteColumnType.TEXT.ToString();
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(att.DataType))
+                {
+                    att.DataType = GetDefaultDataType(property.PropertyType);
+                }
             }
 
             if (!att._isNullable.HasValue)
@@ -200,7 +246,7 @@ namespace SqlNado
             {
                 // equivalent of
                 // att.SetValueAction = (options, o, v) => {
-                //      if (TryConvert(v, typeof(property), options.FormatProvider, out object newv))
+                //      if (options.TryConvert(v, typeof(property), options.FormatProvider, out object newv))
                 //      {
                 //          property.SetValue(o, newv);
                 //      }
@@ -219,13 +265,12 @@ namespace SqlNado
                 {
                     var convertedValue = Expression.Variable(typeof(object), "cvalue");
                     variables.Add(convertedValue);
-                    var provider = Expression.Property(optionsParameter, nameof(SQLiteLoadOptions.FormatProvider));
 
                     var tryConvert = Expression.Call(
-                        typeof(Conversions).GetMethod(nameof(Conversions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(IFormatProvider), typeof(object).MakeByRefType() }),
+                        optionsParameter,
+                        typeof(SQLiteLoadOptions).GetMethod(nameof(Conversions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() }),
                         valueParameter,
                         Expression.Constant(property.PropertyType, typeof(Type)),
-                        provider,
                         convertedValue);
 
                     var ifTrue = Expression.Call(instance, property.SetMethod, Expression.Convert(convertedValue, property.PropertyType));

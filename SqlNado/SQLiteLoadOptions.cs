@@ -12,11 +12,12 @@ namespace SqlNado
             Database = database;
         }
 
-        public SQLiteDatabase Database { get; }
-        public IFormatProvider FormatProvider {get; set; }
-        public bool ObjectEventsDisabled { get; set; }
-        public int MaximumRows { get; set; }
-        public Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
+        public virtual SQLiteDatabase Database { get; }
+        public virtual bool ObjectEventsDisabled { get; set; }
+        public virtual int MaximumRows { get; set; }
+        public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
+
+        public virtual bool TryChangeType(object input, Type conversionType, out object value) => Database.TryChangeType(input, conversionType, out value);
     }
 
     public class SQLiteLoadOptions<T> : SQLiteLoadOptions

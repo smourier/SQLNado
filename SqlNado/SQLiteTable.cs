@@ -19,12 +19,11 @@ namespace SqlNado
 
         [Browsable(false)] // remove from tablestring dumps
         public SQLiteDatabase Database { get; }
-        public string Type { get; internal set; }
         public string Name { get; internal set; }
-        [SQLiteColumn(Name = "tbl_name")]
-        public string TableName { get; internal set; }
         public int RootPage { get; internal set; }
         public string Sql { get; internal set; }
+        [Browsable(false)]
+        public string EscapedName => SQLiteStatement.EscapeName(Name);
 
         public bool HasAutoRowId
         {
@@ -56,6 +55,9 @@ namespace SqlNado
             }
         }
 
+        public IEnumerable<SQLiteRow> GetRows() => GetRows(int.MaxValue);
+        public IEnumerable<SQLiteRow> GetRows(int maximumRows) => Database.ExecuteAsRows("SELECT * FROM " + EscapedName + " LIMIT " + maximumRows);
+
         public IReadOnlyList<SQLiteColumn> Columns
         {
             get
@@ -65,7 +67,7 @@ namespace SqlNado
                 {
                     var options = new SQLiteLoadOptions<SQLiteColumn>(Database);
                     options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
-                    list = Database.Load("PRAGMA table_info(" + SQLiteStatement.EscapeName(Name) + ")", options).ToList();
+                    list = Database.Load("PRAGMA table_info(" + EscapedName + ")", options).ToList();
                     var pkColumns = list.Where(CanBeRowId).ToArray();
                     if (pkColumns.Length == 1)
                     {
@@ -80,19 +82,19 @@ namespace SqlNado
             }
         }
 
-        public SQLiteIndex AutoPrimaryKey => Indices.FirstOrDefault(i => i.Origin.EqualsIgnoreCase("pk"));
-        public IEnumerable<SQLiteColumn> PrimaryKey => Columns.Where(c => c.IsPrimaryKey);
+        public SQLiteTableIndex AutoPrimaryKey => Indices.FirstOrDefault(i => i.Origin.EqualsIgnoreCase("pk"));
+        public IEnumerable<SQLiteColumn> PrimaryKeyColumns => Columns.Where(c => c.IsPrimaryKey);
 
-        public IEnumerable<SQLiteIndex> Indices
+        public IEnumerable<SQLiteTableIndex> Indices
         {
             get
             {
                 if (string.IsNullOrWhiteSpace(Name))
-                    return Enumerable.Empty<SQLiteIndex>();
+                    return Enumerable.Empty<SQLiteTableIndex>();
 
-                var options = new SQLiteLoadOptions<SQLiteIndex>(Database);
-                options.GetInstanceFunc = (t, s, o) => new SQLiteIndex(this);
-                return Database.Load("PRAGMA index_list(" + SQLiteStatement.EscapeName(Name) + ")", options);
+                var options = new SQLiteLoadOptions<SQLiteTableIndex>(Database);
+                options.GetInstanceFunc = (t, s, o) => new SQLiteTableIndex(this);
+                return Database.Load("PRAGMA index_list(" + EscapedName + ")", options);
             }
         }
 
@@ -101,7 +103,7 @@ namespace SqlNado
             if (!column.IsPrimaryKey)
                 return false;
 
-            if (!column.Type.EqualsIgnoreCase("INTEGER"))
+            if (!column.Type.EqualsIgnoreCase(SQLiteColumnType.INTEGER.ToString()))
                 return false;
 
             // https://sqlite.org/lang_createtable.html#rowid
@@ -126,7 +128,7 @@ namespace SqlNado
             return Columns.FirstOrDefault(c => name.EqualsIgnoreCase(c.Name));
         }
 
-        public SQLiteIndex GetIndex(string name)
+        public SQLiteTableIndex GetIndex(string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));

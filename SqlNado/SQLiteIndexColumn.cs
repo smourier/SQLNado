@@ -4,12 +4,12 @@ namespace SqlNado
 {
     public class SQLiteIndexColumn : IComparable<SQLiteIndexColumn>
     {
-        internal SQLiteIndexColumn(SQLiteIndex index)
+        internal SQLiteIndexColumn(SQLiteTableIndex index)
         {
             Index = index;
         }
 
-        public SQLiteIndex Index { get; }
+        public SQLiteTableIndex Index { get; }
 
         [SQLiteColumn(Name = "seqno")]
         public int Ordinal { get; set; }

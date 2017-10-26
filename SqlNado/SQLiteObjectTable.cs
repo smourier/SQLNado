@@ -9,6 +9,7 @@ namespace SqlNado
     public class SQLiteObjectTable
     {
         private List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
+        private static Random _random = new Random(Environment.TickCount);
         internal const string TempTablePrefix = "__temp";
 
         public SQLiteObjectTable(SQLiteDatabase database, string name)
@@ -26,10 +27,12 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public string Name { get; }
         public virtual IReadOnlyList<SQLiteObjectColumn> Columns => _columns;
-        public virtual IEnumerable<SQLiteObjectColumn> PrimaryKey => _columns.Where(c => c.IsPrimaryKey);
-        public virtual string EscapedName => SQLiteStatement.EscapeName(Name);
+        public virtual IEnumerable<SQLiteObjectColumn> PrimaryKeyColumns => _columns.Where(c => c.IsPrimaryKey);
+        [Browsable(false)]
+        public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool HasPrimaryKey => _columns.Any(c => c.IsPrimaryKey);
         public bool Exists => Database.TableExists(Name);
+        public bool HasRowId => Columns.Any(c => c.IsRowId);
         public SQLiteTable Table => Database.GetTable(Name);
 
         [Browsable(false)]
@@ -56,7 +59,7 @@ namespace SqlNado
             string sql = "CREATE TABLE " + SQLiteStatement.EscapeName(tableName) + "(";
             sql += string.Join(",", Columns.Select(c => c.CreateSql));
 
-            string pk = string.Join(",", PrimaryKey.Select(c => c.EscapedName));
+            string pk = string.Join(",", PrimaryKeyColumns.Select(c => c.EscapedName));
             if (!string.IsNullOrWhiteSpace(pk))
             {
                 sql += ",PRIMARY KEY (" + pk + ")";
@@ -72,26 +75,13 @@ namespace SqlNado
             return sql;
         }
 
-        public virtual string BuildWherePrimaryKeyStatement() => string.Join(",", PrimaryKey.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
+        public virtual string BuildWherePrimaryKeyStatement() => string.Join(",", PrimaryKeyColumns.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
+
+        public virtual string BuildColumnsSetStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
 
         public virtual string BuildColumnsStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name)));
 
-        public virtual object[] GetValues(object obj, IEnumerable<SQLiteObjectColumn> columns)
-        {
-            if (columns == null)
-                throw new ArgumentNullException(nameof(columns));
-
-            var cols = columns.ToArray();
-            var pk = new object[cols.Length];
-            for (int i = 0; i < cols.Length; i++)
-            {
-                pk[i] = cols[i].GetValue(obj);
-            }
-            return pk;
-        }
-
-        public virtual object[] GetValues(object obj) => GetValues(obj, Columns);
-        public virtual object[] GetPrimaryKeyValues(object obj) => GetValues(obj, PrimaryKey);
+        public virtual string BuildColumnsParametersStatement() => string.Join(",", Columns.Select(c => "?"));
 
         public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions<T> options)
         {
@@ -112,10 +102,100 @@ namespace SqlNado
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
+            object instance;
             if (options?.GetInstanceFunc != null)
-                return options.GetInstanceFunc(type, statement, options);
+            {
+                instance = options.GetInstanceFunc(type, statement, options);
+            }
+            else
+            {
+                instance = Activator.CreateInstance(type);
+            }
 
-            return Activator.CreateInstance(type);
+            InitializeAutomaticColumns(instance);
+            return instance;
+        }
+
+        public virtual void InitializeAutomaticColumns(object instance)
+        {
+            if (instance == null)
+                return;
+
+            foreach (var col in Columns.Where(c => c.SetValueAction != null && c.AutomaticType != SQLiteAutomaticColumnType.None))
+            {
+                var value = col.GetValue(instance);
+                switch (col.AutomaticType)
+                {
+                    case SQLiteAutomaticColumnType.NewGuidIfEmpty:
+                        if (value is Guid guid && guid == Guid.Empty)
+                        {
+                            col.SetValue(null, instance, Guid.NewGuid());
+                        }
+                        break;
+
+                    case SQLiteAutomaticColumnType.TimeOfDay:
+                    case SQLiteAutomaticColumnType.TimeOfDayUtc:
+                        if (value is TimeSpan ts && ts == TimeSpan.Zero)
+                        {
+                            col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.TimeOfDay ? DateTime.Now.TimeOfDay : DateTime.UtcNow.TimeOfDay);
+                        }
+                        break;
+
+                    case SQLiteAutomaticColumnType.DateTimeNow:
+                    case SQLiteAutomaticColumnType.DatetimeNowUtc:
+                        if (value is DateTime dt && dt == DateTime.MinValue)
+                        {
+                            col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.DateTimeNow ? DateTime.Now : DateTime.UtcNow);
+                        }
+                        break;
+
+                    case SQLiteAutomaticColumnType.Random:
+                        if (value is int ir && ir == 0)
+                        {
+                            col.SetValue(null, instance, _random.Next());
+                        }
+                        else if (value is double d && d == 0)
+                        {
+                            col.SetValue(null, instance, _random.NextDouble());
+                        }
+                        break;
+
+                    case SQLiteAutomaticColumnType.EnvironmentTickCount:
+                        if (value is int i && i == 0)
+                        {
+                            col.SetValue(null, instance, Environment.TickCount);
+                        }
+                        else if (value is long l && l == 0)
+                        {
+                            col.SetValue(null, instance, SQLiteDatabase.GetTickCount64());
+                        }
+                        break;
+
+                    case SQLiteAutomaticColumnType.EnvironmentMachineName:
+                        if (value == null || (value is string s && s == null))
+                        {
+                            switch(col.AutomaticType)
+                            {
+                                case SQLiteAutomaticColumnType.EnvironmentMachineName:
+                                    s = Environment.MachineName;
+                                    break;
+
+                                case SQLiteAutomaticColumnType.EnvironmentUserDomainName:
+                                    s = Environment.UserDomainName;
+                                    break;
+
+                                case SQLiteAutomaticColumnType.EnvironmentUserName:
+                                    s = Environment.UserName;
+                                    break;
+
+                                default:
+                                    continue;
+                            }
+                            col.SetValue(null, instance, s);
+                        }
+                        break;
+                }
+            }
         }
 
         public virtual T Load<T>(SQLiteStatement statement, SQLiteLoadOptions<T> options)
@@ -123,8 +203,9 @@ namespace SqlNado
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
 
+            options = options ?? new SQLiteLoadOptions<T>(Database);
             var instance = (T)GetInstance(typeof(T), statement, options);
-            if (options == null || !options.ObjectEventsDisabled)
+            if (!options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObject;
                 if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loading, statement, options))
@@ -149,8 +230,9 @@ namespace SqlNado
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
 
+            options = options ?? new SQLiteLoadOptions(Database);
             var instance = GetInstance(objectType, statement, options);
-            if (options == null || !options.ObjectEventsDisabled)
+            if (!options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObject;
                 if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loading, statement, options))
@@ -167,20 +249,6 @@ namespace SqlNado
             return instance;
         }
 
-        public void Insert(object instance) => Update(instance, null);
-        public virtual void Insert(object instance, SQLiteSaveOptions options)
-        {
-            options = options ?? new SQLiteSaveOptions();
-            options.InsertOnly = true;
-        }
-
-        public void Update(object instance) => Update(instance, null);
-        public virtual void Update(object instance, SQLiteSaveOptions options)
-        {
-            options = options ?? new SQLiteSaveOptions();
-            options.UpdateOnly = true;
-        }
-
         public virtual bool Save(object instance, SQLiteSaveOptions options)
         {
             if (instance == null)
@@ -188,14 +256,64 @@ namespace SqlNado
 
             options = options ?? new SQLiteSaveOptions();
 
+            InitializeAutomaticColumns(instance);
+
             var lo = instance as ISQLiteObject;
             if (lo != null && !lo.OnSaveAction(SQLiteObjectAction.Saving, options))
                 return false;
 
-            if (lo != null && !lo.OnSaveAction(SQLiteObjectAction.Saved, options))
-                return false;
+            var args = new List<object>();
+            var pk = new List<object>();
+            foreach (var col in Columns)
+            {
+                var value = col.GetValueForBind(instance);
+                args.Add(value);
 
-            return false;
+                if (col.IsPrimaryKey)
+                {
+                    pk.Add(value);
+                }
+            }
+
+            bool ret = false;
+            string sql;
+            if (HasPrimaryKey)
+            {
+                // TODO: check if primary key is ok?
+
+                sql = "UPDATE " + GetConflictResolutionClause(options.ConflictResolution) + EscapedName + "SET " + BuildColumnsSetStatement();
+                sql += " WHERE " + BuildWherePrimaryKeyStatement();
+
+                pk.InsertRange(0, args);
+                int count = Database.ExecuteNonQuery(sql, pk.ToArray());
+                if (count == 0)
+                {
+                    sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsStatement();
+                    sql += ") VALUES (" + BuildColumnsParametersStatement() + ")";
+                }
+
+                count = Database.ExecuteNonQuery(sql, args.ToArray());
+                ret = count > 0;
+            }
+            else
+            {
+                // insert always
+                sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsStatement();
+                sql += ") VALUES (" + BuildColumnsParametersStatement() + ")";
+                int count = Database.ExecuteNonQuery(sql, args.ToArray());
+                ret = count > 0;
+            }
+
+            lo?.OnSaveAction(SQLiteObjectAction.Saved, options);
+            return ret;
+        }
+
+        private static string GetConflictResolutionClause(SQLiteConflictResolution res)
+        {
+            if (res == SQLiteConflictResolution.Abort) // default
+                return null;
+
+            return "OR " + res.ToString().ToUpperInvariant() + " ";
         }
 
         public virtual int SynchronizeSchema(SQLiteSaveOptions options)

@@ -1,28 +1,32 @@
 ﻿using System;
-using System.Text;
 
 namespace SqlNado
 {
     public class SQLiteBindContext
     {
-        public SQLiteBindContext(SQLiteStatement statement)
+        public SQLiteBindContext(SQLiteDatabase database)
         {
-            if (statement == null)
-                throw new ArgumentNullException(nameof(statement));
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
 
-            Statement = statement;
+            Database = database;
+            TypeOptions = database.TypeOptions;
         }
 
-        public SQLiteStatement Statement { get; }
+        public SQLiteDatabase Database { get; }
+        public SQLiteStatement Statement { get; set; }
         public virtual SQLiteType Type { get; set; }
-        public virtual IFormatProvider FormatProvider { get; set; }
         public virtual int Index { get; set; }
         public virtual object Value { get; set; }
+        public virtual SQLiteTypeOptions TypeOptions { get; set; }
 
-        public virtual SQLiteErrorCode BindString(string text)
-        {
-            int count = text != null ? Encoding.Unicode.GetByteCount(text) : -1;
-            return SQLiteDatabase._sqlite3_bind_text16(Statement.Handle, Index, text, count, IntPtr.Zero);
-        }
+        // helpers
+        public SQLiteErrorCode Bind(string value) => Statement != null ? Statement.BindParameter(Index, value) : throw new InvalidOperationException();
+        public SQLiteErrorCode Bind(byte[] value) => Statement != null ? Statement.BindParameter(Index, value) : throw new InvalidOperationException();
+        public SQLiteErrorCode Bind(bool value) => Statement != null ? Statement.BindParameter(Index, value) : throw new InvalidOperationException();
+        public SQLiteErrorCode Bind(int value) => Statement != null ? Statement.BindParameter(Index, value) : throw new InvalidOperationException();
+        public SQLiteErrorCode Bind(long value) => Statement != null ? Statement.BindParameter(Index, value) : throw new InvalidOperationException();
+        public SQLiteErrorCode Bind(double value) => Statement != null ? Statement.BindParameter(Index, value) : throw new InvalidOperationException();
+        public SQLiteErrorCode BindNull() => Statement != null ? Statement.BindParameterNull(Index) : throw new InvalidOperationException();
     }
 }

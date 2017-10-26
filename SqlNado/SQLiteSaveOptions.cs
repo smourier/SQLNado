@@ -2,10 +2,9 @@
 {
     public class SQLiteSaveOptions
     {
-        public bool SynchronizeSchema { get; set; }
-        public bool DeleteUnusedColumns { get; set; }
-        public bool InsertOnly { get; set; }
-        public bool UpdateOnly { get; set; }
-        public bool ObjectEventsDisabled { get; set; }
+        public virtual bool SynchronizeSchema { get; set; }
+        public virtual bool DeleteUnusedColumns { get; set; }
+        public virtual bool ObjectEventsDisabled { get; set; }
+        public virtual SQLiteConflictResolution ConflictResolution { get; set; }
     }
 }

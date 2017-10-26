@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Globalization;
 using SqlNado.Utilities;
 
 namespace SqlNado
@@ -33,6 +32,7 @@ namespace SqlNado
 
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
+        [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public string DataType { get; }
         public int Index { get; internal set; }
@@ -45,9 +45,13 @@ namespace SqlNado
         public virtual bool IsPrimaryKey { get; set; }
         public virtual bool AutoIncrements { get; set; }
         public virtual bool HasDefaultValue { get; set; }
+        public virtual string Collation { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
         public virtual object DefaultValue { get; set; }
+        public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
         public bool HasNonConstantDefaultValue => HasDefaultValue && IsDefaultValueIntrinsic;
+        public bool IsRowId { get; internal set; }
+        internal bool CanBeRowId => IsPrimaryKey && DataType.EqualsIgnoreCase(SQLiteColumnType.INTEGER.ToString());
 
         public virtual bool IsSynchronized(SQLiteColumn column)
         {
@@ -78,6 +82,16 @@ namespace SqlNado
             return true;
         }
 
+        public virtual object GetValueForBind(object obj)
+        {
+            var value = GetValue(obj);
+            var type = Table.Database.GetType(value);
+            var ctx = Table.Database.CreateBindContext();
+            ctx.Value = value;
+            type.BindFunc(ctx);
+            return value;
+        }
+
         public virtual object GetValue(object obj) => GetValueFunc(obj);
 
         public virtual void SetValue(SQLiteLoadOptions options, object obj, object value)
@@ -85,6 +99,7 @@ namespace SqlNado
             if (SetValueAction == null)
                 throw new InvalidOperationException();
 
+            options = options ?? new SQLiteLoadOptions(Table.Database);
             SetValueAction(options, obj, value);
         }
 
@@ -113,6 +128,11 @@ namespace SqlNado
                     {
                         sql += " DEFAULT " + SQLiteStatement.ToLiteral(DefaultValue);
                     }
+                }
+
+                if (!string.IsNullOrWhiteSpace(Collation))
+                {
+                    sql += " COLLATE " + Collation;
                 }
                 return sql;
             }
@@ -169,7 +189,9 @@ namespace SqlNado
             IsReadOnly = attribute.IsReadOnly;
             IsNullable = attribute.IsNullable;
             IsPrimaryKey = attribute.IsPrimaryKey;
+            AutomaticType = attribute.AutomaticType;
             HasDefaultValue = attribute.HasDefaultValue;
+            Collation = attribute.Collation;
             if (HasDefaultValue)
             {
                 DefaultValue = attribute.DefaultValue;
