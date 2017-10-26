@@ -207,6 +207,9 @@ namespace SqlNado
                         df.EqualsIgnoreCase("CURRENT_TIMESTAMP"))
                     {
                         att.DataType = SQLiteColumnType.TEXT.ToString();
+                        // we need to force this column type options
+                        att.TypeOptions = att.TypeOptions ?? new SQLiteTypeOptions();
+                        att.TypeOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
                     }
                 }
 

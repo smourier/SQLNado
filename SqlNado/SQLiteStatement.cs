@@ -113,12 +113,42 @@ namespace SqlNado
             }
             else
             {
-                var type = Database.GetType(value); // never null
+                var type = Database.GetBindType(value); // never null
                 var ctx = Database.CreateBindContext();
                 ctx.Statement = this;
                 ctx.Value = value;
                 ctx.Index = index;
-                code = type.BindFunc(ctx);
+                object bindValue = type.ConvertFunc(ctx);
+                if (bindValue == null)
+                {
+                    code = BindParameterNull(index);
+                }
+                else if (bindValue is string s)
+                {
+                    code = BindParameter(index, s);
+                }
+                else if (bindValue is int i)
+                {
+                    code = BindParameter(index, i);
+                }
+                else if (bindValue is long l)
+                {
+                    code = BindParameter(index, l);
+                }
+                else if (bindValue is bool b)
+                {
+                    code = BindParameter(index, b);
+                }
+                else if (bindValue is double d)
+                {
+                    code = BindParameter(index, d);
+                }
+                else if (bindValue is byte[] bytes)
+                {
+                    code = BindParameter(index, bytes);
+                }
+                else
+                    throw new SqlNadoException("0010: Binding only supports Int32, Int64, String, Boolean, Double and Byte[] primitive types.");
             }
             Database.CheckError(code);
         }

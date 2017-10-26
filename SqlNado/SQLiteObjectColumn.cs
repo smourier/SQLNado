@@ -48,6 +48,7 @@ namespace SqlNado
         public virtual string Collation { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
         public virtual object DefaultValue { get; set; }
+        public virtual SQLiteTypeOptions TypeOptions { get; set; }
         public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
         public bool HasNonConstantDefaultValue => HasDefaultValue && IsDefaultValueIntrinsic;
         public bool IsRowId { get; internal set; }
@@ -85,11 +86,14 @@ namespace SqlNado
         public virtual object GetValueForBind(object obj)
         {
             var value = GetValue(obj);
-            var type = Table.Database.GetType(value);
+            var type = Table.Database.GetBindType(value);
             var ctx = Table.Database.CreateBindContext();
             ctx.Value = value;
-            type.BindFunc(ctx);
-            return value;
+            if (TypeOptions != null)
+            {
+                ctx.TypeOptions = TypeOptions;
+            }
+            return type.ConvertFunc(ctx);
         }
 
         public virtual object GetValue(object obj) => GetValueFunc(obj);
@@ -192,6 +196,7 @@ namespace SqlNado
             AutomaticType = attribute.AutomaticType;
             HasDefaultValue = attribute.HasDefaultValue;
             Collation = attribute.Collation;
+            TypeOptions = attribute.TypeOptions;
             if (HasDefaultValue)
             {
                 DefaultValue = attribute.DefaultValue;

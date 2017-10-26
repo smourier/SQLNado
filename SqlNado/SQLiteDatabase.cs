@@ -17,7 +17,7 @@ namespace SqlNado
     {
         private static IntPtr _module;
         private IntPtr _handle;
-        private ConcurrentDictionary<Type, SQLiteType> _types = new ConcurrentDictionary<Type, SQLiteType>();
+        private ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
         private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
 
         public SQLiteDatabase(string filePath)
@@ -41,7 +41,7 @@ namespace SqlNado
         public static string NativeDllPath { get; private set; }
         public IntPtr Handle => _handle;
         public string FilePath { get; }
-        public IReadOnlyDictionary<Type, SQLiteType> Types => _types;
+        public IReadOnlyDictionary<Type, SQLiteBindType> Types => _bindTypes;
         public SQLiteTypeOptions TypeOptions { get; }
         public bool EnforceForeignKeys { get { return ExecuteScalar<bool>("PRAGMA foreign_keys"); } set { ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0) + ";"); } }
         public IEnumerable<string> CompileOptions => Execute("PRAGMA compile_options").Select(row => (string)row[0]);
@@ -163,69 +163,65 @@ namespace SqlNado
             return obj.GetType();
         }
 
-        public SQLiteType GetType(object obj) => GetType(GetObjectType(obj), null);
-        public SQLiteType GetType(object obj, SQLiteType defaultType) => GetType(GetObjectType(obj), defaultType);
+        public SQLiteBindType GetBindType(object obj) => GetBindType(GetObjectType(obj), null);
+        public SQLiteBindType GetBindType(object obj, SQLiteBindType defaultType) => GetBindType(GetObjectType(obj), defaultType);
 
-        public SQLiteType GetType(Type type) => GetType(type, null);
-        public virtual SQLiteType GetType(Type type, SQLiteType defaultType)
+        public SQLiteBindType GetBindType(Type type) => GetBindType(type, null);
+        public virtual SQLiteBindType GetBindType(Type type, SQLiteBindType defaultType)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            if (_types.TryGetValue(type, out SQLiteType handler) && handler != null)
+            if (_bindTypes.TryGetValue(type, out SQLiteBindType handler) && handler != null)
                 return handler;
 
-            foreach (var kv in _types)
+            foreach (var kv in _bindTypes)
             {
                 if (kv.Key.IsAssignableFrom(type))
-                    return _types.AddOrUpdate(type, kv.Value, (k, o) => o);
+                    return _bindTypes.AddOrUpdate(type, kv.Value, (k, o) => o);
             }
 
-            return defaultType ?? SQLiteType.ObjectType;
+            return defaultType ?? SQLiteBindType.ObjectType;
         }
 
-        public virtual void AddType(SQLiteType type)
+        public virtual void AddType(SQLiteBindType type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            foreach (var handledType in type.HandledTypes)
+            foreach (var handledType in type.HandledClrTypes)
             {
-                _types.AddOrUpdate(handledType, type, (k, o) => type);
+                _bindTypes.AddOrUpdate(handledType, type, (k, o) => type);
             }
         }
 
-        public virtual SQLiteType RemoveType(Type type)
+        public virtual SQLiteBindType RemoveType(Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            _types.TryRemove(type, out SQLiteType value);
+            _bindTypes.TryRemove(type, out SQLiteBindType value);
             return value;
         }
 
-        public virtual void ClearTypes() => _types.Clear();
+        public virtual void ClearTypes() => _bindTypes.Clear();
 
         protected virtual void AddDefaultTypes()
         {
-            AddType(SQLiteType.BoolType);
-            AddType(SQLiteType.ByteArrayType);
-            AddType(SQLiteType.ByteType);
-            AddType(SQLiteType.DateTimeType);
-            AddType(SQLiteType.DBNullType);
-            AddType(SQLiteType.DecimalType);
-            AddType(SQLiteType.DoubleType);
-            AddType(SQLiteType.FloatType);
-            AddType(SQLiteType.GuidType);
-            AddType(SQLiteType.Int16Type);
-            AddType(SQLiteType.Int32Type);
-            AddType(SQLiteType.Int64Type);
-            AddType(SQLiteType.ObjectType);
-            AddType(SQLiteType.SByteType);
-            AddType(SQLiteType.TimeSpanType);
-            AddType(SQLiteType.UInt16Type);
-            AddType(SQLiteType.UInt32Type);
-            AddType(SQLiteType.UInt64Type);
+            AddType(SQLiteBindType.ByteType);
+            AddType(SQLiteBindType.DateTimeType);
+            AddType(SQLiteBindType.DBNullType);
+            AddType(SQLiteBindType.DecimalType);
+            AddType(SQLiteBindType.FloatType);
+            AddType(SQLiteBindType.GuidType);
+            AddType(SQLiteBindType.Int16Type);
+            AddType(SQLiteBindType.ObjectType);
+            AddType(SQLiteBindType.PassThroughType);
+            AddType(SQLiteBindType.SByteType);
+            AddType(SQLiteBindType.TimeSpanType);
+            AddType(SQLiteBindType.UInt16Type);
+            AddType(SQLiteBindType.UInt32Type);
+            AddType(SQLiteBindType.UInt64Type);
         }
 
         public virtual int DeleteAll<T>()

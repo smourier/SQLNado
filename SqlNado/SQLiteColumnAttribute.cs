@@ -26,6 +26,7 @@ namespace SqlNado
         public virtual bool HasDefaultValue { get => _hasDefaultValue ?? false; set => _hasDefaultValue = value; }
         public virtual bool IsDefaultValueIntrinsic { get => _isDefaultValueIntrinsic ?? false; set => _isDefaultValueIntrinsic = value; }
         public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
+        public virtual SQLiteTypeOptions TypeOptions { get; set; }
         public virtual object DefaultValue { get; set; }
 
         public virtual Expression<Func<object, object>> GetValueExpression { get; set; }

@@ -57,6 +57,8 @@ namespace SqlNado.Temp
                 //table.Indices.ToTableString(Console.Out);
                 TableStringExtensions.ToTableString(table, Console.Out);
                 TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
+
+                db.LoadAll<Customer>().ToTableString(Console.Out);
             }
         }
     }
@@ -96,13 +98,14 @@ namespace SqlNado.Temp
         }
 
         [SQLiteColumn(IsPrimaryKey = true)]
-        public Guid Id { get; }
+        public Guid Id { get; set; }
         public string Name { get; set; }
         [SQLiteColumn(AutomaticType = SQLiteAutomaticColumnType.Random)]
         public int Age { get; set; }
-        [SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
+        //[SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
         public DateTime CreationDate { get; set; }
 
+        [SQLiteColumn(Ignore = true)]
         public object[] PrimaryKey => new object[] { Id };
 
         public bool OnLoadAction(SQLiteObjectAction action, SQLiteStatement statement, SQLiteLoadOptions options)
