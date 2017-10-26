@@ -36,29 +36,24 @@ namespace SqlNado.Temp
                 db.DeleteTempTables();
                 //db.Tables.ToTableString(Console.Out);
                 //Console.WriteLine(db.EnforceForeignKeys);
-                var table = db.GetObjectTable<Customer>();
-                var o = new SQLiteSaveOptions { DeleteUnusedColumns = true };
+                //var table = db.GetObjectTable<Customer>();
+                //var o = new SQLiteSaveOptions { DeleteUnusedColumns = true };
 
-                var c = new Customer();
-                c.Name = "Name" + DateTime.Now;
-                db.Save(c);
-                db.Tables.ToTableString(Console.Out);
+                //var c = new Customer();
+                //c.Name = "Name" + DateTime.Now;
+                //db.Save(c);
+                //db.Tables.ToTableString(Console.Out);
 
-                db.ExecuteAsRows("SELECT rowid,* FROM invoices limit 10").ToTableString(Console.Out);
+                db.DeleteTable("t");
+                db.ExecuteNonQuery("CREATE TABLE t(x INTEGER PRIMARY KEY, y, z) WITHOUT ROWID;");
+                db.ExecuteAsRows("PRAGMA index_xinfo(sqlite_autoindex_t_1)").ToTableString(Console.Out);
+                //db.ExecuteAsRows("SELECT rowid,* FROM invoices limit 10").ToTableString(Console.Out);
+                var table = db.GetTable("t");
+                Console.WriteLine(table.Sql);
+                table.Columns.ToTableString(Console.Out);
+                table.Indices.ToTableString(Console.Out);
+                TableStringExtensions.ToTableString(table, Console.Out);
             }
-
-            //dynamic o = new ExpandoObject();
-            //o.Name = "toto";
-            //o.Whatever = 12;
-
-            //dynamic o3 = new ExpandoObject();
-            //o3.stuff = "xxtoto";
-            //o3.Name = 1234;
-
-            //var s = new SQLiteRow(0, new[] { "zz" }, new object[] { 123 });
-            //object o2 = s;
-
-            //TableStringExtensions.ToTableString(new object[] { o, o3 }, Console.Out);
         }
     }
 

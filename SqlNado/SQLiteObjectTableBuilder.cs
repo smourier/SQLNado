@@ -44,7 +44,7 @@ namespace SqlNado
             var table = CreateObjectTable(name);
             if (typeAtt != null)
             {
-                table.DisableRowId = typeAtt.DisableRowId;
+                table.DisableRowId = typeAtt.WithoutRowId;
             }
 
             var attributes = EnumerateColumnAttributes().ToList();

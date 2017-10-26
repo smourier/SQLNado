@@ -24,6 +24,7 @@ namespace SqlNado
         [SQLiteColumn(Name = "dflt_value")]
         public object DefaultValue { get; internal set; }
         public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public bool IsRowId { get; internal set; }
 
         public override string ToString() => Name;
     }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using SqlNado.Utilities;
@@ -42,6 +43,7 @@ namespace SqlNado
         public virtual bool IsNullable  { get; set; }
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
+        public virtual bool AutoIncrements { get; set; }
         public virtual bool HasDefaultValue { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
         public virtual object DefaultValue { get; set; }
@@ -91,6 +93,10 @@ namespace SqlNado
             get
             {
                 string sql = EscapedName + " " + DataType;
+                if (AutoIncrements)
+                {
+                    sql += " AUTOINCREMENT";
+                }
  
                 if (!IsNullable)
                 {
@@ -115,32 +121,43 @@ namespace SqlNado
         public override string ToString()
         {
             string s = Name;
+
+            var atts = new List<string>();
             if (IsPrimaryKey)
             {
-                s += " (P)";
+                atts.Add("P");
             }
 
             if (IsNullable)
             {
-                s += " (N)";
+                atts.Add("N");
             }
 
             if (IsReadOnly)
             {
-                s += " (R)";
+                atts.Add("R");
+            }
+
+            if (AutoIncrements)
+            {
+                atts.Add("A");
             }
 
             if (HasDefaultValue && DefaultValue != null)
             {
                 if (IsDefaultValueIntrinsic)
                 {
-                    s += " (D:" + DefaultValue + ")";
+                    atts.Add("D:" + DefaultValue + ")");
                 }
                 else
                 {
-                    s += " (D:" + SQLiteStatement.ToLiteral(DefaultValue) + ")";
+                    atts.Add("D:" + SQLiteStatement.ToLiteral(DefaultValue) + ")");
                 }
             }
+
+            if (atts.Count > 0)
+                return s + " (" + string.Join("", atts) + ")";
+
             return s;
         }
 

@@ -28,27 +28,28 @@ namespace SqlNado
         {
             get
             {
-                var list = Table.Database.Load<IndexColumn>("PRAGMA index_info(" + Name + ")").ToList();
+                var list = IndexColumns.ToList();
                 list.Sort();
                 foreach (var col in list)
                 {
-                    if (col.name == null)
+                    if (col.Name == null)
                         continue;
 
-                    var column = Table.GetColumn(col.name);
+                    var column = Table.GetColumn(col.Name);
                     if (column != null)
                         yield return column;
                 }
             }
         }
 
-        private class IndexColumn : IComparable<IndexColumn>
+        public IEnumerable<SQLiteIndexColumn> IndexColumns
         {
-            public int seqno { get; set; }
-            public int cid { get; set; }
-            public string name { get; set; }
-
-            public int CompareTo(IndexColumn other) => seqno.CompareTo(other.seqno);
+            get
+            {
+                var options = new SQLiteLoadOptions<SQLiteIndexColumn>(Table.Database);
+                options.GetInstanceFunc = (t, s, o) => new SQLiteIndexColumn(this);
+                return Table.Database.Load("PRAGMA index_xinfo(" + Name + ")", options);
+            }
         }
 
         public override string ToString() => Name;
