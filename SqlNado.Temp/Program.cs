@@ -34,8 +34,8 @@ namespace SqlNado.Temp
             using (var db = new SQLiteDatabase("chinook.db"))
             {
                 db.DeleteTempTables();
-                db.Tables.ToTableString(Console.Out);
-                Console.WriteLine(db.EnforceForeignKeys);
+                //db.Tables.ToTableString(Console.Out);
+                //Console.WriteLine(db.EnforceForeignKeys);
                 var table = db.GetObjectTable<Customer>();
                 var o = new SQLiteSaveOptions { DeleteUnusedColumns = true };
 
@@ -43,6 +43,8 @@ namespace SqlNado.Temp
                 c.Name = "Name" + DateTime.Now;
                 db.Save(c);
                 db.Tables.ToTableString(Console.Out);
+
+                db.ExecuteAsRows("SELECT rowid,* FROM invoices limit 10").ToTableString(Console.Out);
             }
 
             //dynamic o = new ExpandoObject();
@@ -71,6 +73,19 @@ namespace SqlNado.Temp
         public string Sql { get; set; }
     }
 
+    [SQLiteTable(Name = "playlist_track")]
+    public class PlayListTrack
+    {
+        public int PlaylistId { get; set; }
+        public int TrackId { get; set; }
+    }
+
+    [SQLiteTable(Name = "Customers")]
+    public class CustomerWithRowId
+    {
+        public long RowId { get; set; }
+    }
+
     public class Customer : ISQLiteObject
     {
         public Customer()
@@ -87,12 +102,14 @@ namespace SqlNado.Temp
         [SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
         public DateTime CreationDate { get; set; }
 
-        public void OnLoadAction(SQLiteObjectAction action, SQLiteStatement statement, SQLiteLoadOptions options)
+        public bool OnLoadAction(SQLiteObjectAction action, SQLiteStatement statement, SQLiteLoadOptions options)
         {
+            return true;
         }
 
-        public void OnSaveAction(SQLiteObjectAction action, SQLiteSaveOptions options)
+        public bool OnSaveAction(SQLiteObjectAction action, SQLiteSaveOptions options)
         {
+            return true;
         }
     }
 }

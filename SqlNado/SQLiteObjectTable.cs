@@ -127,9 +127,12 @@ namespace SqlNado
             if (options == null || !options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObject;
-                lo?.OnLoadAction(SQLiteObjectAction.Loading, statement, options);
+                if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loading, statement, options))
+                    return default(T);
+
                 LoadAction(statement, options, instance);
-                lo?.OnLoadAction(SQLiteObjectAction.Loaded, statement, options);
+                if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loaded, statement, options))
+                    return default(T);
             }
             else
             {
@@ -150,9 +153,12 @@ namespace SqlNado
             if (options == null || !options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObject;
-                lo?.OnLoadAction(SQLiteObjectAction.Loading, statement, options);
+                if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loading, statement, options))
+                    return null;
+
                 LoadAction(statement, options, instance);
-                lo?.OnLoadAction(SQLiteObjectAction.Loaded, statement, options);
+                if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loaded, statement, options))
+                    return null;
             }
             else
             {
@@ -161,26 +167,43 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual void Save(object instance, SQLiteSaveOptions options)
+        public void Insert(object instance) => Update(instance, null);
+        public virtual void Insert(object instance, SQLiteSaveOptions options)
         {
-            if (instance == null)
-                return;
-
-            if (options == null)
-                throw new ArgumentNullException(nameof(options));
-
-            var lo = instance as ISQLiteObject;
-            lo?.OnSaveAction(SQLiteObjectAction.Saving, options);
-            lo?.OnSaveAction(SQLiteObjectAction.Saved, options);
+            options = options ?? new SQLiteSaveOptions();
+            options.InsertOnly = true;
         }
 
-        public virtual int Synchronize(SQLiteSaveOptions options)
+        public void Update(object instance) => Update(instance, null);
+        public virtual void Update(object instance, SQLiteSaveOptions options)
+        {
+            options = options ?? new SQLiteSaveOptions();
+            options.UpdateOnly = true;
+        }
+
+        public virtual bool Save(object instance, SQLiteSaveOptions options)
+        {
+            if (instance == null)
+                return false;
+
+            options = options ?? new SQLiteSaveOptions();
+
+            var lo = instance as ISQLiteObject;
+            if (lo != null && !lo.OnSaveAction(SQLiteObjectAction.Saving, options))
+                return false;
+
+            if (lo != null && !lo.OnSaveAction(SQLiteObjectAction.Saved, options))
+                return false;
+
+            return false;
+        }
+
+        public virtual int SynchronizeSchema(SQLiteSaveOptions options)
         {
             if (Columns.Count == 0)
                 throw new SqlNadoException("0006: Object table '" + Name + "' has no columns.");
 
-            if (options == null)
-                throw new ArgumentNullException(nameof(options));
+            options = options ?? new SQLiteSaveOptions();
 
             string sql;
             var existing = Table;

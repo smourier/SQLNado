@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -231,26 +232,40 @@ namespace SqlNado
             return ExecuteNonQuery(sql, pk) > 0;
         }
 
+        public bool Update(object obj) => Update(obj, null);
+        public virtual bool Update(object obj, SQLiteSaveOptions options)
+        {
+            options = options ?? new SQLiteSaveOptions();
+            options.UpdateOnly = true;
+            return Save(obj, options);
+        }
+
+        public bool Insert(object obj) => Insert(obj, null);
+        public virtual bool Insert(object obj, SQLiteSaveOptions options)
+        {
+            options = options ?? new SQLiteSaveOptions();
+            options.InsertOnly = true;
+            return Save(obj, options);
+        }
+
         public bool Save(object obj) => Save(obj, null);
         public virtual bool Save(object obj, SQLiteSaveOptions options)
         {
             if (obj == null)
                 return false;
 
-            if (options == null)
-            {
-                options = new SQLiteSaveOptions();
-            }
+            options = options ?? new SQLiteSaveOptions();
 
             var table = GetObjectTable(obj.GetType());
             if (options.SynchronizeSchema)
             {
-                table.Synchronize(options);
+                table.SynchronizeSchema(options);
             }
             table.Save(obj, options);
             return false;
         }
 
+        public IEnumerable<T> LoadAll<T>(int maximumRows) => Load<T>(null, new SQLiteLoadOptions<T>(this) { MaximumRows = maximumRows }, null);
         public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
         public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
         public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions<T> options, params object[] args)
@@ -270,11 +285,9 @@ namespace SqlNado
                 sql = newsql;
             }
 
-            if (options == null)
-            {
-                options = new SQLiteLoadOptions<T>(this);
-            }
+            options = options ?? new SQLiteLoadOptions<T>(this);
 
+            int i = 0;
             using (var statement = PrepareStatement(sql, args))
             {
                 do
@@ -285,9 +298,13 @@ namespace SqlNado
 
                     if (code == SQLiteErrorCode.SQLITE_ROW)
                     {
+                        i++;
                         var obj = table.Load(statement, options);
                         if (obj != null)
                             yield return obj;
+
+                        if (options.MaximumRows > 0 && i >= options.MaximumRows)
+                            break;
 
                         continue;
                     }
@@ -296,6 +313,49 @@ namespace SqlNado
                 }
                 while (true);
             }
+        }
+
+        public T LoadByPrimaryKey<T>(object key) => LoadByPrimaryKey<T>(key, null);
+        public virtual T LoadByPrimaryKey<T>(object key, SQLiteLoadOptions<T> options) => (T)LoadByPrimaryKey(typeof(T), key, options);
+
+        public object LoadByPrimaryKey(Type objectType, object key) => LoadByPrimaryKey(objectType, key, null);
+        public virtual object LoadByPrimaryKey(Type objectType, object key, SQLiteLoadOptions options)
+        {
+            if (objectType == null)
+                throw new ArgumentNullException(nameof(objectType));
+
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            if (!(key is object[] keys))
+            {
+                if (key is Array array)
+                {
+                    keys = new object[array.Length];
+                    for (int i = 0; i < keys.Length; i++)
+                    {
+                        keys[i] = array.GetValue(i);
+                    }
+                }
+                else if (!(key is string) && key is IEnumerable enumerable)
+                {
+                    keys = enumerable.Cast<object>().ToArray();
+                }
+                else
+                {
+                    keys = new object[] { key };
+                }
+            }
+
+            if (keys.Length == 0)
+                throw new ArgumentException(null, nameof(key));
+
+            var table = GetObjectTable(objectType);
+            if (table.LoadAction == null)
+                throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
+
+            string sql = "SELECT * FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
+            return Load(objectType, sql, options, keys).FirstOrDefault();
         }
 
         public IEnumerable<object> LoadAll(Type objectType) => Load(objectType, null, null, null);
