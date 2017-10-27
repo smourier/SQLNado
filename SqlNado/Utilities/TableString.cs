@@ -1054,8 +1054,16 @@ namespace SqlNado.Utilities
                                 break;
                             }
 
-                            dline = line.Substring(pos, segmentWidth);
-                            lines.Add(Align(EscapeTextLine(dline) + Column.NewLineReplacement));
+                            if (line.Length == Column.WidthWithoutPadding)
+                            {
+                                lines.Add(Align(EscapeTextLine(line)));
+                                break;
+                            }
+                            else
+                            {
+                                dline = line.Substring(pos, segmentWidth);
+                                lines.Add(Align(EscapeTextLine(dline) + Column.NewLineReplacement));
+                            }
                             pos += segmentWidth;
                         }
                         while (true);
@@ -1242,6 +1250,7 @@ namespace SqlNado.Utilities
         {
             get
             {
+                var list = new List<Tuple<object, object>>();
                 int i = 0;
                 var array = Object as Array;
                 if (Object != null && !(Object is string))
@@ -1263,21 +1272,30 @@ namespace SqlNado.Utilities
                             continue;
 
                         object value = GetValue(property, Object, ThrowOnPropertyGetError);
-                        yield return new Tuple<object, object>(property.Name, value);
+                        list.Add(new Tuple<object, object>(property.Name, value));
                         i++;
                     }
+
+                    // sort by property name
+                    list.Sort(new ComparableComparer());
                 }
 
                 // no columns? let's return the object itself (we support null)
                 if (i == 0)
                 {
-                    yield return new Tuple<object, object>(Object?.GetType(), Object);
+                    list.Add(new Tuple<object, object>(Object?.GetType(), Object));
                 }
                 else if (AddArrayRow && array != null)
                 {
-                    yield return new Tuple<object, object>("<values>", string.Join(Environment.NewLine, array.Cast<object>()));
+                    list.Add(new Tuple<object, object>("<values>", string.Join(Environment.NewLine, array.Cast<object>())));
                 }
+                return list;
             }
+        }
+
+        private class ComparableComparer : IComparer<Tuple<object, object>>
+        {
+            public int Compare(Tuple<object, object> x, Tuple<object, object> y) => ((IComparable)x.Item1).CompareTo((IComparable)y.Item1);
         }
 
         protected override void AddColumns(object first)
@@ -1345,7 +1363,7 @@ namespace SqlNado.Utilities
         public KeyValuePairTableStringColumn(TableString table, Type keyType, Type valueType, string name)
             : base(table, name, (c, r) =>
             {
-                var objs = new object[] { name, null};
+                var objs = new object[] { name, null };
                 bool b = (bool)((KeyValuePairTableStringColumn)c).Method.Invoke(r, objs);
                 return b ? objs[1] : null;
             })

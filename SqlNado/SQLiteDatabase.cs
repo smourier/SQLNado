@@ -39,12 +39,26 @@ namespace SqlNado
         }
 
         public static string NativeDllPath { get; private set; }
+
+        public static bool IsThreadSafe
+        {
+            get
+            {
+                HookNativeProcs();
+                return _sqlite3_threadsafe() > 0;
+            }
+        }
+
+        [Browsable(false)]
         public IntPtr Handle => _handle;
         public string FilePath { get; }
-        public IReadOnlyDictionary<Type, SQLiteBindType> Types => _bindTypes;
+        public IReadOnlyDictionary<Type, SQLiteBindType> BindTypes => _bindTypes;
         public SQLiteTypeOptions TypeOptions { get; }
-        public bool EnforceForeignKeys { get { return ExecuteScalar<bool>("PRAGMA foreign_keys"); } set { ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0) + ";"); } }
-        public IEnumerable<string> CompileOptions => Execute("PRAGMA compile_options").Select(row => (string)row[0]);
+        public bool EnforceForeignKeys { get { return ExecuteScalar<bool>("PRAGMA foreign_keys"); } set { ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); } }
+        public int BusyTimeout { get { return ExecuteScalar<int>("PRAGMA busy_timeout"); } set { ExecuteNonQuery("PRAGMA busy_timeout=" + value); } }
+        public int CacheSize { get { return ExecuteScalar<int>("PRAGMA cache_size"); } set { ExecuteNonQuery("PRAGMA cache_size=" + value); } }
+        public int DataVersion => ExecuteScalar<int>("PRAGMA data_version");
+        public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
 
         public IEnumerable<SQLiteTable> Tables
         {
@@ -66,7 +80,8 @@ namespace SqlNado
             }
         }
 
-        public virtual int TotalChangesCount
+        [Browsable(false)]
+        public int TotalChangesCount
         {
             get
             {
@@ -75,7 +90,8 @@ namespace SqlNado
             }
         }
 
-        public virtual int ChangesCount
+        [Browsable(false)]
+        public int ChangesCount
         {
             get
             {
@@ -84,7 +100,8 @@ namespace SqlNado
             }
         }
 
-        public virtual long LastInsertRowId
+        [Browsable(false)]
+        public long LastInsertRowId
         {
             get
             {
@@ -94,7 +111,7 @@ namespace SqlNado
         }
 
         public bool CheckIntegrity() => CheckIntegrity(100).FirstOrDefault().EqualsIgnoreCase("ok");
-        public IEnumerable<string> CheckIntegrity(int maximumErrors) => Execute("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string)o[0]);
+        public IEnumerable<string> CheckIntegrity(int maximumErrors) => LoadObjects("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string)o[0]);
 
         public SQLiteTable GetTable<T>() => GetObjectTable<T>()?.Table;
         public SQLiteTable GetTable(Type type) => GetObjectTable(type)?.Table;
@@ -478,7 +495,7 @@ namespace SqlNado
             }
         }
 
-        public virtual IEnumerable<object[]> Execute(string sql, params object[] args)
+        public virtual IEnumerable<object[]> LoadObjects(string sql, params object[] args)
         {
             using (var statement = PrepareStatement(sql, args))
             {
@@ -500,7 +517,7 @@ namespace SqlNado
             }
         }
 
-        public virtual IEnumerable<SQLiteRow> ExecuteAsRows(string sql, params object[] args)
+        public virtual IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args)
         {
             int index = 0;
             using (var statement = PrepareStatement(sql, args))
@@ -674,6 +691,7 @@ namespace SqlNado
             _sqlite3_bind_blob = LoadProc<sqlite3_bind_blob>();
             _sqlite3_bind_int = LoadProc<sqlite3_bind_int>();
             _sqlite3_bind_int64 = LoadProc<sqlite3_bind_int64>();
+            _sqlite3_threadsafe = LoadProc<sqlite3_threadsafe>();
         }
 
         private static T LoadProc<T>() => LoadProc<T>(null);
@@ -811,6 +829,11 @@ namespace SqlNado
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
         internal static sqlite3_bind_int _sqlite3_bind_int;
+
+        // https://sqlite.org/c3ref/threadsafe.html
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate int sqlite3_threadsafe();
+        internal static sqlite3_threadsafe _sqlite3_threadsafe;
 
         private class Utf8Marshaler : ICustomMarshaler
         {

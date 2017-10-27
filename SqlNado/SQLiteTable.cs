@@ -56,7 +56,7 @@ namespace SqlNado
         }
 
         public IEnumerable<SQLiteRow> GetRows() => GetRows(int.MaxValue);
-        public IEnumerable<SQLiteRow> GetRows(int maximumRows) => Database.ExecuteAsRows("SELECT * FROM " + EscapedName + " LIMIT " + maximumRows);
+        public IEnumerable<SQLiteRow> GetRows(int maximumRows) => Database.LoadRows("SELECT * FROM " + EscapedName + " LIMIT " + maximumRows);
 
         public IReadOnlyList<SQLiteColumn> Columns
         {
@@ -84,6 +84,19 @@ namespace SqlNado
 
         public SQLiteTableIndex AutoPrimaryKey => Indices.FirstOrDefault(i => i.Origin.EqualsIgnoreCase("pk"));
         public IEnumerable<SQLiteColumn> PrimaryKeyColumns => Columns.Where(c => c.IsPrimaryKey);
+
+        public IEnumerable<SQLiteForeignKey> ForeignKeys
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(Name))
+                    return Enumerable.Empty<SQLiteForeignKey>();
+
+                var options = new SQLiteLoadOptions<SQLiteForeignKey>(Database);
+                options.GetInstanceFunc = (t, s, o) => new SQLiteForeignKey(this);
+                return Database.Load("PRAGMA foreign_key_list(" + EscapedName + ")", options);
+            }
+        }
 
         public IEnumerable<SQLiteTableIndex> Indices
         {

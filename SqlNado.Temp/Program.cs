@@ -33,6 +33,13 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("chinook.db"))
             {
+                foreach (var tbl in db.Tables)
+                {
+                    Console.WriteLine(tbl);
+                    //db.LoadRows("PRAGMA foreign_key_list(" + tbl.EscapedName + ");").ToTableString(Console.Out);
+                    tbl.ForeignKeys.ToTableString(Console.Out);
+                }
+                return;
                 db.DeleteTempTables();
                 db.DeleteTable<Customer>();
                 //db.Tables.ToTableString(Console.Out);
