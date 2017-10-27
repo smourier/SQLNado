@@ -33,65 +33,57 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("chinook.db"))
             {
-                foreach (var tbl in db.Tables)
-                {
-                    Console.WriteLine(tbl);
-                    //db.LoadRows("PRAGMA foreign_key_list(" + tbl.EscapedName + ");").ToTableString(Console.Out);
-                    tbl.ForeignKeys.ToTableString(Console.Out);
-                }
-                return;
+                db.Logger = new ConsoleLogger(true);
                 db.DeleteTempTables();
-                db.DeleteTable<Customer>();
-                //db.Tables.ToTableString(Console.Out);
-                //Console.WriteLine(db.EnforceForeignKeys);
-                //var table = db.GetObjectTable<Customer>();
-                //var o = new SQLiteSaveOptions { DeleteUnusedColumns = true };
 
-                var c = new Customer();
+                db.DeleteTable<CustomerWithRowId>();
+
+                var c = new CustomerWithImplicitRowId();
                 c.Name = "Name" + DateTime.Now;
+                //c.CreationDate = DateTime.Now;
                 db.Save(c);
-                var ot = db.GetObjectTable<Customer>();
-                TableStringExtensions.ToTableString(ot, Console.Out);
-                TableStringExtensions.ToTableString(c, Console.Out);
 
-                //db.DeleteTable("t");
-                //db.ExecuteNonQuery("CREATE TABLE t(x INTEGER PRIMARY KEY, y, z) WITHOUT ROWID;");
-                //db.ExecuteAsRows("PRAGMA index_xinfo(sqlite_autoindex_t_1)").ToTableString(Console.Out);
-                ////db.ExecuteAsRows("SELECT rowid,* FROM invoices limit 10").ToTableString(Console.Out);
-                var table = db.GetTable<Customer>();
-                //Console.WriteLine(table.Sql);
-                //table.Columns.ToTableString(Console.Out);
-                //table.Indices.ToTableString(Console.Out);
+                var table = db.GetTable<CustomerWithImplicitRowId>();
                 TableStringExtensions.ToTableString(table, Console.Out);
                 TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
 
-                db.LoadAll<Customer>().ToTableString(Console.Out);
+                db.LoadAll<CustomerWithImplicitRowId>().ToTableString(Console.Out);
             }
         }
     }
 
-    [SQLiteTable(Name = "sqlite_master")]
-    public class Table
-    {
-        public string Type { get; set; }
-        public string Name { get; set; }
-        [SQLiteColumn(Name = "tbl_name")]
-        public string TableName { get; set; }
-        public int RootPage { get; set; }
-        public string Sql { get; set; }
-    }
-
-    [SQLiteTable(Name = "playlist_track")]
-    public class PlayListTrack
-    {
-        public int PlaylistId { get; set; }
-        public int TrackId { get; set; }
-    }
-
-    [SQLiteTable(Name = "Customers")]
     public class CustomerWithRowId
     {
-        public long RowId { get; set; }
+        [SQLiteColumn(IsPrimaryKey = true, AutoIncrements = true)]
+        public long MyRowId { get; set; }
+        public string Name { get; set; }
+        [SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
+        public DateTime CreationDate { get; set; }
+    }
+
+    public class CustomerWithImplicitRowId
+    {
+        [SQLiteColumn(IsPrimaryKey = true, AutoIncrements = true)]
+        public byte MyRowId { get; set; }
+        public string Name { get; set; }
+        [SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
+        public DateTime? CreationDate { get; set; }
+    }
+
+    [SQLiteTable(WithoutRowId = true)]
+    public class MyLog
+    {
+        public MyLog()
+        {
+            CreationDate = DateTime.Now;
+            Id = Guid.NewGuid();
+            Text = "mylog" + Environment.TickCount;
+        }
+
+        [SQLiteColumn(IsPrimaryKey = true)]
+        public Guid Id { get; }
+        public DateTime CreationDate { get; }
+        public string Text { get; set; }
     }
 
     public class Customer : ISQLiteObject

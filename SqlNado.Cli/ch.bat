@@ -1,0 +1,1 @@
+dotnet SqlNado.Cli.dll chinook.db

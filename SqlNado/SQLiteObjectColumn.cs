@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using SqlNado.Utilities;
 
 namespace SqlNado
@@ -44,6 +45,7 @@ namespace SqlNado
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
         public virtual bool AutoIncrements { get; set; }
+        public bool AutomaticValue => AutoIncrements && IsRowId;
         public virtual bool HasDefaultValue { get; set; }
         public virtual string Collation { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
@@ -62,22 +64,21 @@ namespace SqlNado
             if (!Name.EqualsIgnoreCase(column.Name))
                 return false;
 
-            if (column.IsNotNullable != column.IsNotNullable)
+            if (IsNullable == column.IsNotNullable)
                 return false;
 
-            if (column.DefaultValue != null)
+            if (DefaultValue != null)
             {
-                if (DefaultValue == null)
-                    return false;
-
-                if (!column.DefaultValue.Equals(DefaultValue))
+                if (!DefaultValue.Equals(column.DefaultValue))
                     return false;
             }
-
-            if (column.IsPrimaryKey != IsPrimaryKey)
+            else if (column.DefaultValue != null)
                 return false;
 
-            if (column.Type != DataType)
+            if (IsPrimaryKey != column.IsPrimaryKey)
+                return false;
+
+            if (!DataType.EqualsIgnoreCase(column.Type))
                 return false;
 
             return true;
@@ -112,11 +113,16 @@ namespace SqlNado
             get
             {
                 string sql = EscapedName + " " + DataType;
-                if (AutoIncrements)
+                int pkCols = Table.PrimaryKeyColumns.Count();
+                if (IsPrimaryKey && pkCols == 1)
                 {
-                    sql += " AUTOINCREMENT";
+                    sql += " PRIMARY KEY";
+                    if (AutoIncrements)
+                    {
+                        sql += " AUTOINCREMENT";
+                    }
                 }
- 
+
                 if (!IsNullable)
                 {
                     sql += " NOT NULL";
@@ -193,6 +199,7 @@ namespace SqlNado
             IsReadOnly = attribute.IsReadOnly;
             IsNullable = attribute.IsNullable;
             IsPrimaryKey = attribute.IsPrimaryKey;
+            AutoIncrements = attribute.AutoIncrements;
             AutomaticType = attribute.AutomaticType;
             HasDefaultValue = attribute.HasDefaultValue;
             Collation = attribute.Collation;

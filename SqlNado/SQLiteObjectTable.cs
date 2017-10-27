@@ -56,13 +56,16 @@ namespace SqlNado
 
         public virtual string BuildCreateSql(string tableName)
         {
-            string sql = "CREATE TABLE " + SQLiteStatement.EscapeName(tableName) + "(";
+            string sql = "CREATE TABLE " + SQLiteStatement.EscapeName(tableName) + " (";
             sql += string.Join(",", Columns.Select(c => c.CreateSql));
 
-            string pk = string.Join(",", PrimaryKeyColumns.Select(c => c.EscapedName));
-            if (!string.IsNullOrWhiteSpace(pk))
+            if (PrimaryKeyColumns.Count() > 1)
             {
-                sql += ",PRIMARY KEY (" + pk + ")";
+                string pk = string.Join(",", PrimaryKeyColumns.Select(c => c.EscapedName));
+                if (!string.IsNullOrWhiteSpace(pk))
+                {
+                    sql += ",PRIMARY KEY (" + pk + ")";
+                }
             }
 
             sql += ")";
@@ -76,12 +79,11 @@ namespace SqlNado
         }
 
         public virtual string BuildWherePrimaryKeyStatement() => string.Join(",", PrimaryKeyColumns.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
-
-        public virtual string BuildColumnsSetStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
-
+        public virtual string BuildColumnsUpdateSetStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue).Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
         public virtual string BuildColumnsStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name)));
-
-        public virtual string BuildColumnsParametersStatement() => string.Join(",", Columns.Select(c => "?"));
+        public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
+        public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
+        public virtual string BuildColumnsParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue).Select(c => "?"));
 
         public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions<T> options)
         {
@@ -174,7 +176,7 @@ namespace SqlNado
                     case SQLiteAutomaticColumnType.EnvironmentMachineName:
                         if (value == null || (value is string s && s == null))
                         {
-                            switch(col.AutomaticType)
+                            switch (col.AutomaticType)
                             {
                                 case SQLiteAutomaticColumnType.EnvironmentMachineName:
                                     s = Environment.MachineName;
@@ -266,6 +268,9 @@ namespace SqlNado
             var pk = new List<object>();
             foreach (var col in Columns)
             {
+                if (col.AutomaticValue)
+                    continue;
+
                 var value = col.GetValueForBind(instance);
                 args.Add(value);
 
@@ -275,37 +280,28 @@ namespace SqlNado
                 }
             }
 
-            bool ret = false;
-            string sql;
-            if (HasPrimaryKey)
-            {
-                // TODO: check if primary key is ok?
+            bool tryUpdate = HasPrimaryKey && pk.Count > 0;
 
-                sql = "UPDATE " + GetConflictResolutionClause(options.ConflictResolution) + EscapedName + "SET " + BuildColumnsSetStatement();
+            string sql;
+            int count = 0;
+            if (tryUpdate)
+            {
+                sql = "UPDATE " + GetConflictResolutionClause(options.ConflictResolution) + EscapedName + " SET " + BuildColumnsUpdateSetStatement();
                 sql += " WHERE " + BuildWherePrimaryKeyStatement();
 
                 pk.InsertRange(0, args);
-                int count = Database.ExecuteNonQuery(sql, pk.ToArray());
-                if (count == 0)
-                {
-                    sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsStatement();
-                    sql += ") VALUES (" + BuildColumnsParametersStatement() + ")";
-                }
-
-                count = Database.ExecuteNonQuery(sql, args.ToArray());
-                ret = count > 0;
+                count = Database.ExecuteNonQuery(sql, pk.ToArray());
             }
-            else
+
+            if (count == 0)
             {
-                // insert always
-                sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsStatement();
+                sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsInsertStatement();
                 sql += ") VALUES (" + BuildColumnsParametersStatement() + ")";
-                int count = Database.ExecuteNonQuery(sql, args.ToArray());
-                ret = count > 0;
+                count = Database.ExecuteNonQuery(sql, args.ToArray());
             }
 
             lo?.OnSaveAction(SQLiteObjectAction.Saved, options);
-            return ret;
+            return count > 0;
         }
 
         private static string GetConflictResolutionClause(SQLiteConflictResolution res)
@@ -371,12 +367,25 @@ namespace SqlNado
 
                 sql = BuildCreateSql(tempTableName);
                 count += Database.ExecuteNonQuery(sql);
-                sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Select(c => c.EscapedName)) + " FROM " + EscapedName;
-                count += Database.ExecuteNonQuery(sql);
-                sql = "DROP TABLE " + EscapedName;
-                count += Database.ExecuteNonQuery(sql);
-                sql = "ALTER TABLE " + tempTableName + " RENAME TO " + EscapedName;
-                count += Database.ExecuteNonQuery(sql);
+                bool dropped = false;
+                try
+                {
+                    sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Select(c => c.EscapedName)) + " FROM " + EscapedName;
+                    count += Database.ExecuteNonQuery(sql);
+                    sql = "DROP TABLE " + EscapedName;
+                    dropped = true;
+                    count += Database.ExecuteNonQuery(sql);
+                    sql = "ALTER TABLE " + tempTableName + " RENAME TO " + EscapedName;
+                    count += Database.ExecuteNonQuery(sql);
+                }
+                catch (Exception e)
+                {
+                    if (!dropped)
+                    {
+                        Database.DeleteTable(tempTableName);
+                    }
+                    throw new SqlNadoException("0011: Cannot synchronize schema for '" + Name + "' table.", e);
+                }
                 return count;
             }
 

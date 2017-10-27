@@ -202,6 +202,7 @@ namespace SqlNado
             {
                 if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df)
                 {
+                    // https://www.sqlite.org/lang_createtable.html
                     if (df.EqualsIgnoreCase("CURRENT_TIME") ||
                         df.EqualsIgnoreCase("CURRENT_DATE") ||
                         df.EqualsIgnoreCase("CURRENT_TIMESTAMP"))
@@ -221,7 +222,7 @@ namespace SqlNado
 
             if (!att._isNullable.HasValue)
             {
-                att.IsNullable = !property.PropertyType.IsValueType;
+                att.IsNullable = property.PropertyType.IsNullable() || !property.PropertyType.IsValueType;
             }
 
             if (!att._isReadOnly.HasValue)

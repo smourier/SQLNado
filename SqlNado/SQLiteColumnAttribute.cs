@@ -28,7 +28,7 @@ namespace SqlNado
         public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
         public virtual SQLiteTypeOptions TypeOptions { get; set; }
         public virtual object DefaultValue { get; set; }
-
+        
         public virtual Expression<Func<object, object>> GetValueExpression { get; set; }
         public virtual Expression<Action<SQLiteLoadOptions, object, object>> SetValueExpression { get; set; }
 

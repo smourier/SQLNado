@@ -38,12 +38,18 @@ namespace SqlNado.Cli
                 return;
             }
 
+            var traces = CommandLine.GetArgument("traces", false);
             Console.CancelKeyPress += (sender, e) => e.Cancel = true;
             string path = Path.GetFullPath(args[0]);
             Console.WriteLine("Path: " + path);
             Console.WriteLine();
             using (var db = new SQLiteDatabase(path))
             {
+                if (traces)
+                {
+                    db.Logger = new ConsoleLogger(false);
+                }
+
                 do
                 {
                     var line = Console.ReadLine();
@@ -87,6 +93,7 @@ namespace SqlNado.Cli
                         {
                             foreach (var table in db.Tables)
                             {
+                                Console.WriteLine("[" + table.Name + "]");
                                 TableStringExtensions.ToTableString(table, Console.Out);
                             }
                             continue;
@@ -94,7 +101,42 @@ namespace SqlNado.Cli
 
                         foreach (var table in db.Tables.Where(t => t.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase)))
                         {
+                            Console.WriteLine("[" + table.Name + "]");
                             TableStringExtensions.ToTableString(table, Console.Out);
+                        }
+                        continue;
+                    }
+
+                    if (split.Length >= 2 && (split[0].EqualsIgnoreCase("rows") || split[0].EqualsIgnoreCase("data")))
+                    {
+                        int maxRows = int.MaxValue;
+                        if (split.Length >= 3 && int.TryParse(split[2], out int i))
+                        {
+                            maxRows = i;
+                        }
+
+                        int starPos = split[1].IndexOf('*');
+                        if (starPos < 0)
+                        {
+                            TableStringExtensions.ToTableString(db.GetTable(split[1])?.GetRows(maxRows), Console.Out);
+                            continue;
+                        }
+
+                        string query = split[1].Substring(0, starPos).Nullify();
+                        if (query == null)
+                        {
+                            foreach (var table in db.Tables)
+                            {
+                                Console.WriteLine("[" + table.Name + "]");
+                                TableStringExtensions.ToTableString(table.GetRows(maxRows), Console.Out);
+                            }
+                            continue;
+                        }
+
+                        foreach (var table in db.Tables.Where(t => t.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            Console.WriteLine("[" + table.Name + "]");
+                            TableStringExtensions.ToTableString(table.GetRows(maxRows), Console.Out);
                         }
                         continue;
                     }

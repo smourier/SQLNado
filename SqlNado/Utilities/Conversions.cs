@@ -249,6 +249,14 @@ namespace SqlNado.Utilities
             return t.Length == 0 ? null : t;
         }
 
+        public static bool IsNullable(this Type type)
+        {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+        }
+
         public static object ChangeType(object input, Type conversionType) => ChangeType(input, conversionType, null, null);
         public static object ChangeType(object input, Type conversionType, object defaultValue) => ChangeType(input, conversionType, defaultValue, null);
         public static object ChangeType(object input, Type conversionType, object defaultValue, IFormatProvider provider)
@@ -295,7 +303,7 @@ namespace SqlNado.Utilities
             }
 
             Type nullableType = null;
-            if (conversionType.IsGenericType && conversionType.GetGenericTypeDefinition() == typeof(Nullable<>))
+            if (conversionType.IsNullable())
             {
                 nullableType = conversionType.GenericTypeArguments[0];
                 if (input == null)

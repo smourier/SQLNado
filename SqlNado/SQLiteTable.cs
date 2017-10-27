@@ -56,7 +56,15 @@ namespace SqlNado
         }
 
         public IEnumerable<SQLiteRow> GetRows() => GetRows(int.MaxValue);
-        public IEnumerable<SQLiteRow> GetRows(int maximumRows) => Database.LoadRows("SELECT * FROM " + EscapedName + " LIMIT " + maximumRows);
+        public IEnumerable<SQLiteRow> GetRows(int maximumRows)
+        {
+            string sql = "SELECT * FROM " + EscapedName;
+            if (maximumRows > 0 && maximumRows < int.MaxValue)
+            {
+                sql += " LIMIT " + maximumRows;
+            }
+            return Database.LoadRows(sql);
+        }
 
         public IReadOnlyList<SQLiteColumn> Columns
         {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -24,7 +25,8 @@ namespace SqlNado
             Database = db;
             Sql = sql;
             db.CheckDisposed();
-            SQLiteDatabase.CheckError(Database.Handle, SQLiteDatabase._sqlite3_prepare16_v2(db.Handle, sql, sql.Length * 2, out _handle, IntPtr.Zero));
+            db.Log(TraceLevel.Verbose, "Preparing statement `" + sql + "`", nameof(SQLiteStatement) + ".ctor");
+            db.CheckError(SQLiteDatabase._sqlite3_prepare16_v2(db.Handle, sql, sql.Length * 2, out _handle, IntPtr.Zero));
         }
 
         public SQLiteDatabase Database { get; }
@@ -107,49 +109,50 @@ namespace SqlNado
         public virtual void BindParameter(int index, object value)
         {
             SQLiteErrorCode code;
-            if (value == null)
+            var type = Database.GetBindType(value); // never null
+            var ctx = Database.CreateBindContext();
+            ctx.Statement = this;
+            ctx.Value = value;
+            ctx.Index = index;
+            object bindValue = type.ConvertFunc(ctx);
+            if (bindValue == null)
             {
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as null");
                 code = BindParameterNull(index);
             }
-            else
+            else if (bindValue is string s)
             {
-                var type = Database.GetBindType(value); // never null
-                var ctx = Database.CreateBindContext();
-                ctx.Statement = this;
-                ctx.Value = value;
-                ctx.Index = index;
-                object bindValue = type.ConvertFunc(ctx);
-                if (bindValue == null)
-                {
-                    code = BindParameterNull(index);
-                }
-                else if (bindValue is string s)
-                {
-                    code = BindParameter(index, s);
-                }
-                else if (bindValue is int i)
-                {
-                    code = BindParameter(index, i);
-                }
-                else if (bindValue is long l)
-                {
-                    code = BindParameter(index, l);
-                }
-                else if (bindValue is bool b)
-                {
-                    code = BindParameter(index, b);
-                }
-                else if (bindValue is double d)
-                {
-                    code = BindParameter(index, d);
-                }
-                else if (bindValue is byte[] bytes)
-                {
-                    code = BindParameter(index, bytes);
-                }
-                else
-                    throw new SqlNadoException("0010: Binding only supports Int32, Int64, String, Boolean, Double and Byte[] primitive types.");
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as String: " +  s);
+                code = BindParameter(index, s);
             }
+            else if (bindValue is int i)
+            {
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as Int32: " + i);
+                code = BindParameter(index, i);
+            }
+            else if (bindValue is long l)
+            {
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as Int64: " + l);
+                code = BindParameter(index, l);
+            }
+            else if (bindValue is bool b)
+            {
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as Boolean: " + b);
+                code = BindParameter(index, b);
+            }
+            else if (bindValue is double d)
+            {
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as Double: " + d);
+                code = BindParameter(index, d);
+            }
+            else if (bindValue is byte[] bytes)
+            {
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[]: " + Conversions.ToHexa(bytes, 32));
+                code = BindParameter(index, bytes);
+            }
+            else
+                throw new SqlNadoException("0010: Binding only supports Int32, Int64, String, Boolean, Double and Byte[] primitive types.");
+
             Database.CheckError(code);
         }
 
@@ -375,26 +378,35 @@ namespace SqlNado
             return SQLiteDatabase._sqlite3_column_type(Handle, index);
         }
 
-        public void StepAll() => Step(s => true);
-        public void StepOne() => Step(s => false);
-        public virtual void Step(Func<SQLiteStatement, bool> func)
+        public void StepAll() => Step((s, i) => true);
+        public void StepOne() => Step((s, i) => false);
+        public void StepMax(int maximumRows) => Step((s, i) => (i + 1) < maximumRows);
+        public virtual void Step(Func<SQLiteStatement, int, bool> func)
         {
             if (func == null)
                 throw new ArgumentNullException(nameof(func));
 
+            int i = 0;
             CheckDisposed();
             do
             {
                 SQLiteErrorCode code = SQLiteDatabase._sqlite3_step(Handle);
                 if (code == SQLiteErrorCode.SQLITE_DONE)
+                {
+                    Database.Log(TraceLevel.Verbose, "Step done at index " + i);
                     break;
+                }
 
                 if (code == SQLiteErrorCode.SQLITE_ROW)
                 {
-                    bool cont = func(this);
+                    bool cont = func(this, i);
                     if (!cont)
+                    {
+                        Database.Log(TraceLevel.Verbose, "Step break at index " + i);
                         break;
+                    }
 
+                    i++;
                     continue;
                 }
                 Database.CheckError(code);
