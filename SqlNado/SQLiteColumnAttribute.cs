@@ -21,6 +21,9 @@ namespace SqlNado
         public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
         public virtual bool AutoIncrements { get => _autoIncrements ?? false; set => _autoIncrements = value; }
         public virtual bool IsPrimaryKey { get => _isPrimaryKey ?? false; set => _isPrimaryKey = value; }
+        public virtual SQLiteDirection PrimaryKeyDirection { get; set; }
+        public virtual bool IsUnique { get; set; }
+        public virtual string CheckExpression { get; set; }
         public virtual bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
         public virtual bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
         public virtual bool HasDefaultValue { get => _hasDefaultValue ?? false; set => _hasDefaultValue = value; }

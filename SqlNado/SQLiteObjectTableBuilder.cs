@@ -179,6 +179,11 @@ namespace SqlNado
             return SQLiteColumnType.TEXT.ToString();
         }
 
+        internal static bool IsComputedDefaultValue(string value) =>
+            value.EqualsIgnoreCase("CURRENT_TIME") ||
+            value.EqualsIgnoreCase("CURRENT_DATE") ||
+            value.EqualsIgnoreCase("CURRENT_TIMESTAMP");
+
         protected virtual SQLiteColumnAttribute GetColumnAttribute(PropertyInfo property)
         {
             if (property == null)
@@ -203,9 +208,7 @@ namespace SqlNado
                 if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df)
                 {
                     // https://www.sqlite.org/lang_createtable.html
-                    if (df.EqualsIgnoreCase("CURRENT_TIME") ||
-                        df.EqualsIgnoreCase("CURRENT_DATE") ||
-                        df.EqualsIgnoreCase("CURRENT_TIMESTAMP"))
+                    if (IsComputedDefaultValue(df))
                     {
                         att.DataType = SQLiteColumnType.TEXT.ToString();
                         // we need to force this column type options
@@ -286,7 +289,7 @@ namespace SqlNado
                     //}
                     //else
                     //{
-                        ifFalse = Expression.Empty();
+                    ifFalse = Expression.Empty();
                     //}
 
                     setValue = Expression.Condition(Expression.Equal(tryConvert, Expression.Constant(true)), ifTrue, ifFalse);

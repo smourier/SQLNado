@@ -5,11 +5,9 @@ VisualStudioVersion = 15.0.27004.2005
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado", "SqlNado\SqlNado.csproj", "{ED748985-55BB-4753-B0A6-EA7CAF31CD07}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Tests", "SqlNado.Tests\SqlNado.Tests.csproj", "{3BB7D409-4BEE-4FC5-A5E7-720CEBED4EE0}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Temp", "SqlNado.Temp\SqlNado.Temp.csproj", "{2B29E052-B7CE-477C-9A4F-D4AA8E9B981A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlNado.Cli", "SqlNado.Cli\SqlNado.Cli.csproj", "{D184B8AF-6BC4-4E8E-9BE5-F4519374F04B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Cli", "SqlNado.Cli\SqlNado.Cli.csproj", "{D184B8AF-6BC4-4E8E-9BE5-F4519374F04B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,10 +19,6 @@ Global
 		{ED748985-55BB-4753-B0A6-EA7CAF31CD07}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ED748985-55BB-4753-B0A6-EA7CAF31CD07}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ED748985-55BB-4753-B0A6-EA7CAF31CD07}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3BB7D409-4BEE-4FC5-A5E7-720CEBED4EE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3BB7D409-4BEE-4FC5-A5E7-720CEBED4EE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3BB7D409-4BEE-4FC5-A5E7-720CEBED4EE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3BB7D409-4BEE-4FC5-A5E7-720CEBED4EE0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2B29E052-B7CE-477C-9A4F-D4AA8E9B981A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2B29E052-B7CE-477C-9A4F-D4AA8E9B981A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2B29E052-B7CE-477C-9A4F-D4AA8E9B981A}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -79,11 +79,11 @@ namespace SqlNado
         }
 
         public virtual string BuildWherePrimaryKeyStatement() => string.Join(",", PrimaryKeyColumns.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
-        public virtual string BuildColumnsUpdateSetStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue).Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
+        public virtual string BuildColumnsUpdateSetStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
         public virtual string BuildColumnsStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name)));
-        public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
-        public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
-        public virtual string BuildColumnsParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue).Select(c => "?"));
+        public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
+        public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
+        public virtual string BuildColumnsInsertParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => "?"));
 
         public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions<T> options)
         {
@@ -111,7 +111,14 @@ namespace SqlNado
             }
             else
             {
-                instance = Activator.CreateInstance(type);
+                try
+                {
+                    instance = Activator.CreateInstance(type);
+                }
+                catch (Exception e)
+                {
+                    throw new SqlNadoException("0011: Cannot create an instance for the '" + Name + "' table.", e);
+                }
             }
 
             InitializeAutomaticColumns(instance);
@@ -268,10 +275,19 @@ namespace SqlNado
             var pk = new List<object>();
             foreach (var col in Columns)
             {
-                if (col.AutomaticValue)
+                if (col.AutomaticValue || col.ComputedValue)
                     continue;
 
-                var value = col.GetValueForBind(instance);
+                object value;
+                if (options.GetValueForBindFunc != null)
+                {
+                    value = options.GetValueForBindFunc(col, instance);
+                }
+                else
+                {
+                    value = col.GetValueForBind(instance);
+                }
+
                 args.Add(value);
 
                 if (col.IsPrimaryKey)
@@ -296,7 +312,7 @@ namespace SqlNado
             if (count == 0)
             {
                 sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsInsertStatement();
-                sql += ") VALUES (" + BuildColumnsParametersStatement() + ")";
+                sql += ") VALUES (" + BuildColumnsInsertParametersStatement() + ")";
                 count = Database.ExecuteNonQuery(sql, args.ToArray());
             }
 
@@ -355,16 +371,10 @@ namespace SqlNado
 
             if ((options.DeleteUnusedColumns && deleted.Count > 0) || changed.Count > 0 || hasNonConstantDefaults)
             {
-                // SQLite does not support column ALTER nor DROP, so we need to copy the data, drop the table, recreate it and copy back
-                // http://www.sqlite.org/faq.html#q11
-                // BEGIN TRANSACTION;
-                // CREATE TABLE t1_backup(a, b);
-                // INSERT INTO t1_backup SELECT a,b FROM t1;
-                // DROP TABLE t1;
-                // ALTER TABLE t1_backup RENAME TO t1;
-                // COMMIT;
+                // SQLite does not support ALTER or DROP column.
+                // Note this may fail depending on column unicity, constraint violation, etc.
+                // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
                 string tempTableName = TempTablePrefix + Guid.NewGuid().ToString("N");
-
                 sql = BuildCreateSql(tempTableName);
                 count += Database.ExecuteNonQuery(sql);
                 bool dropped = false;

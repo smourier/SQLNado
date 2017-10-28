@@ -286,6 +286,91 @@ namespace SqlNado
             return ExecuteNonQuery(sql, pk) > 0;
         }
 
+        public int Count<T>() => Count(typeof(T));
+        public virtual int Count(Type objectType)
+        {
+            if (objectType == null)
+                throw new ArgumentNullException(nameof(objectType));
+
+            var table = GetObjectTable(objectType);
+            return ExecuteScalar("SELECT count(*) FROM " + table.EscapedName, 0);
+        }
+
+        public int Save<T>(IEnumerable<T> enumerable) => Save(enumerable, null);
+        public virtual int Save<T>(IEnumerable<T> enumerable, SQLiteSaveOptions options) => Save((IEnumerable)enumerable, options);
+
+        public int Save(IEnumerable enumerable) => Save(enumerable, null);
+        public virtual int Save(IEnumerable enumerable, SQLiteSaveOptions options)
+        {
+            if (enumerable == null)
+                return 0;
+
+            options = options ?? new SQLiteSaveOptions() { UseSavePoint = true, SynchronizeSchema = true };
+
+            int count = 0;
+            int i = 0;
+            try
+            {
+                foreach (var obj in enumerable)
+                {
+                    options.Index = i;
+                    if (i == 0)
+                    {
+                        if (options.UseSavePoint)
+                        {
+                            options.SavePointName = "_sp" + Guid.NewGuid().ToString("N");
+                            ExecuteNonQuery("SAVEPOINT " + options.SavePointName);
+                        }
+                        else if (options.UseTransaction)
+                        {
+                            ExecuteNonQuery("BEGIN TRANSACTION");
+                        }
+                    }
+                    else
+                    {
+                        options.SynchronizeSchema = false;
+                    }
+
+                    if (Save(obj, options))
+                    {
+                        count++;
+                    }
+
+                    i++;
+                }
+            }
+            catch
+            {
+                options.Index = -1;
+                if (options.SavePointName != null)
+                {
+                    ExecuteNonQuery("ROLLBACK TO " + options.SavePointName);
+                    options.SavePointName = null;
+                }
+                else if (options.UseTransaction)
+                {
+                    ExecuteNonQuery("ROLLBACK");
+                }
+                throw;
+            }
+
+            options.Index = -1;
+            if (options.SavePointName != null)
+            {
+                ExecuteNonQuery("RELEASE " + options.SavePointName);
+                options.SavePointName = null;
+            }
+            else if (options.UseTransaction)
+            {
+                ExecuteNonQuery("COMMIT");
+            }
+            return count;
+        }
+
+        public virtual void BeginTransaction() => ExecuteNonQuery("BEGIN TRANSACTION");
+        public virtual void Commit() => ExecuteNonQuery("COMMIT");
+        public virtual void Rollback() => ExecuteNonQuery("ROLLBACK");
+
         public bool Save(object obj) => Save(obj, null);
         public virtual bool Save(object obj, SQLiteSaveOptions options)
         {
@@ -305,6 +390,7 @@ namespace SqlNado
 
         public IEnumerable<T> LoadAll<T>(int maximumRows) => Load<T>(null, new SQLiteLoadOptions<T>(this) { MaximumRows = maximumRows }, null);
         public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
+        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions<T> options) => Load<T>(null, options, null);
         public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
         public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions<T> options, params object[] args)
         {
@@ -719,6 +805,7 @@ namespace SqlNado
             _sqlite3_bind_blob = LoadProc<sqlite3_bind_blob>();
             _sqlite3_bind_int = LoadProc<sqlite3_bind_int>();
             _sqlite3_bind_int64 = LoadProc<sqlite3_bind_int64>();
+            _sqlite3_bind_double = LoadProc<sqlite3_bind_double>();
             _sqlite3_threadsafe = LoadProc<sqlite3_threadsafe>();
         }
 

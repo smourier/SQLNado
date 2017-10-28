@@ -41,11 +41,15 @@ namespace SqlNado
         public Func<object, object> GetValueFunc { get; }
         [Browsable(false)]
         public Action<SQLiteLoadOptions, object, object> SetValueAction { get; }
-        public virtual bool IsNullable  { get; set; }
+        public virtual bool IsNullable { get; set; }
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
+        public virtual SQLiteDirection PrimaryKeyDirection { get; set; }
+        public virtual bool IsUnique { get; set; }
+        public virtual string CheckExpression { get; set; }
         public virtual bool AutoIncrements { get; set; }
         public bool AutomaticValue => AutoIncrements && IsRowId;
+        public bool ComputedValue => HasDefaultValue && IsDefaultValueIntrinsic && SQLiteObjectTableBuilder.IsComputedDefaultValue(DefaultValue as string);
         public virtual bool HasDefaultValue { get; set; }
         public virtual string Collation { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
@@ -117,10 +121,25 @@ namespace SqlNado
                 if (IsPrimaryKey && pkCols == 1)
                 {
                     sql += " PRIMARY KEY";
+                    if (PrimaryKeyDirection == SQLiteDirection.Descending)
+                    {
+                        sql += " DESC";
+                    }
+
                     if (AutoIncrements)
                     {
                         sql += " AUTOINCREMENT";
                     }
+                }
+
+                if (IsUnique)
+                {
+                    sql += " UNIQUE";
+                }
+
+                if (!string.IsNullOrWhiteSpace(CheckExpression))
+                {
+                    sql += " CHECK (" + CheckExpression + ")";
                 }
 
                 if (!IsNullable)
@@ -156,6 +175,10 @@ namespace SqlNado
             if (IsPrimaryKey)
             {
                 atts.Add("P");
+            }
+            else if (IsUnique)
+            {
+                atts.Add("U");
             }
 
             if (IsNullable)
@@ -204,6 +227,9 @@ namespace SqlNado
             HasDefaultValue = attribute.HasDefaultValue;
             Collation = attribute.Collation;
             TypeOptions = attribute.TypeOptions;
+            PrimaryKeyDirection = attribute.PrimaryKeyDirection;
+            IsUnique = attribute.IsUnique;
+            CheckExpression = attribute.CheckExpression;
             if (HasDefaultValue)
             {
                 DefaultValue = attribute.DefaultValue;

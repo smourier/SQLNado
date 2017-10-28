@@ -34,10 +34,8 @@ namespace SqlNado.Temp
             using (var db = new SQLiteDatabase("chinook.db"))
             {
                 db.Logger = new ConsoleLogger(true);
+                db.DeleteTable<CustomerWithImplicitRowId>();
                 db.DeleteTempTables();
-
-                db.DeleteTable<CustomerWithRowId>();
-
                 var c = new CustomerWithImplicitRowId();
                 c.Name = "Name" + DateTime.Now;
                 //c.CreationDate = DateTime.Now;

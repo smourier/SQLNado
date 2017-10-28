@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 
 namespace SqlNado
 {
@@ -18,6 +19,14 @@ namespace SqlNado
         public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
 
         public virtual bool TryChangeType(object input, Type conversionType, out object value) => Database.TryChangeType(input, conversionType, out value);
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("ObjectEventsDisabled=" + ObjectEventsDisabled);
+            sb.AppendLine("MaximumRows=" + MaximumRows);
+            return sb.ToString();
+        }
     }
 
     public class SQLiteLoadOptions<T> : SQLiteLoadOptions
