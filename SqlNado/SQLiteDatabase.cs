@@ -56,9 +56,9 @@ namespace SqlNado
         public string FilePath { get; }
         public IReadOnlyDictionary<Type, SQLiteBindType> BindTypes => _bindTypes;
         public SQLiteTypeOptions TypeOptions { get; }
-        public bool EnforceForeignKeys { get { return ExecuteScalar<bool>("PRAGMA foreign_keys"); } set { ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); } }
-        public int BusyTimeout { get { return ExecuteScalar<int>("PRAGMA busy_timeout"); } set { ExecuteNonQuery("PRAGMA busy_timeout=" + value); } }
-        public int CacheSize { get { return ExecuteScalar<int>("PRAGMA cache_size"); } set { ExecuteNonQuery("PRAGMA cache_size=" + value); } }
+        public bool EnforceForeignKeys { get => ExecuteScalar<bool>("PRAGMA foreign_keys"); set => ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); }
+        public int BusyTimeout { get => ExecuteScalar<int>("PRAGMA busy_timeout"); set => ExecuteNonQuery("PRAGMA busy_timeout=" + value); }
+        public int CacheSize { get => ExecuteScalar<int>("PRAGMA cache_size"); set => ExecuteNonQuery("PRAGMA cache_size=" + value); }
         public int DataVersion => ExecuteScalar<int>("PRAGMA data_version");
         public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
         public virtual ISQLiteLogger Logger { get; set; }
@@ -114,10 +114,7 @@ namespace SqlNado
         }
 
         public void LogInfo(object value, [CallerMemberName] string methodName = null) => Log(TraceLevel.Info, value, methodName);
-        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null)
-        {
-            Logger?.Log(level, value, methodName);
-        }
+        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null) => Logger?.Log(level, value, methodName);
 
         public bool CheckIntegrity() => CheckIntegrity(100).FirstOrDefault().EqualsIgnoreCase("ok");
         public IEnumerable<string> CheckIntegrity(int maximumErrors) => LoadObjects("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string)o[0]);
@@ -134,6 +131,7 @@ namespace SqlNado
 
         public SQLiteObjectTable EnsureTable<T>() => EnsureTable(typeof(T), null);
         public SQLiteObjectTable EnsureTable<T>(SQLiteSaveOptions options) => EnsureTable(typeof(T), options);
+        public SQLiteObjectTable EnsureTable(Type type) => EnsureTable(type, null);
         public virtual SQLiteObjectTable EnsureTable(Type type, SQLiteSaveOptions options)
         {
             if (type == null)
@@ -388,9 +386,26 @@ namespace SqlNado
             return false;
         }
 
-        public IEnumerable<T> LoadAll<T>(int maximumRows) => Load<T>(null, new SQLiteLoadOptions<T>(this) { MaximumRows = maximumRows }, null);
+        public IEnumerable<T> LoadByForeignKey<T>(object instance, params object[] args) => LoadByForeignKey<T>(instance, null, args);
+        public virtual IEnumerable<T> LoadByForeignKey<T>(object instance, SQLiteLoadOptions<T> options, params object[] args)
+        {
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
+            var instanceTable = GetObjectTable(instance.GetType());
+            if (!instanceTable.HasPrimaryKey)
+                throw new SqlNadoException("0013: Table '" + instanceTable.Name + "' has no primary key.", new ArgumentException(null, nameof(instance)));
+
+            var table = GetObjectTable(typeof(T));
+            if (table.LoadAction == null)
+                throw new SqlNadoException("0014: Table '" + table.Name + "' does not define a LoadAction.");
+
+            return null;
+        }
+
+        public IEnumerable<T> LoadAll<T>(int maximumRows) => Load(null, new SQLiteLoadOptions<T>(this) { MaximumRows = maximumRows }, null);
         public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
-        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions<T> options) => Load<T>(null, options, null);
+        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions<T> options) => Load(null, options, null);
         public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
         public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions<T> options, params object[] args)
         {

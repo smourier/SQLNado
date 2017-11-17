@@ -394,7 +394,7 @@ namespace SqlNado
                     {
                         Database.DeleteTable(tempTableName);
                     }
-                    throw new SqlNadoException("0011: Cannot synchronize schema for '" + Name + "' table.", e);
+                    throw new SqlNadoException("0012: Cannot synchronize schema for '" + Name + "' table.", e);
                 }
                 return count;
             }

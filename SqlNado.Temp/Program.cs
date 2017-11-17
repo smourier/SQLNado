@@ -33,21 +33,50 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("chinook.db"))
             {
-                db.Logger = new ConsoleLogger(true);
-                db.DeleteTable<CustomerWithImplicitRowId>();
+                //db.Logger = new ConsoleLogger(true);
+                db.DeleteTable<User>();
+                db.DeleteTable<Product>();
                 db.DeleteTempTables();
-                var c = new CustomerWithImplicitRowId();
-                c.Name = "Name" + DateTime.Now;
-                //c.CreationDate = DateTime.Now;
-                db.Save(c);
 
-                var table = db.GetTable<CustomerWithImplicitRowId>();
+                for (int i = 0; i < 10; i++)
+                {
+                    var c = new User();
+                    c.Email = "bob" + i + "." + Environment.TickCount + "@mail.com";
+                    c.Name = "Name" + i + DateTime.Now;
+                    db.Save(c);
+
+                    var p = new Product();
+                    p.Id = Guid.NewGuid();
+                    p.User = c;
+                    db.Save(p);
+                }
+
+
+                var table = db.GetTable<User>();
                 TableStringExtensions.ToTableString(table, Console.Out);
                 TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
 
-                db.LoadAll<CustomerWithImplicitRowId>().ToTableString(Console.Out);
+                var table2 = db.GetTable<Product>();
+                TableStringExtensions.ToTableString(table2, Console.Out);
+                TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
+
+                //db.LoadAll<User>().ToTableString(Console.Out);
             }
         }
+    }
+
+    public class User
+    {
+        [SQLiteColumn(IsPrimaryKey = true)]
+        public string Email { get; set; }
+        public string Name { get; set; }
+    }
+
+    public class Product
+    {
+        [SQLiteColumn(IsPrimaryKey = true)]
+        public Guid Id { get; set; }
+        public User User { get; set; }
     }
 
     public class CustomerWithRowId
