@@ -17,6 +17,7 @@ namespace SqlNado
 {
     public class SQLiteDatabase : IDisposable
     {
+        private string _primaryKeyPersistenceSeparator = "\0";
         private static IntPtr _module;
         private IntPtr _handle;
         private ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
@@ -27,17 +28,18 @@ namespace SqlNado
         {
         }
 
-        public SQLiteDatabase(string filePath, SQLiteOpenOptions flags)
+        public SQLiteDatabase(string filePath, SQLiteOpenOptions options)
         {
             if (filePath == null)
                 throw new ArgumentNullException(nameof(filePath));
 
+            OpenOptions = options;
             TypeOptions = new SQLiteTypeOptions();
             HookNativeProcs();
             filePath = Path.GetFullPath(filePath);
-            CheckError(_sqlite3_open_v2(filePath, out _handle, flags, IntPtr.Zero));
+            CheckError(_sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
             FilePath = filePath;
-            AddDefaultTypes();
+            AddDefaultBindTypes();
         }
 
         public static string NativeDllPath { get; private set; }
@@ -54,6 +56,7 @@ namespace SqlNado
         [Browsable(false)]
         public IntPtr Handle => _handle;
         public string FilePath { get; }
+        public SQLiteOpenOptions OpenOptions { get; }
         public IReadOnlyDictionary<Type, SQLiteBindType> BindTypes => _bindTypes;
         public SQLiteTypeOptions TypeOptions { get; }
         public bool EnforceForeignKeys { get => ExecuteScalar<bool>("PRAGMA foreign_keys"); set => ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); }
@@ -62,6 +65,18 @@ namespace SqlNado
         public int DataVersion => ExecuteScalar<int>("PRAGMA data_version");
         public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
         public virtual ISQLiteLogger Logger { get; set; }
+
+        public string PrimaryKeyPersistenceSeparator
+        {
+            get => _primaryKeyPersistenceSeparator;
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException(nameof(value));
+
+                _primaryKeyPersistenceSeparator = value;
+            }
+        }
 
         public IEnumerable<SQLiteTable> Tables
         {
@@ -208,7 +223,7 @@ namespace SqlNado
             return defaultType ?? SQLiteBindType.ObjectType;
         }
 
-        public virtual void AddType(SQLiteBindType type)
+        public virtual void AddBindType(SQLiteBindType type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -219,7 +234,7 @@ namespace SqlNado
             }
         }
 
-        public virtual SQLiteBindType RemoveType(Type type)
+        public virtual SQLiteBindType RemoveBindType(Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -228,24 +243,24 @@ namespace SqlNado
             return value;
         }
 
-        public virtual void ClearTypes() => _bindTypes.Clear();
+        public virtual void ClearBindTypes() => _bindTypes.Clear();
 
-        protected virtual void AddDefaultTypes()
+        protected virtual void AddDefaultBindTypes()
         {
-            AddType(SQLiteBindType.ByteType);
-            AddType(SQLiteBindType.DateTimeType);
-            AddType(SQLiteBindType.DBNullType);
-            AddType(SQLiteBindType.DecimalType);
-            AddType(SQLiteBindType.FloatType);
-            AddType(SQLiteBindType.GuidType);
-            AddType(SQLiteBindType.Int16Type);
-            AddType(SQLiteBindType.ObjectType);
-            AddType(SQLiteBindType.PassThroughType);
-            AddType(SQLiteBindType.SByteType);
-            AddType(SQLiteBindType.TimeSpanType);
-            AddType(SQLiteBindType.UInt16Type);
-            AddType(SQLiteBindType.UInt32Type);
-            AddType(SQLiteBindType.UInt64Type);
+            AddBindType(SQLiteBindType.ByteType);
+            AddBindType(SQLiteBindType.DateTimeType);
+            AddBindType(SQLiteBindType.DBNullType);
+            AddBindType(SQLiteBindType.DecimalType);
+            AddBindType(SQLiteBindType.FloatType);
+            AddBindType(SQLiteBindType.GuidType);
+            AddBindType(SQLiteBindType.Int16Type);
+            AddBindType(SQLiteBindType.ObjectType);
+            AddBindType(SQLiteBindType.PassThroughType);
+            AddBindType(SQLiteBindType.SByteType);
+            AddBindType(SQLiteBindType.TimeSpanType);
+            AddBindType(SQLiteBindType.UInt16Type);
+            AddBindType(SQLiteBindType.UInt32Type);
+            AddBindType(SQLiteBindType.UInt64Type);
         }
 
         public virtual int DeleteAll<T>()
@@ -545,6 +560,16 @@ namespace SqlNado
                 }
                 while (true);
             }
+        }
+
+        public T CreateObjectInstance<T>() => (T)CreateObjectInstance(typeof(T));
+        public virtual object CreateObjectInstance(Type objectType)
+        {
+            if (objectType == null)
+                throw new ArgumentNullException(nameof(objectType));
+
+            var table = GetObjectTable(objectType);
+            return table.GetInstance(objectType);
         }
 
         public SQLiteObjectTable GetObjectTable<T>() => GetObjectTable(typeof(T));

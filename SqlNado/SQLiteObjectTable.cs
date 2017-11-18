@@ -85,22 +85,39 @@ namespace SqlNado
         public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
         public virtual string BuildColumnsInsertParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => "?"));
 
+        public virtual object[] GetPrimaryKey(object obj)
+        {
+            var list = new List<object>();
+            foreach (var col in PrimaryKeyColumns)
+            {
+                list.Add(col.GetValue(obj));
+            }
+            return list.ToArray();
+        }
+
+        public virtual object[] GetPrimaryKeyForBind(object obj)
+        {
+            var list = new List<object>();
+            foreach (var col in PrimaryKeyColumns)
+            {
+                list.Add(col.GetValueForBind(obj));
+            }
+            return list.ToArray();
+        }
+
+        public T GetInstance<T>(SQLiteStatement statement) => GetInstance<T>(statement, null);
         public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions<T> options)
         {
-            if (statement == null)
-                throw new ArgumentNullException(nameof(statement));
-
             if (options?.GetInstanceFunc != null)
                 return (T)options.GetInstanceFunc(typeof(T), statement, options);
 
             return (T)GetInstance(typeof(T), statement, options);
         }
 
+        public object GetInstance(Type type) => GetInstance(type, null, null);
+        public object GetInstance(Type type, SQLiteLoadOptions options) => GetInstance(type, null, options);
         public virtual object GetInstance(Type type, SQLiteStatement statement, SQLiteLoadOptions options)
         {
-            if (statement == null)
-                throw new ArgumentNullException(nameof(statement));
-
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
@@ -111,13 +128,29 @@ namespace SqlNado
             }
             else
             {
-                try
+                instance = null;
+                if (typeof(ISQLiteObject).IsAssignableFrom(type))
                 {
-                    instance = Activator.CreateInstance(type);
+                    try
+                    {
+                        instance = Activator.CreateInstance(type, Database);
+                    }
+                    catch
+                    {
+                        // do nothing
+                    }
                 }
-                catch (Exception e)
+
+                if (instance == null)
                 {
-                    throw new SqlNadoException("0011: Cannot create an instance for the '" + Name + "' table.", e);
+                    try
+                    {
+                        instance = Activator.CreateInstance(type);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new SqlNadoException("0011: Cannot create an instance for the '" + Name + "' table.", e);
+                    }
                 }
             }
 

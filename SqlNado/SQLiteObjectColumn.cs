@@ -91,6 +91,27 @@ namespace SqlNado
         public virtual object GetValueForBind(object obj)
         {
             var value = GetValue(obj);
+            if (value is ISQLiteObject so)
+            {
+                var pk = so.GetPrimaryKey();
+                value = pk;
+                if (pk != null)
+                {
+                    if (pk.Length == 0)
+                    {
+                        value = null;
+                    }
+                    else if (pk.Length == 1)
+                    {
+                        value = pk[0];
+                    }
+                    else // > 1
+                    {
+                        value = string.Join(Table.Database.PrimaryKeyPersistenceSeparator, pk);
+                    }
+                }
+            }
+
             var type = Table.Database.GetBindType(value);
             var ctx = Table.Database.CreateBindContext();
             ctx.Value = value;

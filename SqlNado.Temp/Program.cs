@@ -34,43 +34,38 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
-            var pro = new Product();
-            Console.WriteLine(pro.Id);
-            pro.ErrorsChanged += OnErrorsChanged;
-            pro.PropertyChanging += OnPropertyChanging;
-            pro.PropertyChanged += OnPropertyChanged;
-            pro.PropertyRollback += OnPropertyRollback;
-            pro.Id = Guid.NewGuid();
-            Console.WriteLine(pro.Id);
-            pro.Id = Guid.Empty;
-            Console.WriteLine(pro.Id);
-            pro.Id = Guid.NewGuid();
-            Console.WriteLine(pro.Id);
-
-            var track = (IChangeTrackingDictionaryObject)pro;
-            Console.WriteLine("old before commit: " + track.ChangedProperties["Id"]);
-
-            return;
-            using (var db = new SQLiteDatabase("chinook.db"))
+            using (var db = new SQLiteDatabase("test.db"))
             {
-                //db.Logger = new ConsoleLogger(true);
                 db.DeleteTable<User>();
                 db.DeleteTable<Product>();
-                db.DeleteTempTables();
+                //db.DeleteTempTables();
+
+                var pro = db.CreateObjectInstance<Product>();
+                pro.User = db.CreateObjectInstance<User>();
+                pro.User.Name = "bob" + Environment.TickCount;
+                pro.User.Email = "toto@titi.com";
+                pro.User.Save();
+                pro.Save();
+                TableStringExtensions.ToTableString(db.GetTable<Product>().GetRows(), Console.Out);
+                var prod = db.LoadAll<Product>().First();
+                TableStringExtensions.ToTableString(prod, Console.Out);
+
+                return;
+                //db.Logger = new ConsoleLogger(true);
 
                 for (int i = 0; i < 10; i++)
                 {
-                    var c = new User();
+                    var c = db.CreateObjectInstance<User>();
                     c.Email = "bob" + i + "." + Environment.TickCount + "@mail.com";
                     c.Name = "Name" + i + DateTime.Now;
                     db.Save(c);
 
-                    var p = new Product();
+                    var p = db.CreateObjectInstance<Product>();
                     p.Id = Guid.NewGuid();
                     p.User = c;
                     db.Save(p);
                 }
-
+                
 
                 var table = db.GetTable<User>();
                 TableStringExtensions.ToTableString(table, Console.Out);
@@ -119,20 +114,22 @@ namespace SqlNado.Temp
 
     }
 
-    public class User : ISQLiteObject
+    public class User : SQLiteBaseObject
     {
+        public User(SQLiteDatabase db)
+        {
+        }
+
         [SQLiteColumn(IsPrimaryKey = true)]
         public string Email { get; set; }
         public string Name { get; set; }
 
-        public IEnumerable<Product> Products => ((ISQLiteObject)this).Database.LoadByForeignKey<Product>(this);
-
-        SQLiteDatabase ISQLiteObject.Database { get; set; }
+        public IEnumerable<Product> Products => Database.LoadByForeignKey<Product>(this);
     }
 
     public class Product : SQLiteBaseObject
     {
-        public Product()
+        public Product(SQLiteDatabase db)
         {
             Id = Guid.NewGuid();
         }

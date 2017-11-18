@@ -253,7 +253,7 @@ namespace SqlNado
             {
                 // equivalent of
                 // att.SetValueAction = (options, o, v) => {
-                //      if (options.TryConvert(v, typeof(property), options.FormatProvider, out object newv))
+                //      if (options.TryChangeType(v, typeof(property), options.FormatProvider, out object newv))
                 //      {
                 //          property.SetValue(o, newv);
                 //      }
@@ -275,23 +275,13 @@ namespace SqlNado
 
                     var tryConvert = Expression.Call(
                         optionsParameter,
-                        typeof(SQLiteLoadOptions).GetMethod(nameof(Conversions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() }),
+                        typeof(SQLiteLoadOptions).GetMethod(nameof(SQLiteLoadOptions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() }),
                         valueParameter,
                         Expression.Constant(property.PropertyType, typeof(Type)),
                         convertedValue);
 
                     var ifTrue = Expression.Call(instance, property.SetMethod, Expression.Convert(convertedValue, property.PropertyType));
-                    Expression ifFalse;
-
-                    //if (att.HasDefaultValue)
-                    //{
-                    //    ifFalse = Expression.Call(instance, property.SetMethod, Expression.Convert(Expression.Constant(att.DefaultValue), property.PropertyType));
-                    //}
-                    //else
-                    //{
-                    ifFalse = Expression.Empty();
-                    //}
-
+                    var ifFalse = Expression.Empty();
                     setValue = Expression.Condition(Expression.Equal(tryConvert, Expression.Constant(true)), ifTrue, ifFalse);
                 }
                 else
