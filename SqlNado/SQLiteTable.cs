@@ -73,9 +73,9 @@ namespace SqlNado
                 List<SQLiteColumn> list;
                 if (!string.IsNullOrWhiteSpace(Name))
                 {
-                    var options = new SQLiteLoadOptions<SQLiteColumn>(Database);
+                    var options = new SQLiteLoadOptions(Database);
                     options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
-                    list = Database.Load("PRAGMA table_info(" + EscapedName + ")", options).ToList();
+                    list = Database.Load<SQLiteColumn>("PRAGMA table_info(" + EscapedName + ")", options).ToList();
                     var pkColumns = list.Where(CanBeRowId).ToArray();
                     if (pkColumns.Length == 1)
                     {
@@ -100,9 +100,9 @@ namespace SqlNado
                 if (string.IsNullOrWhiteSpace(Name))
                     return Enumerable.Empty<SQLiteForeignKey>();
 
-                var options = new SQLiteLoadOptions<SQLiteForeignKey>(Database);
+                var options = new SQLiteLoadOptions(Database);
                 options.GetInstanceFunc = (t, s, o) => new SQLiteForeignKey(this);
-                return Database.Load("PRAGMA foreign_key_list(" + EscapedName + ")", options);
+                return Database.Load<SQLiteForeignKey>("PRAGMA foreign_key_list(" + EscapedName + ")", options);
             }
         }
 
@@ -113,9 +113,9 @@ namespace SqlNado
                 if (string.IsNullOrWhiteSpace(Name))
                     return Enumerable.Empty<SQLiteTableIndex>();
 
-                var options = new SQLiteLoadOptions<SQLiteTableIndex>(Database);
+                var options = new SQLiteLoadOptions(Database);
                 options.GetInstanceFunc = (t, s, o) => new SQLiteTableIndex(this);
-                return Database.Load("PRAGMA index_list(" + EscapedName + ")", options);
+                return Database.Load<SQLiteTableIndex>("PRAGMA index_list(" + EscapedName + ")", options);
             }
         }
 

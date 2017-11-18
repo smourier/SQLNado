@@ -40,17 +40,18 @@ namespace SqlNado.Temp
                 db.DeleteTable<Product>();
                 //db.DeleteTempTables();
 
-                var pro = db.CreateObjectInstance<Product>();
-                pro.User = db.CreateObjectInstance<User>();
-                pro.User.Name = "bob" + Environment.TickCount;
-                pro.User.Email = "toto@titi.com";
-                pro.User.Save();
-                pro.Save();
-                TableStringExtensions.ToTableString(db.GetTable<Product>().GetRows(), Console.Out);
-                var prod = db.LoadAll<Product>().First();
-                TableStringExtensions.ToTableString(prod, Console.Out);
+                //var pro = db.CreateObjectInstance<Product>();
+                //pro.User = db.CreateObjectInstance<User>();
+                //pro.User.Name = "bob" + Environment.TickCount;
+                //pro.User.Email = "toto@titi.com";
+                //pro.User.Save();
+                //pro.Save();
+                //TableStringExtensions.ToTableString(db.GetTable<Product>().GetRows(), Console.Out);
+                //var prod = db.LoadAll<Product>().First();
+                //TableStringExtensions.ToTableString(prod, Console.Out);
+                //TableStringExtensions.ToTableString(prod.User, Console.Out);
 
-                return;
+                //return;
                 //db.Logger = new ConsoleLogger(true);
 
                 for (int i = 0; i < 10; i++)
@@ -65,11 +66,12 @@ namespace SqlNado.Temp
                     p.User = c;
                     db.Save(p);
                 }
-                
+
 
                 var table = db.GetTable<User>();
                 TableStringExtensions.ToTableString(table, Console.Out);
                 TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
+                TableStringExtensions.ToTableString(db.LoadAll<User>().First(), Console.Out);
 
                 var table2 = db.GetTable<Product>();
                 TableStringExtensions.ToTableString(table2, Console.Out);
@@ -117,6 +119,7 @@ namespace SqlNado.Temp
     public class User : SQLiteBaseObject
     {
         public User(SQLiteDatabase db)
+            : base(db)
         {
         }
 
@@ -124,12 +127,15 @@ namespace SqlNado.Temp
         public string Email { get; set; }
         public string Name { get; set; }
 
-        public IEnumerable<Product> Products => Database.LoadByForeignKey<Product>(this);
+        public IEnumerable<Product> Products => LoadByForeignKey<Product>();
+
+        public override string ToString() => "'" + Email + "'";
     }
 
     public class Product : SQLiteBaseObject
     {
         public Product(SQLiteDatabase db)
+            : base(db)
         {
             Id = Guid.NewGuid();
         }
@@ -137,6 +143,8 @@ namespace SqlNado.Temp
         [SQLiteColumn(IsPrimaryKey = true)]
         public Guid Id { get => DictionaryObjectGetPropertyValue<Guid>(); set => DictionaryObjectSetPropertyValue(value, DictionaryObjectPropertySetOptions.RollbackChangeOnError); }
         public User User { get => DictionaryObjectGetPropertyValue<User>(); set => DictionaryObjectSetPropertyValue(value); }
+
+        public override string ToString() => "'" + Id + "'";
 
         protected override IEnumerable DictionaryObjectGetErrors(string propertyName)
         {

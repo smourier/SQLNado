@@ -25,9 +25,9 @@ namespace SqlNado
         public Type Type { get; }
 
         protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name);
-        protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType,
+        protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
-            Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, getValueFunc, setValueAction);
+            Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
 
         public virtual SQLiteObjectTable Build()
         {
@@ -62,7 +62,7 @@ namespace SqlNado
             var possibleRowIdColumns = new List<SQLiteObjectColumn>();
             foreach (var attribute in attributes)
             {
-                var column = CreateObjectColumn(table, attribute.Name, attribute.DataType,
+                var column = CreateObjectColumn(table, attribute.Name, attribute.DataType, attribute.ClrType,
                     attribute.GetValueExpression.Compile(),
                     attribute.SetValueExpression?.Compile());
                 table.AddColumn(column);
@@ -189,13 +189,29 @@ namespace SqlNado
             if (property == null)
                 throw new ArgumentNullException(nameof(property));
 
+            // discard enumerated types unless att is defined to not ignore
             var att = property.GetCustomAttribute<SQLiteColumnAttribute>();
+            if (property.PropertyType != typeof(string))
+            {
+                var et = Conversions.GetEnumeratedType(property.PropertyType);
+                if (et != null)
+                {
+                    if (att == null || !att._ignore.HasValue || att._ignore.Value)
+                        return null;
+                }
+            }
+
             if (att != null && att.Ignore)
                 return null;
 
             if (att == null)
             {
                 att = new SQLiteColumnAttribute();
+            }
+
+            if (att.ClrType == null)
+            {
+                att.ClrType = property.PropertyType;
             }
 
             if (string.IsNullOrWhiteSpace(att.Name))
@@ -219,13 +235,13 @@ namespace SqlNado
 
                 if (string.IsNullOrWhiteSpace(att.DataType))
                 {
-                    att.DataType = GetDefaultDataType(property.PropertyType);
+                    att.DataType = GetDefaultDataType(att.ClrType);
                 }
             }
 
             if (!att._isNullable.HasValue)
             {
-                att.IsNullable = property.PropertyType.IsNullable() || !property.PropertyType.IsValueType;
+                att.IsNullable = att.ClrType.IsNullable() || !att.ClrType.IsValueType;
             }
 
             if (!att._isReadOnly.HasValue)
@@ -241,7 +257,7 @@ namespace SqlNado
                 var instanceParameter = Expression.Parameter(typeof(object));
                 var instance = Expression.Convert(instanceParameter, property.DeclaringType);
                 Expression getValue = Expression.Property(instance, property);
-                if (property.PropertyType != typeof(object))
+                if (att.ClrType != typeof(object))
                 {
                     getValue = Expression.Convert(getValue, typeof(object));
                 }
@@ -268,7 +284,7 @@ namespace SqlNado
                 var variables = new List<ParameterExpression>();
 
                 Expression setValue;
-                if (property.PropertyType != typeof(object))
+                if (att.ClrType != typeof(object))
                 {
                     var convertedValue = Expression.Variable(typeof(object), "cvalue");
                     variables.Add(convertedValue);
@@ -277,10 +293,10 @@ namespace SqlNado
                         optionsParameter,
                         typeof(SQLiteLoadOptions).GetMethod(nameof(SQLiteLoadOptions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() }),
                         valueParameter,
-                        Expression.Constant(property.PropertyType, typeof(Type)),
+                        Expression.Constant(att.ClrType, typeof(Type)),
                         convertedValue);
 
-                    var ifTrue = Expression.Call(instance, property.SetMethod, Expression.Convert(convertedValue, property.PropertyType));
+                    var ifTrue = Expression.Call(instance, property.SetMethod, Expression.Convert(convertedValue, att.ClrType));
                     var ifFalse = Expression.Empty();
                     setValue = Expression.Condition(Expression.Equal(tryConvert, Expression.Constant(true)), ifTrue, ifFalse);
                 }

@@ -8,7 +8,7 @@ namespace SqlNado
 {
     public class SQLiteObjectColumn
     {
-        public SQLiteObjectColumn(SQLiteObjectTable table, string name, string dataType,
+        public SQLiteObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
             Action<SQLiteLoadOptions, object, object> setValueAction)
         {
@@ -18,6 +18,9 @@ namespace SqlNado
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
 
+            if (clrType == null)
+                throw new ArgumentNullException(nameof(clrType));
+
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
@@ -26,6 +29,7 @@ namespace SqlNado
 
             Table = table;
             DataType = dataType;
+            ClrType = clrType;
             Name = name;
             GetValueFunc = getValueFunc;
             SetValueAction = setValueAction; // can be null for RO props
@@ -36,6 +40,7 @@ namespace SqlNado
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public string DataType { get; }
+        public Type ClrType { get; }
         public int Index { get; internal set; }
         [Browsable(false)]
         public Func<object, object> GetValueFunc { get; }

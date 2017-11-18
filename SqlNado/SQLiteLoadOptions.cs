@@ -28,12 +28,4 @@ namespace SqlNado
             return sb.ToString();
         }
     }
-
-    public class SQLiteLoadOptions<T> : SQLiteLoadOptions
-    {
-        public SQLiteLoadOptions(SQLiteDatabase database)
-            : base(database)
-        {
-        }
-    }
 }

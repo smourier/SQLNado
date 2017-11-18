@@ -9,29 +9,21 @@ namespace SqlNado.Utilities
 {
     public abstract class SQLiteBaseObject : ChangeTrackingDictionaryObject, ISQLiteObject
     {
-        SQLiteDatabase ISQLiteObject.Database { get; set; }
-
-        protected SQLiteDatabase Database
+        protected SQLiteBaseObject(SQLiteDatabase database)
         {
-            get
-            {
-                var db = ((ISQLiteObject)this).Database;
-                if (db == null)
-                    throw new InvalidOperationException();
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
 
-                return db;
-            }
+            ((ISQLiteObject)this).Database = database;
         }
+
+        SQLiteDatabase ISQLiteObject.Database { get; set; }
+        protected SQLiteDatabase Database => ((ISQLiteObject)this).Database;
 
         public virtual bool Save() => Database.Save(this);
         public virtual bool Delete() => Database.Delete(this);
 
-        //protected virtual T DictionaryObjectGetRelationPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null)
-        //{
-        //}
-
-        //protected virtual DictionaryObjectProperty DictionaryObjectSetRelationPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null)
-        //{
-        //}
+        protected IEnumerable<T> LoadByForeignKey<T>() => LoadByForeignKey<T>(null);
+        protected virtual IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options) => Database.LoadByForeignKey<T>(this, options);
     }
 }

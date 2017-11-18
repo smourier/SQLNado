@@ -106,7 +106,7 @@ namespace SqlNado
         }
 
         public T GetInstance<T>(SQLiteStatement statement) => GetInstance<T>(statement, null);
-        public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions<T> options)
+        public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions options)
         {
             if (options?.GetInstanceFunc != null)
                 return (T)options.GetInstanceFunc(typeof(T), statement, options);
@@ -247,12 +247,12 @@ namespace SqlNado
             }
         }
 
-        public virtual T Load<T>(SQLiteStatement statement, SQLiteLoadOptions<T> options)
+        public virtual T Load<T>(SQLiteStatement statement, SQLiteLoadOptions options)
         {
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
 
-            options = options ?? new SQLiteLoadOptions<T>(Database);
+            options = options ?? new SQLiteLoadOptions(Database);
             var instance = (T)GetInstance(typeof(T), statement, options);
             if (!options.ObjectEventsDisabled)
             {

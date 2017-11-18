@@ -6,6 +6,7 @@ namespace SqlNado
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = false)]
     public class SQLiteColumnAttribute : Attribute, IComparable, IComparable<SQLiteColumnAttribute>
     {
+        internal bool? _ignore;
         internal bool? _isNullable;
         internal bool? _isPrimaryKey;
         internal bool? _isReadOnly;
@@ -16,8 +17,9 @@ namespace SqlNado
 
         public virtual string Name { get; set; }
         public virtual string DataType { get; set; }
+        public virtual Type ClrType { get; set; }
         public virtual string Collation { get; set; }
-        public virtual bool Ignore { get; set; }
+        public virtual bool Ignore { get => _ignore ?? false; set => _ignore = value; }
         public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
         public virtual bool AutoIncrements { get => _autoIncrements ?? false; set => _autoIncrements = value; }
         public virtual bool IsPrimaryKey { get => _isPrimaryKey ?? false; set => _isPrimaryKey = value; }

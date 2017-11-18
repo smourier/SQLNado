@@ -82,9 +82,9 @@ namespace SqlNado
         {
             get
             {
-                var options = new SQLiteLoadOptions<SQLiteTable>(this);
+                var options = new SQLiteLoadOptions(this);
                 options.GetInstanceFunc = (t, s, o) => new SQLiteTable(this);
-                return Load("WHERE type='table'", options);
+                return Load<SQLiteTable>("WHERE type='table'", options);
             }
         }
 
@@ -92,9 +92,9 @@ namespace SqlNado
         {
             get
             {
-                var options = new SQLiteLoadOptions<SQLiteIndex>(this);
+                var options = new SQLiteLoadOptions(this);
                 options.GetInstanceFunc = (t, s, o) => new SQLiteIndex(this);
-                return Load("WHERE type='index'", options);
+                return Load<SQLiteIndex>("WHERE type='index'", options);
             }
         }
 
@@ -401,8 +401,8 @@ namespace SqlNado
             return false;
         }
 
-        public IEnumerable<T> LoadByForeignKey<T>(object instance, params object[] args) => LoadByForeignKey<T>(instance, null, args);
-        public virtual IEnumerable<T> LoadByForeignKey<T>(object instance, SQLiteLoadOptions<T> options, params object[] args)
+        public IEnumerable<T> LoadByForeignKey<T>(object instance) => LoadByForeignKey<T>(instance, null);
+        public virtual IEnumerable<T> LoadByForeignKey<T>(object instance, SQLiteLoadForeignKeyOptions options)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
@@ -415,14 +415,35 @@ namespace SqlNado
             if (table.LoadAction == null)
                 throw new SqlNadoException("0014: Table '" + table.Name + "' does not define a LoadAction.");
 
-            return null;
+            options = options ?? new SQLiteLoadForeignKeyOptions(this);
+
+            var fkCol = options.ForeignKeyColumn;
+            if (fkCol == null)
+            {
+                if (options.ForeignKeyColumnName != null)
+                {
+                    fkCol = table.Columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(options.ForeignKeyColumnName));
+                    if (fkCol == null)
+                        throw new SqlNadoException("0015: Foreign key column '" + options.ForeignKeyColumnName + "' was not found on table '" + table.Name + "'.");
+                }
+                else
+                {
+                    fkCol = table.Columns.FirstOrDefault(c => c.ClrType == instance.GetType());
+                    if (fkCol == null)
+                        throw new SqlNadoException("0016: Foreign key column for table '" + instanceTable.Name + "' was not found on table '" + table.Name + "'.");
+                }
+            }
+
+            var pk = instanceTable.GetPrimaryKey(instance);
+            string sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName + " WHERE " + fkCol.EscapedName + "=?";
+            return Load<T>(sql, options, pk);
         }
 
-        public IEnumerable<T> LoadAll<T>(int maximumRows) => Load(null, new SQLiteLoadOptions<T>(this) { MaximumRows = maximumRows }, null);
+        public IEnumerable<T> LoadAll<T>(int maximumRows) => Load<T>(null, new SQLiteLoadOptions(this) { MaximumRows = maximumRows });
         public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
-        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions<T> options) => Load(null, options, null);
+        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options) => Load<T>(null, options);
         public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
-        public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions<T> options, params object[] args)
+        public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions options, params object[] args)
         {
             var table = GetObjectTable(typeof(T));
             if (table.LoadAction == null)
@@ -439,7 +460,7 @@ namespace SqlNado
                 sql = newsql;
             }
 
-            options = options ?? new SQLiteLoadOptions<T>(this);
+            options = options ?? new SQLiteLoadOptions(this);
 
             using (var statement = PrepareStatement(sql, args))
             {
@@ -456,7 +477,7 @@ namespace SqlNado
                     if (code == SQLiteErrorCode.SQLITE_ROW)
                     {
                         index++;
-                        var obj = table.Load(statement, options);
+                        var obj = table.Load<T>(statement, options);
                         if (obj != null)
                             yield return obj;
 
@@ -476,7 +497,7 @@ namespace SqlNado
         }
 
         public T LoadByPrimaryKey<T>(object key) => LoadByPrimaryKey<T>(key, null);
-        public virtual T LoadByPrimaryKey<T>(object key, SQLiteLoadOptions<T> options) => (T)LoadByPrimaryKey(typeof(T), key, options);
+        public virtual T LoadByPrimaryKey<T>(object key, SQLiteLoadOptions options) => (T)LoadByPrimaryKey(typeof(T), key, options);
 
         public object LoadByPrimaryKey(Type objectType, object key) => LoadByPrimaryKey(objectType, key, null);
         public virtual object LoadByPrimaryKey(Type objectType, object key, SQLiteLoadOptions options)
@@ -698,7 +719,20 @@ namespace SqlNado
         }
 
         // note: we always use invariant culture when writing an reading by ourselves to the database
-        public virtual bool TryChangeType(object input, Type conversionType, out object value) => Conversions.TryChangeType(input, conversionType, CultureInfo.InvariantCulture, out value);
+        public virtual bool TryChangeType(object input, Type conversionType, out object value)
+        {
+            if (conversionType == null)
+                throw new ArgumentNullException(nameof(conversionType));
+
+            if (typeof(ISQLiteObject).IsAssignableFrom(conversionType))
+            {
+                var instance = LoadByPrimaryKey(conversionType, input);
+                value = instance;
+                return instance != null;
+            }
+            return Conversions.TryChangeType(input, conversionType, CultureInfo.InvariantCulture, out value);
+        }
+
         public virtual bool TryChangeType<T>(object input, out T value)
         {
             if (!TryChangeType(input, typeof(T), out object obj))
