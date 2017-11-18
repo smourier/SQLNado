@@ -23,11 +23,11 @@ namespace SqlNado
         private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
 
         public SQLiteDatabase(string filePath)
-            : this(filePath, SQLiteOpenFlags.SQLITE_OPEN_READWRITE | SQLiteOpenFlags.SQLITE_OPEN_CREATE)
+            : this(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
         {
         }
 
-        public SQLiteDatabase(string filePath, SQLiteOpenFlags flags)
+        public SQLiteDatabase(string filePath, SQLiteOpenOptions flags)
         {
             if (filePath == null)
                 throw new ArgumentNullException(nameof(filePath));
@@ -853,7 +853,7 @@ namespace SqlNado
         private static sqlite3_errmsg16 _sqlite3_errmsg16;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate SQLiteErrorCode sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenFlags flags, IntPtr zvfs);
+        private delegate SQLiteErrorCode sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
         private static sqlite3_open_v2 _sqlite3_open_v2;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

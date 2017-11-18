@@ -3,7 +3,7 @@
 namespace SqlNado
 {
     [Flags]
-    public enum SQLiteOpenFlags
+    public enum SQLiteOpenOptions
     {
         SQLITE_OPEN_READONLY = 0x00000001,
         SQLITE_OPEN_READWRITE = 0x00000002,

@@ -121,6 +121,13 @@ namespace SqlNado
                 }
             }
 
+            if (instance is ISQLiteObject so)
+            {
+                if (so.Database == null)
+                {
+                    so.Database = Database;
+                }
+            }
             InitializeAutomaticColumns(instance);
             return instance;
         }
@@ -216,7 +223,7 @@ namespace SqlNado
             var instance = (T)GetInstance(typeof(T), statement, options);
             if (!options.ObjectEventsDisabled)
             {
-                var lo = instance as ISQLiteObject;
+                var lo = instance as ISQLiteObjectEvents;
                 if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loading, statement, options))
                     return default(T);
 
@@ -243,7 +250,7 @@ namespace SqlNado
             var instance = GetInstance(objectType, statement, options);
             if (!options.ObjectEventsDisabled)
             {
-                var lo = instance as ISQLiteObject;
+                var lo = instance as ISQLiteObjectEvents;
                 if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loading, statement, options))
                     return null;
 
@@ -267,7 +274,7 @@ namespace SqlNado
 
             InitializeAutomaticColumns(instance);
 
-            var lo = instance as ISQLiteObject;
+            var lo = instance as ISQLiteObjectEvents;
             if (lo != null && !lo.OnSaveAction(SQLiteObjectAction.Saving, options))
                 return false;
 
