@@ -289,3 +289,5 @@ __pycache__/
 
 # sqlite
 *.db
+test.jpg
+test.png
