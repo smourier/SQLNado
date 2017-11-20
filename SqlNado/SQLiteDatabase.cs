@@ -20,8 +20,10 @@ namespace SqlNado
         private string _primaryKeyPersistenceSeparator = "\0";
         private static IntPtr _module;
         private IntPtr _handle;
+        private bool _cacheStatements;
         private ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
         private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
+        private ConcurrentDictionary<string, SQLiteStatement> _statements = new ConcurrentDictionary<string, SQLiteStatement>();
 
         public SQLiteDatabase(string filePath)
             : this(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
@@ -66,6 +68,16 @@ namespace SqlNado
         public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
         public virtual ISQLiteLogger Logger { get; set; }
 
+        public bool CacheStatements
+        {
+            get => _cacheStatements;
+            set
+            {
+                _cacheStatements = value;
+                ClearStatementsCache();
+            }
+        }
+
         public string PrimaryKeyPersistenceSeparator
         {
             get => _primaryKeyPersistenceSeparator;
@@ -99,37 +111,18 @@ namespace SqlNado
         }
 
         [Browsable(false)]
-        public int TotalChangesCount
-        {
-            get
-            {
-                CheckDisposed();
-                return _sqlite3_total_changes(Handle);
-            }
-        }
+        public int TotalChangesCount => _sqlite3_total_changes(CheckDisposed());
 
         [Browsable(false)]
-        public int ChangesCount
-        {
-            get
-            {
-                CheckDisposed();
-                return _sqlite3_changes(Handle);
-            }
-        }
+        public int ChangesCount => _sqlite3_changes(CheckDisposed());
 
         [Browsable(false)]
-        public long LastInsertRowId
-        {
-            get
-            {
-                CheckDisposed();
-                return _sqlite3_last_insert_rowid(Handle);
-            }
-        }
+        public long LastInsertRowId => _sqlite3_last_insert_rowid(CheckDisposed());
 
         public void LogInfo(object value, [CallerMemberName] string methodName = null) => Log(TraceLevel.Info, value, methodName);
         public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null) => Logger?.Log(level, value, methodName);
+
+        public void Vacuum() => ExecuteNonQuery("VACUUM");
 
         public bool CheckIntegrity() => CheckIntegrity(100).FirstOrDefault().EqualsIgnoreCase("ok");
         public IEnumerable<string> CheckIntegrity(int maximumErrors) => LoadObjects("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string)o[0]);
@@ -211,16 +204,19 @@ namespace SqlNado
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            if (_bindTypes.TryGetValue(type, out SQLiteBindType handler) && handler != null)
-                return handler;
+            if (_bindTypes.TryGetValue(type, out SQLiteBindType bindType) && bindType != null)
+                return bindType;
 
             foreach (var kv in _bindTypes)
             {
+                if (kv.Key == typeof(object))
+                    continue;
+
                 if (kv.Key.IsAssignableFrom(type))
                     return _bindTypes.AddOrUpdate(type, kv.Value, (k, o) => o);
             }
 
-            return defaultType ?? SQLiteBindType.ObjectType;
+            return defaultType ?? SQLiteBindType.ObjectToStringType;
         }
 
         public virtual void AddBindType(SQLiteBindType type)
@@ -254,13 +250,14 @@ namespace SqlNado
             AddBindType(SQLiteBindType.FloatType);
             AddBindType(SQLiteBindType.GuidType);
             AddBindType(SQLiteBindType.Int16Type);
-            AddBindType(SQLiteBindType.ObjectType);
+            AddBindType(SQLiteBindType.ObjectToStringType);
             AddBindType(SQLiteBindType.PassThroughType);
             AddBindType(SQLiteBindType.SByteType);
             AddBindType(SQLiteBindType.TimeSpanType);
             AddBindType(SQLiteBindType.UInt16Type);
             AddBindType(SQLiteBindType.UInt32Type);
             AddBindType(SQLiteBindType.UInt64Type);
+            AddBindType(SQLiteBindType.PassThroughType);
         }
 
         public virtual int DeleteAll<T>()
@@ -295,7 +292,7 @@ namespace SqlNado
             if (pk == null)
                 throw new InvalidOperationException();
 
-            string sql = "DELETE FROM " + SQLiteStatement.EscapeName(table.Name) + " WHERE " + table.BuildWherePrimaryKeyStatement();
+            string sql = "DELETE FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement();
             return ExecuteNonQuery(sql, pk) > 0;
         }
 
@@ -378,6 +375,43 @@ namespace SqlNado
                 ExecuteNonQuery("COMMIT");
             }
             return count;
+        }
+
+        public virtual T RunTransaction<T>(Func<T> action)
+        {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
+
+            BeginTransaction();
+            try
+            {
+                var result = action();
+                Commit();
+                return result;
+            }
+            catch
+            {
+                Rollback();
+                throw;
+            }
+        }
+
+        public virtual void RunTransaction(Action action)
+        {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
+
+            BeginTransaction();
+            try
+            {
+                action();
+                Commit();
+            }
+            catch
+            {
+                Rollback();
+                throw;
+            }
         }
 
         public virtual void BeginTransaction() => ExecuteNonQuery("BEGIN TRANSACTION");
@@ -467,7 +501,7 @@ namespace SqlNado
                 int index = 0;
                 do
                 {
-                    var code = _sqlite3_step(statement.Handle);
+                    var code = _sqlite3_step(statement.CheckDisposed());
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
                         Log(TraceLevel.Verbose, "Step done at index " + index);
@@ -583,14 +617,16 @@ namespace SqlNado
             }
         }
 
-        public T CreateObjectInstance<T>() => (T)CreateObjectInstance(typeof(T));
-        public virtual object CreateObjectInstance(Type objectType)
+        public T CreateObjectInstance<T>() => CreateObjectInstance<T>(null);
+        public T CreateObjectInstance<T>(SQLiteLoadOptions options) => (T)CreateObjectInstance(typeof(T), options);
+        public object CreateObjectInstance(Type objectType) => CreateObjectInstance(objectType, null);
+        public virtual object CreateObjectInstance(Type objectType, SQLiteLoadOptions options)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
 
             var table = GetObjectTable(objectType);
-            return table.GetInstance(objectType);
+            return table.GetInstance(objectType, options);
         }
 
         public SQLiteObjectTable GetObjectTable<T>() => GetObjectTable(typeof(T));
@@ -618,12 +654,62 @@ namespace SqlNado
         protected virtual SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type) => new SQLiteObjectTableBuilder(this, type);
         protected virtual SQLiteStatement CreateStatement(string sql) => new SQLiteStatement(this, sql);
         protected virtual SQLiteRow CreateRow(int index, string[] names, object[] values) => new SQLiteRow(index, names, values);
+        protected virtual SQLiteBlob CreateBlob(IntPtr handle, string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode) => new SQLiteBlob(this, handle, tableName, columnName, rowId, mode);
         public virtual SQLiteBindContext CreateBindContext() => new SQLiteBindContext(this);
+
+        public virtual int GetBlobSize(string tableName, string columnName, long rowId)
+        {
+            string sql = "SELECT length(" + SQLiteStatement.EscapeName(columnName) + ") FROM " + SQLiteStatement.EscapeName(tableName) + " WHERE rowid=" + rowId;
+            return ExecuteScalar(sql, -1);
+        }
+
+        public virtual void ResizeBlob(string tableName, string columnName, long rowId, int size)
+        {
+            if (tableName == null)
+                throw new ArgumentNullException(null, nameof(tableName));
+
+            if (columnName == null)
+                throw new ArgumentNullException(null, nameof(columnName));
+
+            string sql = "UPDATE " + SQLiteStatement.EscapeName(tableName) + " SET " + SQLiteStatement.EscapeName(columnName) + "=? WHERE rowid=" + rowId;
+            ExecuteNonQuery(sql, new SQLiteZeroBlobParameter { Size = size });
+        }
+
+        public SQLiteBlob OpenBlob(string tableName, string columnName, long rowId) => OpenBlob(tableName, columnName, rowId, SQLiteBlobOpenMode.ReadOnly);
+        public virtual SQLiteBlob OpenBlob(string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode)
+        {
+            if (tableName == null)
+                throw new ArgumentNullException(null, nameof(tableName));
+
+            if (columnName == null)
+                throw new ArgumentNullException(null, nameof(columnName));
+
+            CheckError(_sqlite3_blob_open(CheckDisposed(), "main", tableName, columnName, rowId, (int)mode, out IntPtr handle));
+            return CreateBlob(handle, tableName, columnName, rowId, mode);
+        }
+
+        public virtual void ClearStatementsCache() => _statements.Clear();
+
+        public virtual SQLiteStatement GetOrCreateStatement(string sql)
+        {
+            if (sql == null)
+                throw new ArgumentNullException(nameof(sql));
+
+            if (!CacheStatements)
+                return CreateStatement(sql);
+
+            if (!_statements.TryGetValue(sql, out SQLiteStatement statement))
+            {
+                statement = CreateStatement(sql);
+                statement = _statements.AddOrUpdate(sql, statement, (k, o) => o);
+            }
+            return statement;
+        }
 
         public SQLiteStatement PrepareStatement(string sql) => PrepareStatement(sql, null);
         public virtual SQLiteStatement PrepareStatement(string sql, params object[] args)
         {
-            var statement = CreateStatement(sql);
+            var statement = GetOrCreateStatement(sql);
             if (args != null)
             {
                 for (int i = 0; i < args.Length; i++)
@@ -745,10 +831,13 @@ namespace SqlNado
             return true;
         }
 
-        protected internal void CheckDisposed()
+        protected internal IntPtr CheckDisposed()
         {
-            if (_handle == IntPtr.Zero)
+            var handle = _handle;
+            if (handle == IntPtr.Zero)
                 throw new ObjectDisposedException(nameof(Handle));
+
+            return handle;
         }
 
         protected internal SQLiteException CheckError(SQLiteErrorCode code, [CallerMemberName] string methodName = null) => CheckError(code, true, methodName);
@@ -757,7 +846,7 @@ namespace SqlNado
             if (code == SQLiteErrorCode.SQLITE_OK)
                 return null;
 
-            string msg = GetErrorMessage(Handle);
+            string msg = GetErrorMessage(Handle); // don't check disposed here. maybe too late
             var ex = msg != null ? new SQLiteException(code, msg) : new SQLiteException(code);
             Log(TraceLevel.Error, ex.Message, methodName);
             if (throwOnError)
@@ -877,10 +966,17 @@ namespace SqlNado
             _sqlite3_bind_text16 = LoadProc<sqlite3_bind_text16>();
             _sqlite3_bind_null = LoadProc<sqlite3_bind_null>();
             _sqlite3_bind_blob = LoadProc<sqlite3_bind_blob>();
+            _sqlite3_bind_zeroblob = LoadProc<sqlite3_bind_zeroblob>();
             _sqlite3_bind_int = LoadProc<sqlite3_bind_int>();
             _sqlite3_bind_int64 = LoadProc<sqlite3_bind_int64>();
             _sqlite3_bind_double = LoadProc<sqlite3_bind_double>();
             _sqlite3_threadsafe = LoadProc<sqlite3_threadsafe>();
+            _sqlite3_blob_bytes = LoadProc<sqlite3_blob_bytes>();
+            _sqlite3_blob_close = LoadProc<sqlite3_blob_close>();
+            _sqlite3_blob_open = LoadProc<sqlite3_blob_open>();
+            _sqlite3_blob_read = LoadProc<sqlite3_blob_read>();
+            _sqlite3_blob_reopen = LoadProc<sqlite3_blob_reopen>();
+            _sqlite3_blob_write = LoadProc<sqlite3_blob_write>();
         }
 
         private static T LoadProc<T>() => LoadProc<T>(null);
@@ -1008,6 +1104,10 @@ namespace SqlNado
         internal static sqlite3_bind_blob _sqlite3_bind_blob;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate SQLiteErrorCode sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
+        internal static sqlite3_bind_zeroblob _sqlite3_bind_zeroblob;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate SQLiteErrorCode sqlite3_bind_double(IntPtr statement, int index, double value);
         internal static sqlite3_bind_double _sqlite3_bind_double;
 
@@ -1018,6 +1118,34 @@ namespace SqlNado
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
         internal static sqlite3_bind_int _sqlite3_bind_int;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate SQLiteErrorCode sqlite3_blob_open(IntPtr db,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string database,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string table,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string column,
+            long rowId, int flags, out IntPtr blob);
+        internal static sqlite3_blob_open _sqlite3_blob_open;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate int sqlite3_blob_bytes(IntPtr blob);
+        internal static sqlite3_blob_bytes _sqlite3_blob_bytes;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate SQLiteErrorCode sqlite3_blob_close(IntPtr blob);
+        internal static sqlite3_blob_close _sqlite3_blob_close;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate SQLiteErrorCode sqlite3_blob_reopen(IntPtr blob, long rowId);
+        internal static sqlite3_blob_reopen _sqlite3_blob_reopen;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate SQLiteErrorCode sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
+        internal static sqlite3_blob_read _sqlite3_blob_read;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
+        internal static sqlite3_blob_write _sqlite3_blob_write;
 
         // https://sqlite.org/c3ref/threadsafe.html
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

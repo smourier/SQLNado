@@ -29,5 +29,8 @@ namespace SqlNado
         public bool IsRowId { get; internal set; }
 
         public override string ToString() => Name;
+
+        public SQLiteBlob OpenBlob(long rowId) => Table.OpenBlob(Name, rowId);
+        public SQLiteBlob OpenBlob(long rowId, SQLiteBlobOpenMode mode) => Table.OpenBlob(Name, rowId, mode);
     }
 }

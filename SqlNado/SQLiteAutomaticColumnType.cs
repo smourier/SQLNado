@@ -5,7 +5,7 @@
         None,
         NewGuidIfEmpty,
         DateTimeNow,
-        DatetimeNowUtc,
+        DateTimeNowUtc,
         TimeOfDay,
         TimeOfDayUtc,
         Random,

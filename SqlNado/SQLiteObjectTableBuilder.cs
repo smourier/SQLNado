@@ -221,15 +221,22 @@ namespace SqlNado
 
             if (string.IsNullOrWhiteSpace(att.DataType))
             {
-                if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df)
+                if (typeof(ISQLiteBlobObject).IsAssignableFrom(att.ClrType))
                 {
-                    // https://www.sqlite.org/lang_createtable.html
-                    if (IsComputedDefaultValue(df))
+                    att.DataType = SQLiteColumnType.BLOB.ToString();
+                }
+                else
+                {
+                    if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df)
                     {
-                        att.DataType = SQLiteColumnType.TEXT.ToString();
-                        // we need to force this column type options
-                        att.TypeOptions = att.TypeOptions ?? new SQLiteTypeOptions();
-                        att.TypeOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
+                        // https://www.sqlite.org/lang_createtable.html
+                        if (IsComputedDefaultValue(df))
+                        {
+                            att.DataType = SQLiteColumnType.TEXT.ToString();
+                            // we need to force this column type options
+                            att.TypeOptions = att.TypeOptions ?? new SQLiteTypeOptions();
+                            att.TypeOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
+                        }
                     }
                 }
 

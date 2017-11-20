@@ -138,59 +138,68 @@ namespace SqlNado
             SetValueAction(options, obj, value);
         }
 
-        public virtual string CreateSql
+        public virtual string GetCreateSql(SQLiteCreateSqlOptions options)
         {
-            get
+            string sql = EscapedName + " " + DataType;
+            int pkCols = Table.PrimaryKeyColumns.Count();
+            if (IsPrimaryKey && pkCols == 1)
             {
-                string sql = EscapedName + " " + DataType;
-                int pkCols = Table.PrimaryKeyColumns.Count();
-                if (IsPrimaryKey && pkCols == 1)
+                sql += " PRIMARY KEY";
+                if (PrimaryKeyDirection == SQLiteDirection.Descending)
                 {
-                    sql += " PRIMARY KEY";
-                    if (PrimaryKeyDirection == SQLiteDirection.Descending)
-                    {
-                        sql += " DESC";
-                    }
-
-                    if (AutoIncrements)
-                    {
-                        sql += " AUTOINCREMENT";
-                    }
+                    sql += " DESC";
                 }
 
-                if (IsUnique)
+                if (AutoIncrements)
                 {
-                    sql += " UNIQUE";
+                    sql += " AUTOINCREMENT";
                 }
-
-                if (!string.IsNullOrWhiteSpace(CheckExpression))
-                {
-                    sql += " CHECK (" + CheckExpression + ")";
-                }
-
-                if (!IsNullable)
-                {
-                    sql += " NOT NULL";
-                }
-
-                if (HasDefaultValue && DefaultValue != null)
-                {
-                    if (IsDefaultValueIntrinsic)
-                    {
-                        sql += " DEFAULT " + DefaultValue;
-                    }
-                    else
-                    {
-                        sql += " DEFAULT " + SQLiteStatement.ToLiteral(DefaultValue);
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(Collation))
-                {
-                    sql += " COLLATE " + Collation;
-                }
-                return sql;
             }
+
+            if (IsUnique)
+            {
+                sql += " UNIQUE";
+            }
+
+            if (!string.IsNullOrWhiteSpace(CheckExpression))
+            {
+                sql += " CHECK (" + CheckExpression + ")";
+            }
+
+            if (!IsNullable)
+            {
+                sql += " NOT NULL";
+            }
+
+            if (HasDefaultValue && DefaultValue != null)
+            {
+                if (IsDefaultValueIntrinsic)
+                {
+                    sql += " DEFAULT " + DefaultValue;
+                }
+                else
+                {
+                    sql += " DEFAULT " + SQLiteStatement.ToLiteral(DefaultValue);
+                }
+            }
+            else
+            {
+                if ((options & SQLiteCreateSqlOptions.ForAlterColumn) == SQLiteCreateSqlOptions.ForAlterColumn)
+                {
+                    if (!IsNullable)
+                    {
+                        // we *must* define a default value or "Cannot add a NOT NULL column with default value NULL".
+                        object defaultValue = Activator.CreateInstance(ClrType);
+                        sql += " DEFAULT " + SQLiteStatement.ToLiteral(defaultValue);
+                    }
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(Collation))
+            {
+                sql += " COLLATE " + Collation;
+            }
+            return sql;
         }
 
         public override string ToString()

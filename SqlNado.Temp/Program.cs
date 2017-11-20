@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Drawing;
 using System.Dynamic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using SqlNado.Utilities;
@@ -36,9 +37,12 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("test.db"))
             {
-                db.DeleteTable<User>();
-                db.DeleteTable<Product>();
+                //db.Tables.ToList().ForEach(t => t.Delete());
                 //db.DeleteTempTables();
+                db.DeleteTable<UserWithBlob>();
+                db.DeleteTable<Product>();
+                db.Vacuum();
+                db.Tables.ToTableString(Console.Out);
 
                 //var pro = db.CreateObjectInstance<Product>();
                 //pro.User = db.CreateObjectInstance<User>();
@@ -54,28 +58,39 @@ namespace SqlNado.Temp
                 //return;
                 //db.Logger = new ConsoleLogger(true);
 
+                db.BeginTransaction();
                 for (int i = 0; i < 10; i++)
                 {
-                    var c = db.CreateObjectInstance<User>();
+                    var c = db.CreateObjectInstance<UserWithBlob>();
                     c.Email = "bob" + i + "." + Environment.TickCount + "@mail.com";
                     c.Name = "Name" + i + DateTime.Now;
                     db.Save(c);
+                    //c.Photo = File.ReadAllBytes(@"d:\temp\IMG_0803.JPG");
+                    c.Photo.Save(@"d:\temp\IMG_0803.JPG");
 
-                    var p = db.CreateObjectInstance<Product>();
-                    p.Id = Guid.NewGuid();
-                    p.User = c;
-                    db.Save(p);
+                    //var p = db.CreateObjectInstance<Product>();
+                    //p.Id = Guid.NewGuid();
+                    //p.User = c;
+                    //db.Save(p);
+                }
+                db.Commit();
+
+                var table = db.GetTable<UserWithBlob>();
+                if (table != null)
+                {
+                    TableStringExtensions.ToTableString(table, Console.Out);
+                    //TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
+                    var one = db.LoadAll<UserWithBlob>().FirstOrDefault();
+                    one.Photo.Load("test.jpg");
+                    TableStringExtensions.ToTableString(one, Console.Out);
                 }
 
-
-                var table = db.GetTable<User>();
-                TableStringExtensions.ToTableString(table, Console.Out);
-                TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
-                TableStringExtensions.ToTableString(db.LoadAll<User>().First(), Console.Out);
-
                 var table2 = db.GetTable<Product>();
-                TableStringExtensions.ToTableString(table2, Console.Out);
-                TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
+                if (table2 != null)
+                {
+                    TableStringExtensions.ToTableString(table2, Console.Out);
+                    TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
+                }
 
                 //db.LoadAll<User>().ToTableString(Console.Out);
             }
@@ -116,6 +131,13 @@ namespace SqlNado.Temp
 
     }
 
+    public class SimpleUser
+    {
+        [SQLiteColumn(IsPrimaryKey = true)]
+        public string Email { get; set; }
+        public string Name { get; set; }
+    }
+
     public class User : SQLiteBaseObject
     {
         public User(SQLiteDatabase db)
@@ -126,8 +148,27 @@ namespace SqlNado.Temp
         [SQLiteColumn(IsPrimaryKey = true)]
         public string Email { get; set; }
         public string Name { get; set; }
+        public byte[] Photo { get; set; }
 
         public IEnumerable<Product> Products => LoadByForeignKey<Product>();
+
+        public override string ToString() => "'" + Email + "'";
+    }
+
+    public class UserWithBlob : SQLiteBaseObject
+    {
+        public UserWithBlob(SQLiteDatabase db)
+            : base(db)
+        {
+            Photo = new SQLiteBlobObject(this, nameof(Photo));
+        }
+
+        [SQLiteColumn(IsPrimaryKey = true)]
+        public string Email { get; set; }
+        public string Name { get; set; }
+        public SQLiteBlobObject Photo { get; }
+
+        //public IEnumerable<Product> Products => LoadByForeignKey<Product>();
 
         public override string ToString() => "'" + Email + "'";
     }

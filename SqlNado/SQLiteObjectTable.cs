@@ -57,7 +57,7 @@ namespace SqlNado
         public virtual string BuildCreateSql(string tableName)
         {
             string sql = "CREATE TABLE " + SQLiteStatement.EscapeName(tableName) + " (";
-            sql += string.Join(",", Columns.Select(c => c.CreateSql));
+            sql += string.Join(",", Columns.Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
 
             if (PrimaryKeyColumns.Count() > 1)
             {
@@ -84,6 +84,17 @@ namespace SqlNado
         public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
         public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
         public virtual string BuildColumnsInsertParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => "?"));
+
+        public virtual long GetRowId(object obj)
+        {
+            var rowIdCol = PrimaryKeyColumns.FirstOrDefault(c => c.IsRowId);
+            if (rowIdCol != null)
+                return (long)rowIdCol.GetValue(obj);
+
+            string sql = "SELECT rowid FROM " + EscapedName + " WHERE " + BuildWherePrimaryKeyStatement();
+            var pk = GetPrimaryKey(obj);
+            return Database.ExecuteScalar<long>(sql, pk);
+        }
 
         public virtual object[] GetPrimaryKey(object obj)
         {
@@ -191,7 +202,7 @@ namespace SqlNado
                         break;
 
                     case SQLiteAutomaticColumnType.DateTimeNow:
-                    case SQLiteAutomaticColumnType.DatetimeNowUtc:
+                    case SQLiteAutomaticColumnType.DateTimeNowUtc:
                         if (value is DateTime dt && dt == DateTime.MinValue)
                         {
                             col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.DateTimeNow ? DateTime.Now : DateTime.UtcNow);
@@ -441,7 +452,7 @@ namespace SqlNado
 
             foreach (var column in added)
             {
-                sql = "ALTER TABLE " + EscapedName + " ADD COLUMN " + column.CreateSql;
+                sql = "ALTER TABLE " + EscapedName + " ADD COLUMN " + column.GetCreateSql(SQLiteCreateSqlOptions.ForAlterColumn);
                 count += Database.ExecuteNonQuery(sql);
             }
             return count;

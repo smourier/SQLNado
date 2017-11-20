@@ -10,7 +10,7 @@ namespace SqlNado
         public const string SQLiteIso8601DateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff";
 
         public static readonly SQLiteBindType PassThroughType;
-        public static readonly SQLiteBindType ObjectType;
+        public static readonly SQLiteBindType ObjectToStringType;
         public static readonly SQLiteBindType DBNullType;
         public static readonly SQLiteBindType ByteType;
         public static readonly SQLiteBindType SByteType;
@@ -27,7 +27,8 @@ namespace SqlNado
         static SQLiteBindType()
         {
             PassThroughType = new SQLiteBindType(ctx => ctx.Value,
-                typeof(bool), typeof(int), typeof(long), typeof(byte[]), typeof(double), typeof(string));
+                typeof(bool), typeof(int), typeof(long), typeof(byte[]), typeof(double), typeof(string),
+                typeof(ISQLiteBlobObject), typeof(SQLiteZeroBlobParameter));
 
             DBNullType = new SQLiteBindType(ctx => null, typeof(DBNull));
             ByteType = new SQLiteBindType(ctx => (int)(byte)ctx.Value, typeof(byte));
@@ -122,7 +123,7 @@ namespace SqlNado
             }, typeof(DateTime), typeof(DateTimeOffset));
 
             // fallback
-            ObjectType = new SQLiteBindType(ctx =>
+            ObjectToStringType = new SQLiteBindType(ctx =>
             {
                 ctx.Database.TryChangeType(ctx.Value, out string text); // always succeeds for a string
                 return text;

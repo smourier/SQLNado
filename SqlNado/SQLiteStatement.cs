@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -11,27 +12,29 @@ namespace SqlNado
     public class SQLiteStatement : IDisposable
     {
         private IntPtr _handle;
+        private static readonly byte[] ZeroBytes = new byte[0];
         private Dictionary<string, int> _columnsIndices;
         private string[] _columnsNames;
 
-        public SQLiteStatement(SQLiteDatabase db, string sql)
+        public SQLiteStatement(SQLiteDatabase database, string sql)
         {
-            if (db == null)
-                throw new ArgumentNullException(nameof(db));
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
 
             if (sql == null)
                 throw new ArgumentNullException(nameof(sql));
 
-            Database = db;
+            Database = database;
             Sql = sql;
-            db.CheckDisposed();
-            db.Log(TraceLevel.Verbose, "Preparing statement `" + sql + "`", nameof(SQLiteStatement) + ".ctor");
-            db.CheckError(SQLiteDatabase._sqlite3_prepare16_v2(db.Handle, sql, sql.Length * 2, out _handle, IntPtr.Zero));
+            database.Log(TraceLevel.Verbose, "Preparing statement `" + sql + "`", nameof(SQLiteStatement) + ".ctor");
+            database.CheckError(SQLiteDatabase._sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero));
         }
 
+        [Browsable(false)]
         public SQLiteDatabase Database { get; }
-        public string Sql { get; }
+        [Browsable(false)]
         public IntPtr Handle => _handle;
+        public string Sql { get; }
 
         public string[] ColumnsNames
         {
@@ -40,7 +43,7 @@ namespace SqlNado
                 if (_columnsNames == null)
                 {
                     _columnsNames = new string[ColumnCount];
-                    if (Handle != IntPtr.Zero)
+                    if (_handle != IntPtr.Zero)
                     {
                         for (int i = 0; i < _columnsNames.Length; i++)
                         {
@@ -59,7 +62,7 @@ namespace SqlNado
                 if (_columnsIndices == null)
                 {
                     _columnsIndices = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                    if (Handle != IntPtr.Zero)
+                    if (_handle != IntPtr.Zero)
                     {
                         int count = ColumnCount;
                         for (int i = 0; i < count; i++)
@@ -76,23 +79,8 @@ namespace SqlNado
             }
         }
 
-        public virtual int ParameterCount
-        {
-            get
-            {
-                CheckDisposed();
-                return SQLiteDatabase._sqlite3_bind_parameter_count(Handle);
-            }
-        }
-
-        public virtual int ColumnCount
-        {
-            get
-            {
-                CheckDisposed();
-                return SQLiteDatabase._sqlite3_column_count(Handle);
-            }
-        }
+        public virtual int ParameterCount => SQLiteDatabase._sqlite3_bind_parameter_count(CheckDisposed());
+        public virtual int ColumnCount => SQLiteDatabase._sqlite3_column_count(CheckDisposed());
 
         public virtual void BindParameter(string name, object value)
         {
@@ -122,7 +110,7 @@ namespace SqlNado
             }
             else if (bindValue is string s)
             {
-                Database.Log(TraceLevel.Verbose, "Index " + index + " as String: " +  s);
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as String: " + s);
                 code = BindParameter(index, s);
             }
             else if (bindValue is int i)
@@ -150,6 +138,24 @@ namespace SqlNado
                 Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[]: " + Conversions.ToHexa(bytes, 32));
                 code = BindParameter(index, bytes);
             }
+            else if (bindValue is ISQLiteBlobObject blob)
+            {
+                if (blob.TryGetData(out bytes))
+                {
+                    Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[] from ISQLiteBlobObject: " + Conversions.ToHexa(bytes, 32));
+                    code = BindParameter(index, bytes);
+                }
+                else
+                {
+                    Database.Log(TraceLevel.Verbose, "Index " + index + " as empty Byte[] from ISQLiteBlobObject");
+                    code = BindParameter(index, ZeroBytes);
+                }
+            }
+            else if (bindValue is SQLiteZeroBlobParameter zbp)
+            {
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as SQLiteZeroBlobParameter: " + zbp.Size);
+                code = BindParameterZeroBlob(index, zbp.Size);
+            }
             else
                 throw new SqlNadoException("0010: Binding only supports Int32, Int64, String, Boolean, Double and Byte[] primitive types.");
 
@@ -162,8 +168,7 @@ namespace SqlNado
             if (value == null)
                 return BindParameterNull(index);
 
-            CheckDisposed();
-            return SQLiteDatabase._sqlite3_bind_text16(Handle, index, value, value.Length * 2, IntPtr.Zero);
+            return SQLiteDatabase._sqlite3_bind_text16(CheckDisposed(), index, value, value.Length * 2, IntPtr.Zero);
         }
 
         public SQLiteErrorCode BindParameter(int index, byte[] value)
@@ -171,15 +176,15 @@ namespace SqlNado
             if (value == null)
                 return BindParameterNull(index);
 
-            CheckDisposed();
-            return SQLiteDatabase._sqlite3_bind_blob(Handle, index, value, value.Length, IntPtr.Zero);
+            return SQLiteDatabase._sqlite3_bind_blob(CheckDisposed(), index, value, value.Length, IntPtr.Zero);
         }
 
-        public SQLiteErrorCode BindParameter(int index, bool value) => SQLiteDatabase._sqlite3_bind_int(Handle, index, value ? 1 : 0);
-        public SQLiteErrorCode BindParameter(int index, int value) => SQLiteDatabase._sqlite3_bind_int(Handle, index, value);
-        public SQLiteErrorCode BindParameter(int index, long value) => SQLiteDatabase._sqlite3_bind_int64(Handle, index, value);
-        public SQLiteErrorCode BindParameter(int index, double value) => SQLiteDatabase._sqlite3_bind_double(Handle, index, value);
-        public SQLiteErrorCode BindParameterNull(int index) => SQLiteDatabase._sqlite3_bind_null(Handle, index);
+        public SQLiteErrorCode BindParameter(int index, bool value) => SQLiteDatabase._sqlite3_bind_int(CheckDisposed(), index, value ? 1 : 0);
+        public SQLiteErrorCode BindParameter(int index, int value) => SQLiteDatabase._sqlite3_bind_int(CheckDisposed(), index, value);
+        public SQLiteErrorCode BindParameter(int index, long value) => SQLiteDatabase._sqlite3_bind_int64(CheckDisposed(), index, value);
+        public SQLiteErrorCode BindParameter(int index, double value) => SQLiteDatabase._sqlite3_bind_double(CheckDisposed(), index, value);
+        public SQLiteErrorCode BindParameterNull(int index) => SQLiteDatabase._sqlite3_bind_null(CheckDisposed(), index);
+        public SQLiteErrorCode BindParameterZeroBlob(int index, int size) => SQLiteDatabase._sqlite3_bind_zeroblob(CheckDisposed(), index, size);
 
         public virtual IEnumerable<object> BuildRow()
         {
@@ -194,60 +199,39 @@ namespace SqlNado
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            return SQLiteDatabase._sqlite3_bind_parameter_index(Handle, name);
+            return SQLiteDatabase._sqlite3_bind_parameter_index(CheckDisposed(), name);
         }
 
-        public virtual void ClearBindings()
-        {
-            CheckDisposed();
-            SQLiteDatabase._sqlite3_clear_bindings(Handle);
-        }
+        public virtual void ClearBindings() => SQLiteDatabase._sqlite3_clear_bindings(CheckDisposed());
+        public virtual void Reset() => SQLiteDatabase._sqlite3_reset(CheckDisposed());
 
-        public virtual void Reset()
+        protected internal IntPtr CheckDisposed()
         {
-            CheckDisposed();
-            SQLiteDatabase._sqlite3_reset(Handle);
-        }
-
-        protected void CheckDisposed()
-        {
-            if (_handle == IntPtr.Zero)
+            var handle = _handle;
+            if (handle == IntPtr.Zero)
                 throw new ObjectDisposedException(nameof(Handle));
+
+            return handle;
         }
 
         public string GetColumnString(int index)
         {
-            CheckDisposed();
-            var ptr = SQLiteDatabase._sqlite3_column_text16(Handle, index);
+            var ptr = SQLiteDatabase._sqlite3_column_text16(CheckDisposed(), index);
             return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUni(ptr);
         }
 
-        public long GetColumnInt64(int index)
-        {
-            CheckDisposed();
-            return SQLiteDatabase._sqlite3_column_int64(Handle, index);
-        }
-
-        public int GetColumnInt32(int index)
-        {
-            CheckDisposed();
-            return SQLiteDatabase._sqlite3_column_int(Handle, index);
-        }
-
-        public double GetColumnDouble(int index)
-        {
-            CheckDisposed();
-            return SQLiteDatabase._sqlite3_column_double(Handle, index);
-        }
+        public long GetColumnInt64(int index) => SQLiteDatabase._sqlite3_column_int64(CheckDisposed(), index);
+        public int GetColumnInt32(int index) => SQLiteDatabase._sqlite3_column_int(CheckDisposed(), index);
+        public double GetColumnDouble(int index) => SQLiteDatabase._sqlite3_column_double(CheckDisposed(), index);
 
         public virtual byte[] GetColumnByteArray(int index)
         {
-            CheckDisposed();
-            IntPtr ptr = SQLiteDatabase._sqlite3_column_blob(Handle, index);
+            var handle = CheckDisposed();
+            IntPtr ptr = SQLiteDatabase._sqlite3_column_blob(handle, index);
             if (ptr == IntPtr.Zero)
                 return null;
 
-            int count = SQLiteDatabase._sqlite3_column_bytes(Handle, index);
+            int count = SQLiteDatabase._sqlite3_column_bytes(handle, index);
             var bytes = new byte[count];
             Marshal.Copy(ptr, bytes, 0, count);
             return bytes;
@@ -367,16 +351,11 @@ namespace SqlNado
 
         public string GetColumnName(int index)
         {
-            CheckDisposed();
-            var ptr = SQLiteDatabase._sqlite3_column_name16(Handle, index);
+            var ptr = SQLiteDatabase._sqlite3_column_name16(CheckDisposed(), index);
             return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUni(ptr);
         }
 
-        public SQLiteColumnType GetColumnType(int index)
-        {
-            CheckDisposed();
-            return SQLiteDatabase._sqlite3_column_type(Handle, index);
-        }
+        public SQLiteColumnType GetColumnType(int index) => SQLiteDatabase._sqlite3_column_type(CheckDisposed(), index);
 
         public void StepAll() => Step((s, i) => true);
         public void StepOne() => Step((s, i) => false);
@@ -387,10 +366,10 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(func));
 
             int i = 0;
-            CheckDisposed();
+            var handle = CheckDisposed();
             do
             {
-                SQLiteErrorCode code = SQLiteDatabase._sqlite3_step(Handle);
+                SQLiteErrorCode code = SQLiteDatabase._sqlite3_step(handle);
                 if (code == SQLiteErrorCode.SQLITE_DONE)
                 {
                     Database.Log(TraceLevel.Verbose, "Step done at index " + i);
