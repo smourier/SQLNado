@@ -500,6 +500,11 @@ namespace SqlNado
             return LoadRows(sql);
         }
 
+        public virtual IOrderedQueryable<T> Query<T>(string sql, SQLiteLoadOptions options, params object[] args)
+        {
+            return null;
+        }
+
         public IEnumerable<T> LoadAll<T>(int maximumRows) => Load<T>(null, new SQLiteLoadOptions(this) { MaximumRows = maximumRows });
         public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
         public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options) => Load<T>(null, options);

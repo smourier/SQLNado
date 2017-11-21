@@ -62,7 +62,7 @@ namespace SqlNado.Temp
                     c.Options = UserOptions.Super;
                     db.Save(c);
                     //c.Photo = File.ReadAllBytes(@"d:\temp\IMG_0803.JPG");
-                    c.Photo.Save(@"d:\temp\IMG_0803.JPG");
+                    //c.Photo.Save(@"d:\temp\IMG_0803.JPG");
 
                     //var p = db.CreateObjectInstance<Product>();
                     //p.Id = Guid.NewGuid();
@@ -88,6 +88,13 @@ namespace SqlNado.Temp
                     TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
                 }
 
+
+                var query = new SQLiteQuery<UserWithBlob>(db);
+                string tot = "toto";
+                foreach (var user in query.Where(u => u.Name == null))
+                {
+                    Console.WriteLine(user.Name);
+                }
                 //db.LoadAll<User>().ToTableString(Console.Out);
             }
         }
