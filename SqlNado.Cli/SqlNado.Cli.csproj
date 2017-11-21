@@ -6,12 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\SqlNado.Temp\chinook.db" Link="chinook.db">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\SqlNado\SqlNado.csproj" />
   </ItemGroup>
 
