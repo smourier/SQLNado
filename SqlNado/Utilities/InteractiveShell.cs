@@ -20,8 +20,8 @@ namespace SqlNado.Utilities
                     if (line == null)
                         break;
 
-                    if (line.EqualsIgnoreCase("bye") || line.EqualsIgnoreCase("quit") ||
-                        line.EqualsIgnoreCase("exit") || line.EqualsIgnoreCase("q"))
+                    if (line.EqualsIgnoreCase("bye") || line.EqualsIgnoreCase("quit") || line.EqualsIgnoreCase("exit") ||
+                        line.EqualsIgnoreCase("b") || line.EqualsIgnoreCase("q") || line.EqualsIgnoreCase("e"))
                         break;
 
                     if (HandleLine(line))

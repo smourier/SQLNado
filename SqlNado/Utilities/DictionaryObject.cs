@@ -140,8 +140,8 @@ namespace SqlNado.Utilities
         protected virtual DictionaryObjectProperty DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty oldProperty, DictionaryObjectProperty newProperty) => null;
         protected virtual DictionaryObjectProperty DictionaryObjectCreateProperty() => new DictionaryObjectProperty();
 
-        protected DictionaryObjectProperty DictionaryObjectSetPropertyValue(object value, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, DictionaryObjectPropertySetOptions.None, name);
-        protected virtual DictionaryObjectProperty DictionaryObjectSetPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null)
+        protected bool DictionaryObjectSetPropertyValue(object value, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, DictionaryObjectPropertySetOptions.None, name);
+        protected virtual bool DictionaryObjectSetPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -243,10 +243,11 @@ namespace SqlNado.Utilities
                             OnErrorsChanged(name);
                         }
                     }
+                    return true;
                 }
             }
 
-            return finalProp;
+            return false;
         }
 
         string IDataErrorInfo.Error => DictionaryObjectError;

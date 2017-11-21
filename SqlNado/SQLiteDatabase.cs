@@ -161,15 +161,7 @@ namespace SqlNado
         }
 
         public void DeleteTable<T>() => DeleteTable(typeof(T));
-        public virtual void DeleteTable(Type type)
-        {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
-
-            var table = GetObjectTable(type);
-            DeleteTable(table.Name);
-        }
-
+        public virtual void DeleteTable(Type type) => DeleteTable(GetObjectTable(type).Name);
         public virtual void DeleteTable(string name)
         {
             if (name == null)
@@ -186,6 +178,8 @@ namespace SqlNado
             }
         }
 
+        public bool TableExists<T>() => TableExists(typeof(T));
+        public virtual bool TableExists(Type objectType) => TableExists(GetObjectTable(objectType).Name);
         public virtual bool TableExists(string name)
         {
             if (name == null)

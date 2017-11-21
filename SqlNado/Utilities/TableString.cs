@@ -87,6 +87,7 @@ namespace SqlNado.Utilities
         public virtual TableStringPadding CellPadding { get; set; }
         public virtual bool CanReduceCellPadding { get; set; }
         public virtual bool CellWrap { get; set; }
+        public virtual Func<char, char> PrintCharFunc { get; set; }
 
         // default column settings
         public TableStringAlignment DefaultCellAlignment { get; set; }
@@ -736,6 +737,9 @@ namespace SqlNado.Utilities
                     if (browsable != null && !browsable.Browsable)
                         continue;
 
+                    if ((property.GetAccessors().FirstOrDefault()?.IsStatic).GetValueOrDefault())
+                        continue;
+
                     if (!property.CanRead)
                         continue;
 
@@ -801,6 +805,10 @@ namespace SqlNado.Utilities
 
         public virtual char ToPrintable(char c)
         {
+            var pf = PrintCharFunc;
+            if (pf != null)
+                return pf(c);
+
             if (c >= 32 && c <= 127)
                 return c;
 
@@ -1258,6 +1266,9 @@ namespace SqlNado.Utilities
                     foreach (var property in Object.GetType().GetProperties())
                     {
                         if (!property.CanRead)
+                            continue;
+
+                        if ((property.GetAccessors().FirstOrDefault()?.IsStatic).GetValueOrDefault())
                             continue;
 
                         if (property.GetIndexParameters().Length > 0)
