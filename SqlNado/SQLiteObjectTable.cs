@@ -79,11 +79,13 @@ namespace SqlNado
         }
 
         public virtual string BuildWherePrimaryKeyStatement() => string.Join(",", PrimaryKeyColumns.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
-        public virtual string BuildColumnsUpdateSetStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
         public virtual string BuildColumnsStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name)));
-        public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
-        public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
-        public virtual string BuildColumnsInsertParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.ComputedValue).Select(c => "?"));
+
+        public virtual string BuildColumnsUpdateSetStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.InsertOnly && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
+        public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.InsertOnly && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
+
+        public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.UpdateOnly && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
+        public virtual string BuildColumnsInsertParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.UpdateOnly && !c.ComputedValue).Select(c => "?"));
 
         public virtual long GetRowId(object obj)
         {
@@ -232,6 +234,10 @@ namespace SqlNado
                         break;
 
                     case SQLiteAutomaticColumnType.EnvironmentMachineName:
+                    case SQLiteAutomaticColumnType.EnvironmentDomainName:
+                    case SQLiteAutomaticColumnType.EnvironmentUserName:
+                    case SQLiteAutomaticColumnType.EnvironmentDomainUserName:
+                    case SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName:
                         if (value == null || (value is string s && s == null))
                         {
                             switch (col.AutomaticType)
@@ -240,12 +246,20 @@ namespace SqlNado
                                     s = Environment.MachineName;
                                     break;
 
-                                case SQLiteAutomaticColumnType.EnvironmentUserDomainName:
+                                case SQLiteAutomaticColumnType.EnvironmentDomainName:
                                     s = Environment.UserDomainName;
                                     break;
 
                                 case SQLiteAutomaticColumnType.EnvironmentUserName:
                                     s = Environment.UserName;
+                                    break;
+
+                                case SQLiteAutomaticColumnType.EnvironmentDomainUserName:
+                                    s = Environment.UserDomainName + @"\" + Environment.UserName;
+                                    break;
+
+                                case SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName:
+                                    s = Environment.UserDomainName + @"\" + Environment.MachineName + @"\" + Environment.UserName;
                                     break;
 
                                 default:
@@ -322,7 +336,8 @@ namespace SqlNado
             if (lo != null && !lo.OnSaveAction(SQLiteObjectAction.Saving, options))
                 return false;
 
-            var args = new List<object>();
+            var updateArgs = new List<object>();
+            var insertArgs = new List<object>();
             var pk = new List<object>();
             foreach (var col in Columns)
             {
@@ -339,7 +354,15 @@ namespace SqlNado
                     value = col.GetValueForBind(instance);
                 }
 
-                args.Add(value);
+                if (!col.InsertOnly)
+                {
+                    updateArgs.Add(value);
+                }
+
+                if (!col.UpdateOnly)
+                {
+                    insertArgs.Add(value);
+                }
 
                 if (col.IsPrimaryKey)
                 {
@@ -356,7 +379,7 @@ namespace SqlNado
                 sql = "UPDATE " + GetConflictResolutionClause(options.ConflictResolution) + EscapedName + " SET " + BuildColumnsUpdateSetStatement();
                 sql += " WHERE " + BuildWherePrimaryKeyStatement();
 
-                pk.InsertRange(0, args);
+                pk.InsertRange(0, updateArgs);
                 count = Database.ExecuteNonQuery(sql, pk.ToArray());
             }
 
@@ -364,7 +387,7 @@ namespace SqlNado
             {
                 sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsInsertStatement();
                 sql += ") VALUES (" + BuildColumnsInsertParametersStatement() + ")";
-                count = Database.ExecuteNonQuery(sql, args.ToArray());
+                count = Database.ExecuteNonQuery(sql, insertArgs.ToArray());
             }
 
             lo?.OnSaveAction(SQLiteObjectAction.Saved, options);

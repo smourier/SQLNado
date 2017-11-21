@@ -64,6 +64,7 @@ namespace SqlNado.Temp
                     var c = db.CreateObjectInstance<UserWithBlob>();
                     c.Email = "bob" + i + "." + Environment.TickCount + "@mail.com";
                     c.Name = "Name" + i + DateTime.Now;
+                    c.Options = UserOptions.Super;
                     db.Save(c);
                     //c.Photo = File.ReadAllBytes(@"d:\temp\IMG_0803.JPG");
                     c.Photo.Save(@"d:\temp\IMG_0803.JPG");
@@ -155,6 +156,14 @@ namespace SqlNado.Temp
         public override string ToString() => "'" + Email + "'";
     }
 
+    [Flags]
+    public enum UserOptions
+    {
+        None = 0x0,
+        Cool = 0x1,
+        Super = 0x1000,
+    }
+
     public class UserWithBlob : SQLiteBaseObject
     {
         public UserWithBlob(SQLiteDatabase db)
@@ -167,6 +176,7 @@ namespace SqlNado.Temp
         public string Email { get; set; }
         public string Name { get; set; }
         public SQLiteBlobObject Photo { get; }
+        public UserOptions Options { get; set; }
 
         //public IEnumerable<Product> Products => LoadByForeignKey<Product>();
 

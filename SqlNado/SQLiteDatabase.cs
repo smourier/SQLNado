@@ -114,7 +114,17 @@ namespace SqlNado
         public int TotalChangesCount => _sqlite3_total_changes(CheckDisposed());
 
         [Browsable(false)]
-        public int ChangesCount => _sqlite3_changes(CheckDisposed());
+        public int ChangesCount
+        {
+            get
+            {
+                int changes = _sqlite3_changes(CheckDisposed());
+#if DEBUG
+                Log(TraceLevel.Verbose, "Changes: " + changes);
+#endif
+                return changes;
+            }
+        }
 
         [Browsable(false)]
         public long LastInsertRowId => _sqlite3_last_insert_rowid(CheckDisposed());
@@ -206,6 +216,12 @@ namespace SqlNado
 
             if (_bindTypes.TryGetValue(type, out SQLiteBindType bindType) && bindType != null)
                 return bindType;
+
+            if (type.IsEnum)
+            {
+                if (!TypeOptions.EnumAsString)
+                    return GetBindType(Enum.GetUnderlyingType(type), defaultType);
+            }
 
             foreach (var kv in _bindTypes)
             {
@@ -431,8 +447,8 @@ namespace SqlNado
             {
                 table.SynchronizeSchema(options);
             }
-            table.Save(obj, options);
-            return false;
+
+            return table.Save(obj, options);
         }
 
         public IEnumerable<T> LoadByForeignKey<T>(object instance) => LoadByForeignKey<T>(instance, null);
@@ -471,6 +487,23 @@ namespace SqlNado
             var pk = instanceTable.GetPrimaryKey(instance);
             string sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName + " WHERE " + fkCol.EscapedName + "=?";
             return Load<T>(sql, options, pk);
+        }
+
+        public IEnumerable<SQLiteRow> GetTableRows<T>() => GetTableRows<T>(int.MaxValue);
+        public virtual IEnumerable<SQLiteRow> GetTableRows<T>(int maximumRows) => GetTableRows(GetObjectTable(typeof(T)).Name, maximumRows);
+
+        public IEnumerable<SQLiteRow> GetTableRows(string tableName) => GetTableRows(tableName, int.MaxValue);
+        public virtual IEnumerable<SQLiteRow> GetTableRows(string tableName, int maximumRows)
+        {
+            if (tableName == null)
+                throw new ArgumentNullException(nameof(tableName));
+
+            string sql = "SELECT * FROM " + SQLiteStatement.EscapeName(tableName);
+            if (maximumRows > 0 && maximumRows < int.MaxValue)
+            {
+                sql += " LIMIT " + maximumRows;
+            }
+            return LoadRows(sql);
         }
 
         public IEnumerable<T> LoadAll<T>(int maximumRows) => Load<T>(null, new SQLiteLoadOptions(this) { MaximumRows = maximumRows });

@@ -56,6 +56,8 @@ namespace SqlNado
         public bool AutomaticValue => AutoIncrements && IsRowId;
         public bool ComputedValue => HasDefaultValue && IsDefaultValueIntrinsic && SQLiteObjectTableBuilder.IsComputedDefaultValue(DefaultValue as string);
         public virtual bool HasDefaultValue { get; set; }
+        public virtual bool InsertOnly { get; set; }
+        public virtual bool UpdateOnly { get; set; }
         public virtual string Collation { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
         public virtual object DefaultValue { get; set; }
@@ -119,11 +121,24 @@ namespace SqlNado
 
             var type = Table.Database.GetBindType(value);
             var ctx = Table.Database.CreateBindContext();
-            ctx.Value = value;
             if (TypeOptions != null)
             {
                 ctx.TypeOptions = TypeOptions;
             }
+
+            if (value != null)
+            {
+                var valueType = value.GetType();
+                if (valueType.IsEnum)
+                {
+                    if (!ctx.TypeOptions.EnumAsString)
+                    {
+                        value = Convert.ChangeType(value, Enum.GetUnderlyingType(valueType));
+                    }
+                }
+            }
+
+            ctx.Value = value;
             return type.ConvertFunc(ctx);
         }
 
@@ -257,6 +272,8 @@ namespace SqlNado
             IsReadOnly = attribute.IsReadOnly;
             IsNullable = attribute.IsNullable;
             IsPrimaryKey = attribute.IsPrimaryKey;
+            InsertOnly = attribute.InsertOnly;
+            UpdateOnly = attribute.UpdateOnly;
             AutoIncrements = attribute.AutoIncrements;
             AutomaticType = attribute.AutomaticType;
             HasDefaultValue = attribute.HasDefaultValue;

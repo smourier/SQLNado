@@ -1402,12 +1402,40 @@ namespace SqlNado.Utilities
         public static string ToTableString<T>(this IEnumerable<T> enumerable) => _instance.Write(enumerable);
         public static string ToTableString(this IEnumerable enumerable) => _instance.Write(enumerable);
 
+        public static string ToTableString<T>(this IEnumerable<T> enumerable, int indent)
+        {
+            var ts = new TableString();
+            ts.Indent = indent;
+            return ts.Write(enumerable);
+        }
+
+        public static string ToTableString(this IEnumerable enumerable, int indent)
+        {
+            var ts = new TableString();
+            ts.Indent = indent;
+            return ts.Write(enumerable);
+        }
+
         public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer) => _instance.Write(writer, enumerable);
         public static void ToTableString(this IEnumerable enumerable, TextWriter writer) => _instance.Write(writer, enumerable);
 
-        public static string ToTableString(int indent, object obj) => new ObjectTableString(obj) { Indent = indent }.WriteObject();
+        public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer, int indent)
+        {
+            var ts = new TableString();
+            ts.Indent = indent;
+            ts.Write(writer, enumerable);
+        }
+
+        public static void ToTableString(this IEnumerable enumerable, TextWriter writer, int indent)
+        {
+            var ts = new TableString();
+            ts.Indent = indent;
+            ts.Write(writer, enumerable);
+        }
+
+        public static string ToTableString(object obj, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject();
         public static string ToTableString(object obj) => new ObjectTableString(obj).WriteObject();
-        public static void ToTableString(int indent, object obj, TextWriter writer) => new ObjectTableString(obj) { Indent = indent }.WriteObject(writer);
+        public static void ToTableString(object obj, TextWriter writer, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject(writer);
         public static void ToTableString(object obj, TextWriter writer) => new ObjectTableString(obj).WriteObject(writer);
     }
 }

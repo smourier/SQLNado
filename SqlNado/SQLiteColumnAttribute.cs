@@ -28,6 +28,8 @@ namespace SqlNado
         public virtual string CheckExpression { get; set; }
         public virtual bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
         public virtual bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
+        public virtual bool InsertOnly { get; set; }
+        public virtual bool UpdateOnly { get; set; }
         public virtual bool HasDefaultValue { get => _hasDefaultValue ?? false; set => _hasDefaultValue = value; }
         public virtual bool IsDefaultValueIntrinsic { get => _isDefaultValueIntrinsic ?? false; set => _isDefaultValueIntrinsic = value; }
         public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }

@@ -11,7 +11,9 @@
         Random,
         EnvironmentTickCount,
         EnvironmentMachineName,
-        EnvironmentUserDomainName,
+        EnvironmentDomainName,
         EnvironmentUserName,
+        EnvironmentDomainUserName,
+        EnvironmentDomainMachineUserName,
     }
 }
