@@ -154,7 +154,7 @@ namespace SqlNado.Utilities
             return constantExpression;
         }
 
-        protected override Expression VisitMemberAccess(MemberExpression memberExpression)
+        protected override Expression VisitMember(MemberExpression memberExpression)
         {
             if (memberExpression.Expression != null && memberExpression.Expression.NodeType == ExpressionType.Parameter)
             {

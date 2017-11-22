@@ -51,7 +51,7 @@ namespace SqlNado.Temp
                 //TableStringExtensions.ToTableString(prod.User, Console.Out);
 
                 //return;
-                //db.Logger = new ConsoleLogger(true);
+                db.Logger = new ConsoleLogger(true);
 
                 db.BeginTransaction();
                 for (int i = 0; i < 10; i++)
@@ -91,7 +91,7 @@ namespace SqlNado.Temp
 
                 var query = new SQLiteQuery<UserWithBlob>(db);
                 string tot = "toto";
-                foreach (var user in query.Where(u => u.Name == null))
+                foreach (var user in query.Where(u => u.Name == "zz"))
                 {
                     Console.WriteLine(user.Name);
                 }
