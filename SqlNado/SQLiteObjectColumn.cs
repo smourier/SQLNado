@@ -89,6 +89,12 @@ namespace SqlNado
             if (IsPrimaryKey != column.IsPrimaryKey)
                 return false;
 
+            if (Collation != column.Collation)
+                return false;
+
+            if (AutoIncrements != column.AutoIncrements)
+                return false;
+
             if (!DataType.EqualsIgnoreCase(column.Type))
                 return false;
 

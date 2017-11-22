@@ -2,8 +2,9 @@
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using SqlNado.Utilities;
 
-namespace SqlNado.Utilities
+namespace SqlNado
 {
     public class SQLiteQueryTranslator : ExpressionVisitor
     {
@@ -41,14 +42,31 @@ namespace SqlNado.Utilities
 
         protected override Expression VisitMethodCall(MethodCallExpression callExpression)
         {
-            if (callExpression.Method.DeclaringType == typeof(Queryable) && callExpression.Method.Name == nameof(Queryable.Where))
+            if (callExpression.Method.DeclaringType == typeof(Queryable))
             {
-                Writer.Write("SELECT * FROM ");
-                Visit(callExpression.Arguments[0]);
-                Writer.Write(" WHERE ");
-                var lambda = (LambdaExpression)StripQuotes(callExpression.Arguments[1]);
-                Visit(lambda.Body);
-                return callExpression;
+                switch (callExpression.Method.Name)
+                {
+                    case nameof(Queryable.Where):
+                        Writer.Write("SELECT * FROM (");
+                        Visit(callExpression.Arguments[0]);
+                        Writer.Write(") AS T WHERE ");
+                        var lambda = (LambdaExpression)StripQuotes(callExpression.Arguments[1]);
+                        Visit(lambda.Body);
+                        return callExpression;
+                }                        
+            }
+
+            if (callExpression.Method.DeclaringType == typeof(Conversions))
+            {
+                switch (callExpression.Method.Name)
+                {
+                    case nameof(Conversions.EqualsIgnoreCase):
+                        Visit(callExpression.Arguments[0]);
+                        Writer.Write(" = ");
+                        Visit(callExpression.Arguments[1]);
+                        Writer.Write(" COLLATE " + nameof(StringComparer.OrdinalIgnoreCase));
+                        return callExpression;
+                }
             }
 
             throw new NotSupportedException(string.Format("The method '{0}' is not supported", callExpression.Method.Name));
@@ -59,8 +77,9 @@ namespace SqlNado.Utilities
             switch (unaryExpression.NodeType)
             {
                 case ExpressionType.Not:
-                    Writer.Write(" NOT ");
+                    Writer.Write(" NOT (");
                     Visit(unaryExpression.Operand);
+                    Writer.Write(")");
                     break;
 
                 default:

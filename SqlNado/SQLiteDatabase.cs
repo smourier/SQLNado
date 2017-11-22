@@ -25,6 +25,8 @@ namespace SqlNado
         private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
         private ConcurrentDictionary<string, SQLiteStatement> _statements = new ConcurrentDictionary<string, SQLiteStatement>();
 
+        public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
+
         public SQLiteDatabase(string filePath)
             : this(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
         {
@@ -40,6 +42,7 @@ namespace SqlNado
             HookNativeProcs();
             filePath = Path.GetFullPath(filePath);
             CheckError(_sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
+            CheckError(_sqlite3_collation_needed16(_handle, IntPtr.Zero, NativeCollationNeeded));
             FilePath = filePath;
             AddDefaultBindTypes();
         }
@@ -66,7 +69,9 @@ namespace SqlNado
         public int CacheSize { get => ExecuteScalar<int>("PRAGMA cache_size"); set => ExecuteNonQuery("PRAGMA cache_size=" + value); }
         public int DataVersion => ExecuteScalar<int>("PRAGMA data_version");
         public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
+        public IEnumerable<string> Collations => LoadObjects("PRAGMA collation_list").Select(row => (string)row[1]);
         public virtual ISQLiteLogger Logger { get; set; }
+        public virtual string DefaultColumnCollation { get; set; }
 
         public bool CacheStatements
         {
@@ -129,6 +134,73 @@ namespace SqlNado
         [Browsable(false)]
         public long LastInsertRowId => _sqlite3_last_insert_rowid(CheckDisposed());
 
+        private void NativeCollationNeeded(IntPtr arg, IntPtr handle, SQLiteTextEncoding encoding, string name)
+        {
+            if (name == null)
+                return;
+
+            var e = new SQLiteCollationNeededEventArgs(this, name);
+
+            switch (name)
+            {
+                case nameof(StringComparer.CurrentCulture):
+                    SetCollationFunction(name, StringComparer.CurrentCulture);
+                    break;
+
+                case nameof(StringComparer.CurrentCultureIgnoreCase):
+                    SetCollationFunction(name, StringComparer.CurrentCultureIgnoreCase);
+                    break;
+
+                case nameof(StringComparer.Ordinal):
+                    SetCollationFunction(name, StringComparer.Ordinal);
+                    break;
+
+                case nameof(StringComparer.OrdinalIgnoreCase):
+                    SetCollationFunction(name, StringComparer.OrdinalIgnoreCase);
+                    break;
+
+                case nameof(StringComparer.InvariantCulture):
+                    SetCollationFunction(name, StringComparer.InvariantCulture);
+                    break;
+
+                case nameof(StringComparer.InvariantCultureIgnoreCase):
+                    SetCollationFunction(name, StringComparer.InvariantCultureIgnoreCase);
+                    break;
+
+                default:
+                    if (e.CollationCulture != null)
+                    {
+                        SetCollationFunction(name, e.CollationCulture.CompareInfo.GetStringComparer(e.CollationOptions));
+                    }
+                    break;
+            }
+
+            // still give a chance to caller to override
+            OnCollationNeeded(this, e);
+        }
+
+        protected virtual void OnCollationNeeded(object sender, SQLiteCollationNeededEventArgs e) => CollationNeeded?.Invoke(sender, e);
+
+        public virtual void SetCollationFunction(string name, IComparer<string> comparer)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            // note we only support UTF-8 encoding
+            if (comparer == null)
+            {
+                CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF8, IntPtr.Zero, null));
+                return;
+            }
+
+            CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF8, IntPtr.Zero, (a, la, sa, lb, sb) =>
+            {
+                return comparer.Compare(sa, sb);
+            }));
+        }
+
+        public virtual void UnsetCollationFunction(string name) => SetCollationFunction(name, null);
+
         public void LogInfo(object value, [CallerMemberName] string methodName = null) => Log(TraceLevel.Info, value, methodName);
         public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null) => Logger?.Log(level, value, methodName);
 
@@ -147,10 +219,10 @@ namespace SqlNado
             return Tables.FirstOrDefault(t => name.EqualsIgnoreCase(t.Name));
         }
 
-        public SQLiteObjectTable EnsureTable<T>() => EnsureTable(typeof(T), null);
-        public SQLiteObjectTable EnsureTable<T>(SQLiteSaveOptions options) => EnsureTable(typeof(T), options);
-        public SQLiteObjectTable EnsureTable(Type type) => EnsureTable(type, null);
-        public virtual SQLiteObjectTable EnsureTable(Type type, SQLiteSaveOptions options)
+        public SQLiteObjectTable SynchronizeSchema<T>() => SynchronizeSchema(typeof(T), null);
+        public SQLiteObjectTable SynchronizeSchema<T>(SQLiteSaveOptions options) => SynchronizeSchema(typeof(T), options);
+        public SQLiteObjectTable SynchronizeSchema(Type type) => SynchronizeSchema(type, null);
+        public virtual SQLiteObjectTable SynchronizeSchema(Type type, SQLiteSaveOptions options)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -1009,6 +1081,9 @@ namespace SqlNado
             _sqlite3_blob_read = LoadProc<sqlite3_blob_read>();
             _sqlite3_blob_reopen = LoadProc<sqlite3_blob_reopen>();
             _sqlite3_blob_write = LoadProc<sqlite3_blob_write>();
+            _sqlite3_collation_needed16 = LoadProc<sqlite3_collation_needed16>();
+            _sqlite3_create_collation16 = LoadProc<sqlite3_create_collation16>();
+            _sqlite3_table_column_metadata = LoadProc<sqlite3_table_column_metadata>();
         }
 
         private static T LoadProc<T>() => LoadProc<T>(null);
@@ -1179,12 +1254,40 @@ namespace SqlNado
         internal delegate SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
         internal static sqlite3_blob_write _sqlite3_blob_write;
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int xCompare(IntPtr arg, int lenA, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string strA, int lenB, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string strB);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, xCompare comparer);
+        private static sqlite3_create_collation16 _sqlite3_create_collation16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, [MarshalAs(UnmanagedType.LPWStr)] string strB);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode sqlite3_collation_needed16(IntPtr db, IntPtr arg, collationNeeded callback);
+        private static sqlite3_collation_needed16 _sqlite3_collation_needed16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
+        internal static sqlite3_table_column_metadata _sqlite3_table_column_metadata;
+
+        private enum SQLiteTextEncoding
+        {
+            SQLITE_UTF8 = 1,            /* IMP: R-37514-35566 */
+            SQLITE_UTF16LE = 2,         /* IMP: R-03371-37637 */
+            SQLITE_UTF16BE = 3,         /* IMP: R-51971-34154 */
+            SQLITE_UTF16 = 4,           /* Use native byte order */
+            SQLITE_ANY = 5,             /* Deprecated */
+            SQLITE_UTF16_ALIGNED = 8,   /* sqlite3_create_collation only */
+        }
+
         // https://sqlite.org/c3ref/threadsafe.html
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate int sqlite3_threadsafe();
         internal static sqlite3_threadsafe _sqlite3_threadsafe;
 
-        private class Utf8Marshaler : ICustomMarshaler
+        internal class Utf8Marshaler : ICustomMarshaler
         {
             public static readonly Utf8Marshaler Instance = new Utf8Marshaler();
 

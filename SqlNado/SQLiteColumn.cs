@@ -5,6 +5,8 @@ namespace SqlNado
 {
     public sealed class SQLiteColumn
     {
+        private string _name;
+
         internal SQLiteColumn(SQLiteTable table)
         {
             if (table == null)
@@ -18,7 +20,27 @@ namespace SqlNado
         public int Id { get; internal set; }
         [SQLiteColumn(Name = "pk")]
         public bool IsPrimaryKey { get; internal set; }
-        public string Name { get; internal set; }
+
+        public string Name
+        {
+            get => _name;
+            internal set
+            {
+                _name = value;
+
+                // collation and autoinc can only be read using this method
+                Table.Database.CheckError(SQLiteDatabase._sqlite3_table_column_metadata(Table.Database.CheckDisposed(), null, Table.Name, Name,
+                    out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc));
+
+                if (collation != IntPtr.Zero)
+                {
+                    Collation = (string)SQLiteDatabase.Utf8Marshaler.Instance.MarshalNativeToManaged(collation);
+                }
+
+                AutoIncrements = autoInc != 0;
+            }
+        }
+
         public string Type { get; internal set; }
         [SQLiteColumn(Name = "notnull")]
         public bool IsNotNullable { get; internal set; }
@@ -27,6 +49,10 @@ namespace SqlNado
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool IsRowId { get; internal set; }
+        [SQLiteColumn(Ignore = true)]
+        public string Collation { get; private set; }
+        [SQLiteColumn(Ignore = true)]
+        public bool AutoIncrements { get; private set; }
 
         public override string ToString() => Name;
 

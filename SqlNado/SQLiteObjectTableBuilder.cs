@@ -219,6 +219,11 @@ namespace SqlNado
                 att.Name = property.Name;
             }
 
+            if (string.IsNullOrWhiteSpace(att.Collation))
+            {
+                att.Collation = Database.DefaultColumnCollation;
+            }
+
             if (string.IsNullOrWhiteSpace(att.DataType))
             {
                 if (typeof(ISQLiteBlobObject).IsAssignableFrom(att.ClrType))

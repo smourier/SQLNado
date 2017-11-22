@@ -32,71 +32,64 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("test.db"))
             {
-                //db.Tables.ToList().ForEach(t => t.Delete());
-                //db.DeleteTempTables();
-                db.DeleteTable<UserWithBlob>();
-                db.DeleteTable<Product>();
+                db.CollationNeeded += OnCollationNeeded;
+                db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
+                //db.DeleteTable<UserWithBlob>();
+                //db.DeleteTable<Product>();
                 db.Vacuum();
-                db.Tables.ToTableString(Console.Out);
+                db.SynchronizeSchema<TestQuery>();
 
-                //var pro = db.CreateObjectInstance<Product>();
-                //pro.User = db.CreateObjectInstance<User>();
-                //pro.User.Name = "bob" + Environment.TickCount;
-                //pro.User.Email = "toto@titi.com";
-                //pro.User.Save();
-                //pro.Save();
-                //TableStringExtensions.ToTableString(db.GetTable<Product>().GetRows(), Console.Out);
-                //var prod = db.LoadAll<Product>().First();
-                //TableStringExtensions.ToTableString(prod, Console.Out);
-                //TableStringExtensions.ToTableString(prod.User, Console.Out);
-
-                //return;
                 db.Logger = new ConsoleLogger(true);
 
-                db.BeginTransaction();
-                for (int i = 0; i < 10; i++)
-                {
-                    var c = db.CreateObjectInstance<UserWithBlob>();
-                    c.Email = "bob" + i + "." + Environment.TickCount + "@mail.com";
-                    c.Name = "Name" + i + DateTime.Now;
-                    c.Options = UserOptions.Super;
-                    db.Save(c);
-                    //c.Photo = File.ReadAllBytes(@"d:\temp\IMG_0803.JPG");
-                    //c.Photo.Save(@"d:\temp\IMG_0803.JPG");
+                //TestQuery.Ensure(db);
+                db.LoadAll<TestQuery>().ToTableString(Console.Out);
 
-                    //var p = db.CreateObjectInstance<Product>();
-                    //p.Id = Guid.NewGuid();
-                    //p.User = c;
-                    //db.Save(p);
-                }
-                db.Commit();
+                //db.BeginTransaction();
+                //for (int i = 0; i < 10; i++)
+                //{
+                //    var c = db.CreateObjectInstance<UserWithBlob>();
+                //    c.Email = "bob" + i + "." + Environment.TickCount + "@mail.com";
+                //    c.Name = "Name" + i + DateTime.Now;
+                //    c.Options = UserOptions.Super;
+                //    db.Save(c);
+                //    //c.Photo = File.ReadAllBytes(@"d:\temp\IMG_0803.JPG");
+                //    //c.Photo.Save(@"d:\temp\IMG_0803.JPG");
 
-                var table = db.GetTable<UserWithBlob>();
-                if (table != null)
-                {
-                    TableStringExtensions.ToTableString(table, Console.Out);
-                    //TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
-                    var one = db.LoadAll<UserWithBlob>().FirstOrDefault();
-                    one.Photo.Load("test.jpg");
-                    TableStringExtensions.ToTableString(one, Console.Out);
-                }
+                //    //var p = db.CreateObjectInstance<Product>();
+                //    //p.Id = Guid.NewGuid();
+                //    //p.User = c;
+                //    //db.Save(p);
+                //}
+                //db.Commit();
 
-                var table2 = db.GetTable<Product>();
-                if (table2 != null)
-                {
-                    TableStringExtensions.ToTableString(table2, Console.Out);
-                    TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
-                }
+                //var table = db.GetTable<UserWithBlob>();
+                //if (table != null)
+                //{
+                //    TableStringExtensions.ToTableString(table, Console.Out);
+                //    //TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
+                //    var one = db.LoadAll<UserWithBlob>().FirstOrDefault();
+                //    one.Photo.Load("test.jpg");
+                //    TableStringExtensions.ToTableString(one, Console.Out);
+                //}
 
+                //var table2 = db.GetTable<Product>();
+                //if (table2 != null)
+                //{
+                //    TableStringExtensions.ToTableString(table2, Console.Out);
+                //    TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
+                //}
 
-                var query = new SQLiteQuery<UserWithBlob>(db);
-                string tot = "toto";
-                foreach (var user in query.Where(u => u.Name == "zz"))
-                {
-                    Console.WriteLine(user.Name);
-                }
-                //db.LoadAll<User>().ToTableString(Console.Out);
+                var query = new SQLiteQuery<TestQuery>(db);
+                query.Where(u => u.Department == "hr").ToTableString(Console.Out);
+                db.Collations.ToTableString(Console.Out);
+                db.GetTable<TestQuery>().Columns.ToTableString(Console.Out);
             }
+        }
+
+        private static void OnCollationNeeded(object sender, SQLiteCollationNeededEventArgs e)
+        {
+            Console.WriteLine("OnCollationNeeded sender:" + sender + " name: " + e.CollationName);
+            //e.Database.SetCollationFunction(nameof(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
         }
 
         private static void OnPropertyRollback(object sender, DictionaryObjectPropertyRollbackEventArgs e)
@@ -162,8 +155,95 @@ namespace SqlNado.Temp
     public enum UserOptions
     {
         None = 0x0,
-        Cool = 0x1,
-        Super = 0x1000,
+        HasDrivingLicense = 0x1,
+        HasTruckDrivingLicense = 0x2,
+        IsAdmin = 0x4,
+    }
+
+    public class TestQuery : SQLiteBaseObject
+    {
+        public TestQuery(SQLiteDatabase database) : base(database)
+        {
+        }
+
+        [SQLiteColumn(IsPrimaryKey = true)]
+        public string Name { get; set; }
+        public int Age { get; set; }
+        public string Department { get; set; }
+        public bool IsAbsent { get; set; }
+        public UserOptions Options { get; set; }
+        public decimal MonthlySalary { get; set; }
+        public double OfficeLatitude { get; set; }
+        public double OfficeLongitude { get; set; }
+
+        public static void Ensure(SQLiteDatabase db)
+        {
+            var tq = new TestQuery(db);
+            tq.Name = "bill";
+            tq.Age = 21;
+            tq.Department = "Accounting";
+            tq.IsAbsent = false;
+            tq.Options = UserOptions.HasDrivingLicense;
+            tq.MonthlySalary = 1200;
+            tq.OfficeLatitude = 49.310230;
+            tq.OfficeLongitude = 24.0923;
+            tq.Save();
+
+            tq = new TestQuery(db);
+            tq.Name = "samantha";
+            tq.Age = 51;
+            tq.Department = "HR";
+            tq.IsAbsent = true;
+            tq.Options = UserOptions.HasDrivingLicense | UserOptions.IsAdmin;
+            tq.MonthlySalary = 2120;
+            tq.OfficeLatitude = 48.310230;
+            tq.OfficeLongitude = 23.0923;
+            tq.Save();
+
+            tq = new TestQuery(db);
+            tq.Name = "joe";
+            tq.Age = 32;
+            tq.Department = "HR";
+            tq.IsAbsent = true;
+            tq.Options = UserOptions.HasTruckDrivingLicense | UserOptions.HasDrivingLicense;
+            tq.MonthlySalary = 1532;
+            tq.OfficeLatitude = 47.310230;
+            tq.OfficeLongitude = 22.0923;
+            tq.Save();
+
+            tq = new TestQuery(db);
+            tq.Name = "will";
+            tq.Age = 34;
+            tq.Department = "HR";
+            tq.IsAbsent = true;
+            tq.Options = UserOptions.None;
+            tq.MonthlySalary = 1370;
+            tq.OfficeLatitude = 46.110230;
+            tq.OfficeLongitude = 25.1923;
+            tq.Save();
+
+            tq = new TestQuery(db);
+            tq.Name = "leslie";
+            tq.Age = 44;
+            tq.Department = "Accounting";
+            tq.IsAbsent = true;
+            tq.Options = UserOptions.None;
+            tq.MonthlySalary = 2098;
+            tq.OfficeLatitude = 47.110230;
+            tq.OfficeLongitude = 26.1923;
+            tq.Save();
+
+            tq = new TestQuery(db);
+            tq.Name = "bob";
+            tq.Age = 36;
+            tq.Department = "Accounting";
+            tq.IsAbsent = false;
+            tq.Options = UserOptions.HasDrivingLicense;
+            tq.MonthlySalary = 2138;
+            tq.OfficeLatitude = 48.109630;
+            tq.OfficeLongitude = 25.1923;
+            tq.Save();
+        }
     }
 
     public class UserWithBlob : SQLiteBaseObject
