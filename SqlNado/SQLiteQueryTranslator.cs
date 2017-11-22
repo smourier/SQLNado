@@ -1,13 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using SqlNado.Utilities;
 
 namespace SqlNado
 {
     public class SQLiteQueryTranslator : ExpressionVisitor
     {
+        private SQLiteTypeOptions _typeOptions;
         public SQLiteQueryTranslator(SQLiteDatabase database, TextWriter writer)
         {
             if (database == null)
@@ -22,13 +26,31 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public TextWriter Writer { get; }
+        public SQLiteTypeOptions TypeOptions { get => _typeOptions ?? Database.TypeOptions; set => _typeOptions = value; }
+
+        private static string BuildNotSupported(string text) => "0023: " + text + " is not handled by the Expression Translator.";
 
         public virtual void Translate(Expression expression)
         {
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
 
+            expression = PartialEvaluator.Eval(expression);
             Visit(expression);
+        }
+
+        protected virtual string SubTranslate(Expression expression)
+        {
+            if (expression == null)
+                throw new ArgumentNullException(nameof(expression));
+
+            using (var writer = new StringWriter())
+            {
+                var translator = new SQLiteQueryTranslator(Database, writer);
+                translator.TypeOptions = TypeOptions;
+                translator.Visit(expression);
+                return writer.ToString();
+            }
         }
 
         private static Expression StripQuotes(Expression expression)
@@ -53,7 +75,7 @@ namespace SqlNado
                         var lambda = (LambdaExpression)StripQuotes(callExpression.Arguments[1]);
                         Visit(lambda.Body);
                         return callExpression;
-                }                        
+                }
             }
 
             if (callExpression.Method.DeclaringType == typeof(Conversions))
@@ -69,7 +91,51 @@ namespace SqlNado
                 }
             }
 
-            throw new NotSupportedException(string.Format("The method '{0}' is not supported", callExpression.Method.Name));
+            if (callExpression.Method.DeclaringType == typeof(string))
+            {
+                switch (callExpression.Method.Name)
+                {
+                    case nameof(string.StartsWith):
+                    case nameof(string.EndsWith):
+                        Visit(callExpression.Object);
+                        Writer.Write(" LIKE ");
+
+                        string sub = SubTranslate(callExpression.Arguments[0]);
+                        if (sub != null && sub.Length > 1 && sub.StartsWith("'") && sub.EndsWith("'"))
+                        {
+                            Writer.Write('\'');
+                            if (callExpression.Method.Name == nameof(string.EndsWith))
+                            {
+                                Writer.Write('%');
+                            }
+                            Writer.Write(sub.Substring(1, sub.Length - 2));
+                            if (callExpression.Method.Name == nameof(string.StartsWith))
+                            {
+                                Writer.Write('%');
+                            }
+                            Writer.Write('\'');
+                        }
+                        else
+                        {
+                            Writer.Write(sub);
+                        }
+                        return callExpression;
+                }
+            }
+
+            if (callExpression.Method.DeclaringType == typeof(Enum))
+            {
+                switch (callExpression.Method.Name)
+                {
+                    case nameof(Enum.HasFlag):
+                        Visit(callExpression.Object);
+                        Writer.Write(" & ");
+                        Visit(callExpression.Arguments[0]);
+                        return callExpression;
+                }
+            }
+
+            throw new SqlNadoException(BuildNotSupported("The method '" + callExpression.Method.Name + "' of type '" + callExpression.Method.DeclaringType.FullName + "'"));
         }
 
         protected override Expression VisitUnary(UnaryExpression unaryExpression)
@@ -82,8 +148,13 @@ namespace SqlNado
                     Writer.Write(")");
                     break;
 
+                // just let go. hopefully it should be ok with sqlite
+                case ExpressionType.Convert:
+                    Visit(unaryExpression.Operand);
+                    break;
+
                 default:
-                    throw new NotSupportedException(string.Format("The unary operator '{0}' is not supported", unaryExpression.NodeType));
+                    throw new SqlNadoException(BuildNotSupported("The unary operator '" + unaryExpression.NodeType + "'"));
 
             }
             return unaryExpression;
@@ -95,28 +166,24 @@ namespace SqlNado
             Visit(binaryExpression.Left);
             switch (binaryExpression.NodeType)
             {
+                case ExpressionType.Add:
+                    Writer.Write(" + ");
+                    break;
+
                 case ExpressionType.And:
+                    Writer.Write(" & ");
+                    break;
+
+                case ExpressionType.AndAlso:
                     Writer.Write(" AND ");
                     break;
 
-                case ExpressionType.Or:
-                    Writer.Write(" OR");
+                case ExpressionType.Divide:
+                    Writer.Write(" / ");
                     break;
 
                 case ExpressionType.Equal:
                     Writer.Write(" = ");
-                    break;
-
-                case ExpressionType.NotEqual:
-                    Writer.Write(" <> ");
-                    break;
-
-                case ExpressionType.LessThan:
-                    Writer.Write(" < ");
-                    break;
-
-                case ExpressionType.LessThanOrEqual:
-                    Writer.Write(" <= ");
                     break;
 
                 case ExpressionType.GreaterThan:
@@ -127,8 +194,52 @@ namespace SqlNado
                     Writer.Write(" >= ");
                     break;
 
+                case ExpressionType.LeftShift:
+                    Writer.Write(" << ");
+                    break;
+
+                case ExpressionType.LessThan:
+                    Writer.Write(" < ");
+                    break;
+
+                case ExpressionType.LessThanOrEqual:
+                    Writer.Write(" <= ");
+                    break;
+
+                case ExpressionType.Modulo:
+                    Writer.Write(" % ");
+                    break;
+
+                case ExpressionType.Multiply:
+                    Writer.Write(" * ");
+                    break;
+
+                case ExpressionType.NotEqual:
+                    Writer.Write(" <> ");
+                    break;
+
+                case ExpressionType.OnesComplement:
+                    Writer.Write(" ~ ");
+                    break;
+
+                case ExpressionType.Or:
+                    Writer.Write(" | ");
+                    break;
+
+                case ExpressionType.OrElse:
+                    Writer.Write(" OR ");
+                    break;
+
+                case ExpressionType.RightShift:
+                    Writer.Write(" >> ");
+                    break;
+
+                case ExpressionType.Subtract:
+                    Writer.Write(" - ");
+                    break;
+
                 default:
-                    throw new NotSupportedException(string.Format("The binary operator '{0}' is not supported", binaryExpression.NodeType));
+                    throw new SqlNadoException(BuildNotSupported("The binary operator '" + binaryExpression.NodeType + "'"));
             }
 
             Visit(binaryExpression.Right);
@@ -136,52 +247,222 @@ namespace SqlNado
             return binaryExpression;
         }
 
-        protected override Expression VisitConstant(ConstantExpression constantExpression)
+        protected override Expression VisitConstant(ConstantExpression constant)
         {
-            if (constantExpression.Value is IQueryable queryable)
+            if (constant.Value is IQueryable queryable)
             {
-                // assume constant nodes w/ IQueryables are table references
                 var table = Database.GetObjectTable(queryable.ElementType);
                 Writer.Write(table.EscapedName);
             }
-            else if (constantExpression.Value == null || Convert.IsDBNull(constantExpression.Value))
+            else if (constant.Value == null)
             {
                 Writer.Write("NULL");
             }
             else
             {
-                switch (Type.GetTypeCode(constantExpression.Value.GetType()))
+                object value = Database.CoerceValueForBind(constant.Value, TypeOptions);
+                switch (Type.GetTypeCode(value.GetType()))
                 {
                     case TypeCode.Boolean:
-                        Writer.Write(((bool)constantExpression.Value) ? 1 : 0);
+                        Writer.Write(((bool)value) ? 1 : 0);
+                        break;
+
+                    case TypeCode.DBNull:
+                        Writer.Write("NULL");
+                        break;
+
+                    case TypeCode.Double:
                         break;
 
                     case TypeCode.String:
-                        Writer.Write("'");
-                        Writer.Write(constantExpression.Value);
-                        Writer.Write("'");
+                        var s = (string)value;
+                        if (s != null)
+                        {
+                            s = s.Replace("'", "''");
+                        }
+
+                        Writer.Write('\'');
+                        Writer.Write(s);
+                        Writer.Write('\'');
                         break;
 
-                    case TypeCode.Object:
-                        throw new NotSupportedException(string.Format("The constant for '{0}' is not supported", constantExpression.Value));
+                    case TypeCode.Int32:
+                    case TypeCode.Int64:
+                        Writer.Write(string.Format(CultureInfo.InvariantCulture, "{0}", value));
+                        break;
 
                     default:
-                        Writer.Write(constantExpression.Value);
-                        break;
+                        if (value is byte[] bytes)
+                        {
+                            break;
+                        }
+
+                        throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + constant.Value + "' of type '" + constant.Value.GetType().FullName + "') for '" + value + "'"));
                 }
             }
-            return constantExpression;
+            return constant;
         }
 
         protected override Expression VisitMember(MemberExpression memberExpression)
         {
-            if (memberExpression.Expression != null && memberExpression.Expression.NodeType == ExpressionType.Parameter)
+            if (memberExpression.Expression != null)
             {
-                Writer.Write(memberExpression.Member.Name);
-                return memberExpression;
+                if (memberExpression.Expression.NodeType == ExpressionType.Parameter)
+                {
+                    Writer.Write(memberExpression.Member.Name);
+                    return memberExpression;
+                }
             }
 
-            throw new NotSupportedException(string.Format("The member '{0}' is not supported", memberExpression.Member.Name));
+            throw new SqlNadoException(BuildNotSupported("The member '" + memberExpression.Member.Name + "'"));
+        }
+
+        // from https://github.com/mattwar/iqtoolkit
+        private class PartialEvaluator
+        {
+            public static Expression Eval(Expression expression) => Eval(expression, null, null);
+            public static Expression Eval(Expression expression, Func<Expression, bool> fnCanBeEvaluated) => Eval(expression, fnCanBeEvaluated, null);
+            public static Expression Eval(Expression expression, Func<Expression, bool> fnCanBeEvaluated, Func<ConstantExpression, Expression> fnPostEval)
+            {
+                if (fnCanBeEvaluated == null)
+                {
+                    fnCanBeEvaluated = CanBeEvaluatedLocally;
+                }
+                return SubtreeEvaluator.Eval(Nominator.Nominate(fnCanBeEvaluated, expression), fnPostEval, expression);
+            }
+
+            private static bool CanBeEvaluatedLocally(Expression expression) => expression.NodeType != ExpressionType.Parameter;
+
+            private class SubtreeEvaluator : ExpressionVisitor
+            {
+                private HashSet<Expression> _candidates;
+                private Func<ConstantExpression, Expression> _evalFunc;
+
+                private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression> evalFunc)
+                {
+                    _candidates = candidates;
+                    _evalFunc = evalFunc;
+                }
+
+                internal static Expression Eval(HashSet<Expression> candidates, Func<ConstantExpression, Expression> onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
+
+                public override Expression Visit(Expression expression)
+                {
+                    if (expression == null)
+                        return null;
+
+                    if (_candidates.Contains(expression))
+                        return Evaluate(expression);
+
+                    return base.Visit(expression);
+                }
+
+                private Expression PostEval(ConstantExpression constant)
+                {
+                    if (_evalFunc != null)
+                        return _evalFunc(constant);
+
+                    return constant;
+                }
+
+                private Expression Evaluate(Expression expression)
+                {
+                    var type = expression.Type;
+                    if (expression.NodeType == ExpressionType.Convert)
+                    {
+                        var u = (UnaryExpression)expression;
+                        if (GetNonNullableType(u.Operand.Type) == GetNonNullableType(type))
+                        {
+                            expression = ((UnaryExpression)expression).Operand;
+                        }
+                    }
+
+                    if (expression.NodeType == ExpressionType.Constant)
+                    {
+                        if (expression.Type == type)
+                            return expression;
+
+                        if (GetNonNullableType(expression.Type) == GetNonNullableType(type))
+                            return Expression.Constant(((ConstantExpression)expression).Value, type);
+                    }
+
+                    if (expression is MemberExpression me && me.Expression is ConstantExpression ce)
+                        return PostEval(Expression.Constant(GetValue(me.Member, ce.Value), type));
+
+                    if (type.IsValueType)
+                    {
+                        expression = Expression.Convert(expression, typeof(object));
+                    }
+
+                    var lambda = Expression.Lambda<Func<object>>(expression);
+                    Func<object> fn = lambda.Compile();
+                    return PostEval(Expression.Constant(fn(), type));
+                }
+
+                private static object GetValue(MemberInfo member, object instance)
+                {
+                    switch (member.MemberType)
+                    {
+                        case MemberTypes.Property:
+                            return ((PropertyInfo)member).GetValue(instance, null);
+
+                        case MemberTypes.Field:
+                            return ((FieldInfo)member).GetValue(instance);
+
+                        default:
+                            throw new InvalidOperationException();
+                    }
+                }
+
+                private static bool IsNullableType(Type type) => type != null && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+                private static Type GetNonNullableType(Type type) => IsNullableType(type) ? type.GetGenericArguments()[0] : type;
+            }
+
+            private class Nominator : ExpressionVisitor
+            {
+                private Func<Expression, bool> _fnCanBeEvaluated;
+                private HashSet<Expression> _candidates;
+                private bool _cannotBeEvaluated;
+
+                public Nominator(Func<Expression, bool> fnCanBeEvaluated)
+                {
+                    _candidates = new HashSet<Expression>();
+                    _fnCanBeEvaluated = fnCanBeEvaluated;
+                }
+
+                public static HashSet<Expression> Nominate(Func<Expression, bool> fnCanBeEvaluated, Expression expression)
+                {
+                    var nominator = new Nominator(fnCanBeEvaluated);
+                    nominator.Visit(expression);
+                    return nominator._candidates;
+                }
+
+                protected override Expression VisitConstant(ConstantExpression c) => base.VisitConstant(c);
+
+                public override Expression Visit(Expression expression)
+                {
+                    if (expression != null)
+                    {
+                        bool saveCannotBeEvaluated = _cannotBeEvaluated;
+                        _cannotBeEvaluated = false;
+                        base.Visit(expression);
+                        if (!_cannotBeEvaluated)
+                        {
+                            if (_fnCanBeEvaluated(expression))
+                            {
+                                _candidates.Add(expression);
+                            }
+                            else
+                            {
+                                _cannotBeEvaluated = true;
+                            }
+                        }
+
+                        _cannotBeEvaluated |= saveCannotBeEvaluated;
+                    }
+                    return expression;
+                }
+            }
         }
     }
 }

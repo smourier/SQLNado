@@ -260,6 +260,55 @@ namespace SqlNado
             return ExecuteScalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1 COLLATE NOCASE LIMIT 1", 0, name) > 0;
         }
 
+        protected virtual internal object CoerceValueForBind(object value, SQLiteTypeOptions typeOptions)
+        {
+            if (value == null || Convert.IsDBNull(value))
+                return null;
+
+            if (value is ISQLiteObject so)
+            {
+                var pk = so.GetPrimaryKey();
+                value = pk;
+                if (pk != null)
+                {
+                    if (pk.Length == 0)
+                    {
+                        value = null;
+                    }
+                    else if (pk.Length == 1)
+                    {
+                        value = CoerceValueForBind(pk[0], typeOptions);
+                    }
+                    else // > 1
+                    {
+                        value = string.Join(PrimaryKeyPersistenceSeparator, pk);
+                    }
+                }
+            }
+
+            var type = GetBindType(value);
+            var ctx = CreateBindContext();
+            if (typeOptions != null)
+            {
+                ctx.TypeOptions = typeOptions;
+            }
+
+            if (value != null)
+            {
+                var valueType = value.GetType();
+                if (valueType.IsEnum)
+                {
+                    if (!ctx.TypeOptions.EnumAsString)
+                    {
+                        value = Convert.ChangeType(value, Enum.GetUnderlyingType(valueType));
+                    }
+                }
+            }
+
+            ctx.Value = value;
+            return type.ConvertFunc(ctx);
+        }
+
         private static Type GetObjectType(object obj)
         {
             if (obj == null)

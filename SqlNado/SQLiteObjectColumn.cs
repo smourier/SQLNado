@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using SqlNado.Utilities;
 
@@ -104,48 +105,7 @@ namespace SqlNado
         public virtual object GetValueForBind(object obj)
         {
             var value = GetValue(obj);
-            if (value is ISQLiteObject so)
-            {
-                var pk = so.GetPrimaryKey();
-                value = pk;
-                if (pk != null)
-                {
-                    if (pk.Length == 0)
-                    {
-                        value = null;
-                    }
-                    else if (pk.Length == 1)
-                    {
-                        value = pk[0];
-                    }
-                    else // > 1
-                    {
-                        value = string.Join(Table.Database.PrimaryKeyPersistenceSeparator, pk);
-                    }
-                }
-            }
-
-            var type = Table.Database.GetBindType(value);
-            var ctx = Table.Database.CreateBindContext();
-            if (TypeOptions != null)
-            {
-                ctx.TypeOptions = TypeOptions;
-            }
-
-            if (value != null)
-            {
-                var valueType = value.GetType();
-                if (valueType.IsEnum)
-                {
-                    if (!ctx.TypeOptions.EnumAsString)
-                    {
-                        value = Convert.ChangeType(value, Enum.GetUnderlyingType(valueType));
-                    }
-                }
-            }
-
-            ctx.Value = value;
-            return type.ConvertFunc(ctx);
+            return Table.Database.CoerceValueForBind(value, TypeOptions);
         }
 
         public virtual object GetValue(object obj) => GetValueFunc(obj);
@@ -200,7 +160,7 @@ namespace SqlNado
                 }
                 else
                 {
-                    sql += " DEFAULT " + SQLiteStatement.ToLiteral(DefaultValue);
+                    sql += " DEFAULT " + ToLiteral(DefaultValue);
                 }
             }
             else
@@ -211,7 +171,7 @@ namespace SqlNado
                     {
                         // we *must* define a default value or "Cannot add a NOT NULL column with default value NULL".
                         object defaultValue = Activator.CreateInstance(ClrType);
-                        sql += " DEFAULT " + SQLiteStatement.ToLiteral(defaultValue);
+                        sql += " DEFAULT " + ToLiteral(defaultValue);
                     }
                 }
             }
@@ -221,6 +181,29 @@ namespace SqlNado
                 sql += " COLLATE " + Collation;
             }
             return sql;
+        }
+
+        protected virtual string ToLiteral(object value)
+        {
+            value = Table.Database.CoerceValueForBind(value, TypeOptions);
+            // from here, we should have a limited set of types
+
+            if (value is string svalue)
+                return SQLiteStatement.EscapeName(svalue);
+
+            if (value is byte[] bytes)
+                return "X'" + Conversions.ToHexa(bytes) + "'";
+
+            if (value is DateTime dt)
+                return string.Format(CultureInfo.InvariantCulture, "'{0}'", dt);
+
+            if (value is DateTimeOffset dto)
+                return string.Format(CultureInfo.InvariantCulture, "'{0}'", dto.DateTime);
+
+            if (value is Guid guid)
+                return string.Format(CultureInfo.InvariantCulture, "'{0}'", dto.DateTime);
+
+            return string.Format(CultureInfo.InvariantCulture, "{0}", value);
         }
 
         public override string ToString()
@@ -260,7 +243,7 @@ namespace SqlNado
                 }
                 else
                 {
-                    atts.Add("D:" + SQLiteStatement.ToLiteral(DefaultValue) + ")");
+                    atts.Add("D:" + ToLiteral(DefaultValue) + ")");
                 }
             }
 

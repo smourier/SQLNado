@@ -393,20 +393,6 @@ namespace SqlNado
             while (true);
         }
 
-        public static string ToLiteral(object value)
-        {
-            if (value == null || Convert.IsDBNull(value))
-                return "NULL";
-
-            if (value is string svalue)
-                return EscapeName(svalue);
-
-            if (value is byte[] bytes)
-                return "X'" + Conversions.ToHexa(bytes) + "'";
-
-            return string.Format(CultureInfo.InvariantCulture, "{0}", value);
-        }
-
         public static string EscapeName(string name)
         {
             if (name == null)

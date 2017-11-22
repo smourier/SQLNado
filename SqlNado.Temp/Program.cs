@@ -32,14 +32,14 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase("test.db"))
             {
+                db.Logger = new ConsoleLogger(true);
                 db.CollationNeeded += OnCollationNeeded;
                 db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
+
                 //db.DeleteTable<UserWithBlob>();
                 //db.DeleteTable<Product>();
                 db.Vacuum();
                 db.SynchronizeSchema<TestQuery>();
-
-                db.Logger = new ConsoleLogger(true);
 
                 //TestQuery.Ensure(db);
                 db.LoadAll<TestQuery>().ToTableString(Console.Out);
@@ -80,8 +80,11 @@ namespace SqlNado.Temp
                 //}
 
                 var query = new SQLiteQuery<TestQuery>(db);
-                query.Where(u => u.Department == "hr").ToTableString(Console.Out);
-                db.Collations.ToTableString(Console.Out);
+                //query.Where(u => u.Department.StartsWith("h") && u.Department == "accounting").ToTableString(Console.Out);
+                query.Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
+                string h = "h";
+                string r = "r";
+                //query.Where(u => u.Department.StartsWith(h) && (u.Options & UserOptions.IsAdmin) == UserOptions.IsAdmin).ToTableString(Console.Out);
                 db.GetTable<TestQuery>().Columns.ToTableString(Console.Out);
             }
         }
@@ -175,6 +178,9 @@ namespace SqlNado.Temp
         public decimal MonthlySalary { get; set; }
         public double OfficeLatitude { get; set; }
         public double OfficeLongitude { get; set; }
+        public DateTime StartDateUtc { get; set; }
+        public DateTime EndDateUtc { get; set; }
+        public Guid UniqueId { get; set; }
 
         public static void Ensure(SQLiteDatabase db)
         {
@@ -187,6 +193,9 @@ namespace SqlNado.Temp
             tq.MonthlySalary = 1200;
             tq.OfficeLatitude = 49.310230;
             tq.OfficeLongitude = 24.0923;
+            tq.StartDateUtc = new DateTime(1990, 1, 25);
+            tq.EndDateUtc = new DateTime(2019, 11, 5);
+            tq.UniqueId = new Guid("00000000-0000-0000-0000-000000000001");
             tq.Save();
 
             tq = new TestQuery(db);
@@ -198,6 +207,8 @@ namespace SqlNado.Temp
             tq.MonthlySalary = 2120;
             tq.OfficeLatitude = 48.310230;
             tq.OfficeLongitude = 23.0923;
+            tq.StartDateUtc = new DateTime(2000, 4, 13);
+            tq.UniqueId = new Guid("00000000-0000-0000-1000-000000000002");
             tq.Save();
 
             tq = new TestQuery(db);
@@ -209,6 +220,8 @@ namespace SqlNado.Temp
             tq.MonthlySalary = 1532;
             tq.OfficeLatitude = 47.310230;
             tq.OfficeLongitude = 22.0923;
+            tq.StartDateUtc = new DateTime(2014, 10, 11);
+            tq.UniqueId = new Guid("00000000-0000-1000-1000-000000000003");
             tq.Save();
 
             tq = new TestQuery(db);
@@ -220,6 +233,9 @@ namespace SqlNado.Temp
             tq.MonthlySalary = 1370;
             tq.OfficeLatitude = 46.110230;
             tq.OfficeLongitude = 25.1923;
+            tq.StartDateUtc = new DateTime(2005, 1, 4);
+            tq.EndDateUtc = new DateTime(2011, 4, 2);
+            tq.UniqueId = new Guid("00000000-5000-1000-1000-000000000004");
             tq.Save();
 
             tq = new TestQuery(db);
@@ -231,6 +247,8 @@ namespace SqlNado.Temp
             tq.MonthlySalary = 2098;
             tq.OfficeLatitude = 47.110230;
             tq.OfficeLongitude = 26.1923;
+            tq.StartDateUtc = new DateTime(2001, 7, 20);
+            tq.UniqueId = new Guid("A0000000-5000-1000-1000-000000000005");
             tq.Save();
 
             tq = new TestQuery(db);
@@ -242,6 +260,8 @@ namespace SqlNado.Temp
             tq.MonthlySalary = 2138;
             tq.OfficeLatitude = 48.109630;
             tq.OfficeLongitude = 25.1923;
+            tq.StartDateUtc = new DateTime(2001, 5, 10);
+            tq.UniqueId = new Guid("A0000000-5000-1000-1000-000000000006");
             tq.Save();
         }
     }

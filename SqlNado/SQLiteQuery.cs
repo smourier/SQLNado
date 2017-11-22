@@ -37,6 +37,7 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
+        public SQLiteTypeOptions TypeOptions { get; set; }
 
         protected virtual SQLiteQueryTranslator CreateTranslator(TextWriter writer) => new SQLiteQueryTranslator(Database, writer);
         public IEnumerator<T> GetEnumerator() => (_provider.ExecuteEnumerable<T>(_expression)).GetEnumerator();
@@ -55,6 +56,7 @@ namespace SqlNado
             using (var sw = new StringWriter())
             {
                 var translator = CreateTranslator(sw);
+                translator.TypeOptions = TypeOptions;
                 translator.Translate(expression);
                 return sw.ToString();
             }
