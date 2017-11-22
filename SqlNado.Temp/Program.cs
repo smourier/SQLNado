@@ -79,12 +79,10 @@ namespace SqlNado.Temp
                 //    TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
                 //}
 
-                var query = new SQLiteQuery<TestQuery>(db);
                 //query.Where(u => u.Department.StartsWith("h") && u.Department == "accounting").ToTableString(Console.Out);
-                query.Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
+                db.Query<TestQuery>().Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
                 string h = "h";
                 string r = "r";
-                //query.Where(u => u.Department.StartsWith(h) && (u.Options & UserOptions.IsAdmin) == UserOptions.IsAdmin).ToTableString(Console.Out);
                 db.GetTable<TestQuery>().Columns.ToTableString(Console.Out);
             }
         }

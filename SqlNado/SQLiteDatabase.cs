@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -621,11 +622,6 @@ namespace SqlNado
             return LoadRows(sql);
         }
 
-        public virtual IOrderedQueryable<T> Query<T>(string sql, SQLiteLoadOptions options, params object[] args)
-        {
-            return null;
-        }
-
         public IEnumerable<T> LoadAll<T>(int maximumRows) => Load<T>(null, new SQLiteLoadOptions(this) { MaximumRows = maximumRows });
         public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
         public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options) => Load<T>(null, options);
@@ -725,6 +721,9 @@ namespace SqlNado
             string sql = "SELECT * FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
             return Load(objectType, sql, options, keys).FirstOrDefault();
         }
+
+        public virtual SQLiteQuery<T> Query<T>() => new SQLiteQuery<T>(this);
+        public virtual SQLiteQuery<T> Query<T>(Expression expression) => new SQLiteQuery<T>(this, expression);
 
         public IEnumerable<object> LoadAll(Type objectType) => Load(objectType, null, null, null);
         public IEnumerable<object> Load(Type objectType, string sql, params object[] args) => Load(objectType, sql, null, args);
