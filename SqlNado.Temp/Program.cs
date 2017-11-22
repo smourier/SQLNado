@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using SqlNado.Utilities;
 
 namespace SqlNado.Temp
@@ -38,10 +39,10 @@ namespace SqlNado.Temp
 
                 //db.DeleteTable<UserWithBlob>();
                 //db.DeleteTable<Product>();
-                db.Vacuum();
-                db.SynchronizeSchema<TestQuery>();
+                //db.Vacuum();
+                //db.SynchronizeSchema<TestQuery>();
 
-                //TestQuery.Ensure(db);
+                TestQuery.Ensure(db);
                 db.LoadAll<TestQuery>().ToTableString(Console.Out);
 
                 //db.BeginTransaction();
@@ -79,10 +80,13 @@ namespace SqlNado.Temp
                 //    TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
                 //}
 
-                //query.Where(u => u.Department.StartsWith("h") && u.Department == "accounting").ToTableString(Console.Out);
-                db.Query<TestQuery>().Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
+                //db.Query<TestQuery>().Where(u => u.Department.Contains("h") || u.Department == "accounting").ToTableString(Console.Out);
+                db.Query<TestQuery>().Where(u => u.Department.Substring(1) == "R" || u.Department.Substring(1) == "r").ToTableString(Console.Out);
+                //db.Query<TestQuery>().Where(u => u.Department.Contains("r")).ToTableString(Console.Out);
+                //db.Query<TestQuery>().Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
                 string h = "h";
                 string r = "r";
+                //TableStringExtensions.ToTableString(db.GetTable<TestQuery>(), Console.Out);
                 db.GetTable<TestQuery>().Columns.ToTableString(Console.Out);
             }
         }
@@ -260,6 +264,11 @@ namespace SqlNado.Temp
             tq.OfficeLongitude = 25.1923;
             tq.StartDateUtc = new DateTime(2001, 5, 10);
             tq.UniqueId = new Guid("A0000000-5000-1000-1000-000000000006");
+            tq.Save();
+
+            tq = new TestQuery(db);
+            tq.Name = "tom";
+            tq.MonthlySalary = decimal.MaxValue;
             tq.Save();
         }
     }

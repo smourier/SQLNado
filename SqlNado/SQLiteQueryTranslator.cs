@@ -97,19 +97,22 @@ namespace SqlNado
                 {
                     case nameof(string.StartsWith):
                     case nameof(string.EndsWith):
+                    case nameof(string.Contains):
                         Visit(callExpression.Object);
                         Writer.Write(" LIKE ");
 
                         string sub = SubTranslate(callExpression.Arguments[0]);
-                        if (sub != null && sub.Length > 1 && sub.StartsWith("'") && sub.EndsWith("'"))
+                        if (IsQuoted(sub))
                         {
                             Writer.Write('\'');
-                            if (callExpression.Method.Name == nameof(string.EndsWith))
+                            if (callExpression.Method.Name == nameof(string.EndsWith) ||
+                                callExpression.Method.Name == nameof(string.Contains))
                             {
                                 Writer.Write('%');
                             }
                             Writer.Write(sub.Substring(1, sub.Length - 2));
-                            if (callExpression.Method.Name == nameof(string.StartsWith))
+                            if (callExpression.Method.Name == nameof(string.StartsWith) ||
+                                callExpression.Method.Name == nameof(string.Contains))
                             {
                                 Writer.Write('%');
                             }
@@ -119,6 +122,32 @@ namespace SqlNado
                         {
                             Writer.Write(sub);
                         }
+                        return callExpression;
+
+                    case nameof(string.ToLower):
+                        Writer.Write(" lower(");
+                        Visit(callExpression.Object);
+                        Writer.Write(')');
+                        return callExpression;
+
+                    case nameof(string.ToUpper):
+                        Writer.Write(" upper(");
+                        Visit(callExpression.Object);
+                        Writer.Write(')');
+                        return callExpression;
+
+                    case nameof(string.Substring):
+                        Writer.Write(" substr(");
+                        Visit(callExpression.Object);
+                        Writer.Write(",(");
+                        Visit(callExpression.Arguments[0]);
+                        Writer.Write("+1)");
+                        if (callExpression.Arguments.Count > 1)
+                        {
+                            Writer.Write(',');
+                            Visit(callExpression.Arguments[1]);
+                        }
+                        Writer.Write(')');
                         return callExpression;
                 }
             }
@@ -135,8 +164,52 @@ namespace SqlNado
                 }
             }
 
+            if (callExpression.Method.DeclaringType == typeof(Convert))
+            {
+                switch (callExpression.Method.Name)
+                {
+                    case nameof(Convert.IsDBNull):
+                        Visit(callExpression.Arguments[0]);
+                        Writer.Write(" IS NULL");
+                        return callExpression;
+                }
+            }
+
+            if (callExpression.Method.DeclaringType == typeof(object))
+            {
+                switch (callExpression.Method.Name)
+                {
+                    case nameof(object.Equals):
+                        Visit(callExpression.Object);
+                        Writer.Write(" = ");
+                        Visit(callExpression.Arguments[0]);
+                        return callExpression;
+                }
+            }
+
+            if (callExpression.Method.DeclaringType == typeof(Math))
+            {
+                switch (callExpression.Method.Name)
+                {
+                    case nameof(Math.Abs):
+                        Writer.Write(" abs(");
+                        Visit(callExpression.Arguments[0]);
+                        Writer.Write(')');
+                        return callExpression;
+                }
+            }
+
+            if (callExpression.Method.Name == "ToString" &&
+                callExpression.Method.GetParameters().Length == 0)
+            {
+                Visit(callExpression.Object);
+                return callExpression;
+            }
+
             throw new SqlNadoException(BuildNotSupported("The method '" + callExpression.Method.Name + "' of type '" + callExpression.Method.DeclaringType.FullName + "'"));
         }
+
+        private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'") && s.EndsWith("'");
 
         protected override Expression VisitUnary(UnaryExpression unaryExpression)
         {
@@ -144,6 +217,12 @@ namespace SqlNado
             {
                 case ExpressionType.Not:
                     Writer.Write(" NOT (");
+                    Visit(unaryExpression.Operand);
+                    Writer.Write(")");
+                    break;
+
+                case ExpressionType.ArrayLength:
+                    Writer.Write(" length(");
                     Visit(unaryExpression.Operand);
                     Writer.Write(")");
                     break;
@@ -294,6 +373,8 @@ namespace SqlNado
                     default:
                         if (value is byte[] bytes)
                         {
+                            string hex = "X'" + Conversions.ToHexa(bytes) + "'";
+                            Writer.Write(hex);
                             break;
                         }
 
@@ -309,8 +390,31 @@ namespace SqlNado
             {
                 if (memberExpression.Expression.NodeType == ExpressionType.Parameter)
                 {
-                    Writer.Write(memberExpression.Member.Name);
+                    var table = Database.GetObjectTable(memberExpression.Expression.Type);
+                    var col = table.GetColumn(memberExpression.Member.Name);
+                    if (col != null)
+                    {
+                        // we don't use double-quoted escaped column name here
+                        Writer.Write('[');
+                        Writer.Write(col.Name);
+                        Writer.Write(']');
+                    }
+                    else
+                    {
+                        Writer.Write(memberExpression.Member.Name);
+                    }
                     return memberExpression;
+                }
+
+                if (memberExpression.Member != null && memberExpression.Member.DeclaringType == typeof(string))
+                {
+                    if (memberExpression.Member.Name == nameof(string.Length))
+                    {
+                        Writer.Write(" length(");
+                        Visit(memberExpression.Expression);
+                        Writer.Write(')');
+                        return memberExpression;
+                    }
                 }
             }
 

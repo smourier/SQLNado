@@ -21,10 +21,8 @@ namespace SqlNado
         private string _primaryKeyPersistenceSeparator = "\0";
         private static IntPtr _module;
         private IntPtr _handle;
-        private bool _cacheStatements;
         private ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
         private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
-        private ConcurrentDictionary<string, SQLiteStatement> _statements = new ConcurrentDictionary<string, SQLiteStatement>();
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
 
@@ -73,16 +71,6 @@ namespace SqlNado
         public IEnumerable<string> Collations => LoadObjects("PRAGMA collation_list").Select(row => (string)row[1]);
         public virtual ISQLiteLogger Logger { get; set; }
         public virtual string DefaultColumnCollation { get; set; }
-
-        public bool CacheStatements
-        {
-            get => _cacheStatements;
-            set
-            {
-                _cacheStatements = value;
-                ClearStatementsCache();
-            }
-        }
 
         public string PrimaryKeyPersistenceSeparator
         {
@@ -187,16 +175,18 @@ namespace SqlNado
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            // note we only support UTF-8 encoding
             if (comparer == null)
             {
-                CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF8, IntPtr.Zero, null));
+                CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null));
                 return;
             }
 
-            CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF8, IntPtr.Zero, (a, la, sa, lb, sb) =>
+            // note we only support UTF-16 encoding so we have only ptr > str marshaling
+            CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, (a, la, sa, lb, sb) =>
             {
-                return comparer.Compare(sa, sb);
+                var strA = Marshal.PtrToStringUni(sa, la / 2);
+                var strB = Marshal.PtrToStringUni(sb, lb / 2);
+                return comparer.Compare(strA, strB);
             }));
         }
 
@@ -840,28 +830,10 @@ namespace SqlNado
             return CreateBlob(handle, tableName, columnName, rowId, mode);
         }
 
-        public virtual void ClearStatementsCache() => _statements.Clear();
-
-        public virtual SQLiteStatement GetOrCreateStatement(string sql)
-        {
-            if (sql == null)
-                throw new ArgumentNullException(nameof(sql));
-
-            if (!CacheStatements)
-                return CreateStatement(sql);
-
-            if (!_statements.TryGetValue(sql, out SQLiteStatement statement))
-            {
-                statement = CreateStatement(sql);
-                statement = _statements.AddOrUpdate(sql, statement, (k, o) => o);
-            }
-            return statement;
-        }
-
         public SQLiteStatement PrepareStatement(string sql) => PrepareStatement(sql, null);
         public virtual SQLiteStatement PrepareStatement(string sql, params object[] args)
         {
-            var statement = GetOrCreateStatement(sql);
+            var statement = CreateStatement(sql);
             if (args != null)
             {
                 for (int i = 0; i < args.Length; i++)
@@ -1303,7 +1275,9 @@ namespace SqlNado
         internal static sqlite3_blob_write _sqlite3_blob_write;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate int xCompare(IntPtr arg, int lenA, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string strA, int lenB, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string strB);
+        private delegate int xCompare(IntPtr arg,
+            int lenA, IntPtr strA,
+            int lenB, IntPtr strB);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate SQLiteErrorCode sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, xCompare comparer);

@@ -381,6 +381,7 @@ namespace SqlNado
 
                 pk.InsertRange(0, updateArgs);
                 count = Database.ExecuteNonQuery(sql, pk.ToArray());
+                // note the count is ok even if all values did not changed
             }
 
             if (count == 0)

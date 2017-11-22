@@ -77,7 +77,7 @@ namespace SqlNado.Utilities
             return bytes;
         }
 
-        public static string ToHexa(this byte[] bytes) => bytes != null ? ToHexa(bytes, 0, bytes.Length) : "0x";
+        public static string ToHexa(this byte[] bytes) => ToHexa(bytes, 0, (bytes?.Length).GetValueOrDefault());
         public static string ToHexa(this byte[] bytes, int count) => ToHexa(bytes, 0, count);
         public static string ToHexa(this byte[] bytes, int offset, int count)
         {
@@ -99,7 +99,6 @@ namespace SqlNado.Utilities
             {
                 sb.Append(bytes[i].ToString("X2"));
             }
-
             return sb.ToString();
         }
 

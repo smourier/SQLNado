@@ -115,6 +115,9 @@ namespace SqlNado
                 if (property.GetIndexParameters().Length > 0)
                     continue;
 
+                if ((property.GetAccessors().FirstOrDefault()?.IsStatic).GetValueOrDefault())
+                    continue;
+
                 var att = GetColumnAttribute(property);
                 if (att != null)
                     yield return att;
