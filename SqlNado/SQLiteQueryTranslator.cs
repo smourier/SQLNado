@@ -11,7 +11,8 @@ namespace SqlNado
 {
     public class SQLiteQueryTranslator : ExpressionVisitor
     {
-        private SQLiteTypeOptions _typeOptions;
+        private SQLiteBindOptions _bindOptions;
+
         public SQLiteQueryTranslator(SQLiteDatabase database, TextWriter writer)
         {
             if (database == null)
@@ -26,7 +27,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public TextWriter Writer { get; }
-        public SQLiteTypeOptions TypeOptions { get => _typeOptions ?? Database.TypeOptions; set => _typeOptions = value; }
+        public SQLiteBindOptions BindOptions { get => _bindOptions ?? Database.BindOptions; set => _bindOptions = value; }
 
         private static string BuildNotSupported(string text) => "0023: " + text + " is not handled by the Expression Translator.";
 
@@ -47,7 +48,7 @@ namespace SqlNado
             using (var writer = new StringWriter())
             {
                 var translator = new SQLiteQueryTranslator(Database, writer);
-                translator.TypeOptions = TypeOptions;
+                translator.BindOptions = BindOptions;
                 translator.Visit(expression);
                 return writer.ToString();
             }
@@ -122,6 +123,14 @@ namespace SqlNado
                         {
                             Writer.Write(sub);
                         }
+
+                        if (callExpression.Arguments.Count > 1 &&
+                            callExpression.Arguments[1] is ConstantExpression ce1 &&
+                            ce1.Value is StringComparison sc1)
+                        {
+                            Writer.Write(" COLLATE ");
+                            Writer.Write(sc1.ToString());
+                        }
                         return callExpression;
 
                     case nameof(string.ToLower):
@@ -136,12 +145,28 @@ namespace SqlNado
                         Writer.Write(')');
                         return callExpression;
 
+                    case nameof(string.IndexOf):
+                        Writer.Write(" (instr(");
+                        Visit(callExpression.Object);
+                        Writer.Write(',');
+                        Visit(callExpression.Arguments[0]);
+                        Writer.Write(")");
+                        if (callExpression.Arguments.Count > 1 &&
+                            callExpression.Arguments[1] is ConstantExpression ce2 &&
+                            ce2.Value is StringComparison sc2)
+                        {
+                            Writer.Write(" COLLATE ");
+                            Writer.Write(sc2.ToString());
+                        }
+                        Writer.Write("-1)"); // SQLite is 1-based
+                        return callExpression;
+
                     case nameof(string.Substring):
                         Writer.Write(" substr(");
                         Visit(callExpression.Object);
                         Writer.Write(",(");
                         Visit(callExpression.Arguments[0]);
-                        Writer.Write("+1)");
+                        Writer.Write("+1)"); // SQLite is 1-based
                         if (callExpression.Arguments.Count > 1)
                         {
                             Writer.Write(',');
@@ -246,6 +271,7 @@ namespace SqlNado
             switch (binaryExpression.NodeType)
             {
                 case ExpressionType.Add:
+                case ExpressionType.AddChecked:
                     Writer.Write(" + ");
                     break;
 
@@ -290,7 +316,13 @@ namespace SqlNado
                     break;
 
                 case ExpressionType.Multiply:
+                case ExpressionType.MultiplyChecked:
                     Writer.Write(" * ");
+                    break;
+
+                case ExpressionType.Negate:
+                case ExpressionType.NegateChecked:
+                    Writer.Write(" ! ");
                     break;
 
                 case ExpressionType.NotEqual:
@@ -314,6 +346,7 @@ namespace SqlNado
                     break;
 
                 case ExpressionType.Subtract:
+                case ExpressionType.SubtractChecked:
                     Writer.Write(" - ");
                     break;
 
@@ -339,7 +372,7 @@ namespace SqlNado
             }
             else
             {
-                object value = Database.CoerceValueForBind(constant.Value, TypeOptions);
+                object value = Database.CoerceValueForBind(constant.Value, BindOptions);
                 switch (Type.GetTypeCode(value.GetType()))
                 {
                     case TypeCode.Boolean:

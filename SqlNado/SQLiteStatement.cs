@@ -151,10 +151,10 @@ namespace SqlNado
                     code = BindParameter(index, ZeroBytes);
                 }
             }
-            else if (bindValue is SQLiteZeroBlobParameter zbp)
+            else if (bindValue is SQLiteZeroBlob zb)
             {
-                Database.Log(TraceLevel.Verbose, "Index " + index + " as SQLiteZeroBlobParameter: " + zbp.Size);
-                code = BindParameterZeroBlob(index, zbp.Size);
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as SQLiteZeroBlob: " + zb.Size);
+                code = BindParameterZeroBlob(index, zb.Size);
             }
             else
                 throw new SqlNadoException("0010: Binding only supports Int32, Int64, String, Boolean, Double and Byte[] primitive types.");

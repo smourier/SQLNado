@@ -3,8 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using SqlNado.Utilities;
 
 namespace SqlNado.Temp
@@ -42,7 +44,7 @@ namespace SqlNado.Temp
                 //db.Vacuum();
                 //db.SynchronizeSchema<TestQuery>();
 
-                TestQuery.Ensure(db);
+                //TestQuery.Ensure(db);
                 db.LoadAll<TestQuery>().ToTableString(Console.Out);
 
                 //db.BeginTransaction();
@@ -80,10 +82,24 @@ namespace SqlNado.Temp
                 //    TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
                 //}
 
+                db.SetScalarFunction("toto", 1, true, (c) =>
+                {
+                    c.SetResult("héllo world");
+                });
+
+                while (true)
+                {
+                    db.LoadRows("SELECT 'toto' = 'tOtO' COLLATE c_1033").ToTableString(Console.Out);
+                    GC.Collect();
+                }
                 //db.Query<TestQuery>().Where(u => u.Department.Contains("h") || u.Department == "accounting").ToTableString(Console.Out);
-                db.Query<TestQuery>().Where(u => u.Department.Substring(1) == "R" || u.Department.Substring(1) == "r").ToTableString(Console.Out);
+                //db.Query<TestQuery>().Where(u => u.Department.Substring(1) == "R" || u.Department.Substring(1) == "r").
+                //    Select(u => new { D = u.Department }).ToTableString(Console.Out);
                 //db.Query<TestQuery>().Where(u => u.Department.Contains("r")).ToTableString(Console.Out);
                 //db.Query<TestQuery>().Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
+                var sc = StringComparison.CurrentCultureIgnoreCase;
+                var eq = EqualityComparer<string>.Default;
+                //db.Query<TestQuery>().Where(u => u.Department.IndexOf("h", sc) >= 0).ToTableString(Console.Out);
                 string h = "h";
                 string r = "r";
                 //TableStringExtensions.ToTableString(db.GetTable<TestQuery>(), Console.Out);

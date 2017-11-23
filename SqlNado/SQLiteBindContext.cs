@@ -10,7 +10,7 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(database));
 
             Database = database;
-            TypeOptions = database.TypeOptions;
+            Options = database.BindOptions;
         }
 
         public SQLiteDatabase Database { get; }
@@ -18,6 +18,6 @@ namespace SqlNado
         public virtual SQLiteBindType Type { get; set; }
         public virtual int Index { get; set; }
         public virtual object Value { get; set; }
-        public virtual SQLiteTypeOptions TypeOptions { get; set; }
+        public virtual SQLiteBindOptions Options { get; set; }
     }
 }

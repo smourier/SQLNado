@@ -141,7 +141,7 @@ namespace SqlNado
 
             if (type == typeof(decimal))
             {
-                if (Database.TypeOptions.DecimalAsBlob)
+                if (Database.BindOptions.DecimalAsBlob)
                     return SQLiteColumnType.BLOB.ToString();
 
                 return SQLiteColumnType.TEXT.ToString();
@@ -149,15 +149,15 @@ namespace SqlNado
 
             if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
             {
-                if (Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.Ticks ||
-                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.FileTime ||
-                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.FileTimeUtc ||
-                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.UnixTimeSeconds ||
-                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.UnixTimeMilliseconds)
+                if (Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.Ticks ||
+                    Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.FileTime ||
+                    Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.FileTimeUtc ||
+                    Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.UnixTimeSeconds ||
+                    Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.UnixTimeMilliseconds)
                     return SQLiteColumnType.INTEGER.ToString();
 
-                if (Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.OleAutomation ||
-                    Database.TypeOptions.DateTimeFormat == SQLiteDateTimeFormat.JulianDayNumbers)
+                if (Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.OleAutomation ||
+                    Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.JulianDayNumbers)
                     return SQLiteColumnType.INTEGER.ToString();
 
                 return SQLiteColumnType.TEXT.ToString();
@@ -165,7 +165,7 @@ namespace SqlNado
 
             if (type == typeof(Guid))
             {
-                if (Database.TypeOptions.GuidAsBlob)
+                if (Database.BindOptions.GuidAsBlob)
                     return SQLiteColumnType.BLOB.ToString();
 
                 return SQLiteColumnType.TEXT.ToString();
@@ -173,7 +173,7 @@ namespace SqlNado
 
             if (type == typeof(TimeSpan))
             {
-                if (Database.TypeOptions.TimeSpanAsInt64)
+                if (Database.BindOptions.TimeSpanAsInt64)
                     return SQLiteColumnType.INTEGER.ToString();
 
                 return SQLiteColumnType.TEXT.ToString();
@@ -242,8 +242,8 @@ namespace SqlNado
                         {
                             att.DataType = SQLiteColumnType.TEXT.ToString();
                             // we need to force this column type options
-                            att.TypeOptions = att.TypeOptions ?? new SQLiteTypeOptions();
-                            att.TypeOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
+                            att.BindOptions = att.BindOptions ?? new SQLiteBindOptions();
+                            att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
                         }
                     }
                 }

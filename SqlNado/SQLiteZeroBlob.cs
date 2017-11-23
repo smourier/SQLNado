@@ -1,6 +1,6 @@
 ﻿namespace SqlNado
 {
-    public class SQLiteZeroBlobParameter
+    public class SQLiteZeroBlob
     {
         public int Size { get; set; }
 

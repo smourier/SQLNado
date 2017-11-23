@@ -28,7 +28,7 @@ namespace SqlNado
         {
             PassThroughType = new SQLiteBindType(ctx => ctx.Value,
                 typeof(bool), typeof(int), typeof(long), typeof(byte[]), typeof(double), typeof(string),
-                typeof(ISQLiteBlobObject), typeof(SQLiteZeroBlobParameter));
+                typeof(ISQLiteBlobObject), typeof(SQLiteZeroBlob));
 
             DBNullType = new SQLiteBindType(ctx => null, typeof(DBNull));
             ByteType = new SQLiteBindType(ctx => (int)(byte)ctx.Value, typeof(byte));
@@ -42,12 +42,12 @@ namespace SqlNado
             GuidType = new SQLiteBindType(ctx =>
             {
                 var guid = (Guid)ctx.Value;
-                if (!ctx.TypeOptions.GuidAsBlob)
+                if (!ctx.Options.GuidAsBlob)
                 {
-                    if (string.IsNullOrWhiteSpace(ctx.TypeOptions.GuidAsStringFormat))
+                    if (string.IsNullOrWhiteSpace(ctx.Options.GuidAsStringFormat))
                         return guid.ToString();
 
-                    return guid.ToString(ctx.TypeOptions.GuidAsStringFormat);
+                    return guid.ToString(ctx.Options.GuidAsStringFormat);
                 }
                 return guid.ToByteArray();
             }, typeof(Guid));
@@ -55,7 +55,7 @@ namespace SqlNado
             DecimalType = new SQLiteBindType(ctx =>
             {
                 var dec = (decimal)ctx.Value;
-                if (!ctx.TypeOptions.DecimalAsBlob)
+                if (!ctx.Options.DecimalAsBlob)
                     return dec.ToString(CultureInfo.InvariantCulture);
 
                 return dec.ToBytes();
@@ -64,7 +64,7 @@ namespace SqlNado
             TimeSpanType = new SQLiteBindType(ctx =>
             {
                 var ts = (TimeSpan)ctx.Value;
-                if (!ctx.TypeOptions.TimeSpanAsInt64)
+                if (!ctx.Options.TimeSpanAsInt64)
                     return ts.ToString();
 
                 return ts.Ticks;
@@ -84,7 +84,7 @@ namespace SqlNado
                 }
                 
                 // https://sqlite.org/datatype3.html
-                switch (ctx.TypeOptions.DateTimeFormat)
+                switch (ctx.Options.DateTimeFormat)
                 {
                     case SQLiteDateTimeFormat.Ticks:
                         return dt.Ticks;

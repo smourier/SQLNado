@@ -1,5 +1,7 @@
 ﻿namespace SqlNado
 {
+    // note SQLite defines this as a byte internally but we don't want to derive from byte here
+    // because we use it all-around with interop code that blits it as an int.
     public enum SQLiteErrorCode
     {
         SQLITE_OK = 0,   /* Successful result */

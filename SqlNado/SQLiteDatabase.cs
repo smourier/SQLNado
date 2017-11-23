@@ -23,6 +23,8 @@ namespace SqlNado
         private IntPtr _handle;
         private ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
         private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
+        private ConcurrentDictionary<string, ScalarFunctionSink> _functionSinks = new ConcurrentDictionary<string, ScalarFunctionSink>(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, CollationSink> _collationSinks = new ConcurrentDictionary<string, CollationSink>(StringComparer.OrdinalIgnoreCase);
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
 
@@ -37,7 +39,7 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(filePath));
 
             OpenOptions = options;
-            TypeOptions = new SQLiteTypeOptions();
+            BindOptions = new SQLiteBindOptions();
             HookNativeProcs();
             filePath = Path.GetFullPath(filePath);
             CheckError(_sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
@@ -62,7 +64,7 @@ namespace SqlNado
         public string FilePath { get; }
         public SQLiteOpenOptions OpenOptions { get; }
         public IReadOnlyDictionary<Type, SQLiteBindType> BindTypes => _bindTypes;
-        public SQLiteTypeOptions TypeOptions { get; }
+        public SQLiteBindOptions BindOptions { get; }
         public bool EnforceForeignKeys { get => ExecuteScalar<bool>("PRAGMA foreign_keys"); set => ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); }
         public int BusyTimeout { get => ExecuteScalar<int>("PRAGMA busy_timeout"); set => ExecuteNonQuery("PRAGMA busy_timeout=" + value); }
         public int CacheSize { get => ExecuteScalar<int>("PRAGMA cache_size"); set => ExecuteNonQuery("PRAGMA cache_size=" + value); }
@@ -178,19 +180,87 @@ namespace SqlNado
             if (comparer == null)
             {
                 CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null));
+                _collationSinks.TryRemove(name, out CollationSink cs);
                 return;
             }
 
+            var sink = new CollationSink();
+            sink.Comparer = comparer;
+            _collationSinks[name] = sink;
+
             // note we only support UTF-16 encoding so we have only ptr > str marshaling
-            CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, (a, la, sa, lb, sb) =>
+            CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback));
+        }
+
+        private class CollationSink
+        {
+            public IComparer<string> Comparer;
+            public xCompare Callback;
+
+            public CollationSink()
             {
-                var strA = Marshal.PtrToStringUni(sa, la / 2);
-                var strB = Marshal.PtrToStringUni(sb, lb / 2);
-                return comparer.Compare(strA, strB);
-            }));
+                Callback = new xCompare(Compare);
+            }
+
+            public int Compare(IntPtr arg, int lenA, IntPtr strA, int lenB, IntPtr strB)
+            {
+                var a = Marshal.PtrToStringUni(strA, lenA / 2);
+                var b = Marshal.PtrToStringUni(strB, lenB / 2);
+                return Comparer.Compare(a, b);
+            }
         }
 
         public virtual void UnsetCollationFunction(string name) => SetCollationFunction(name, null);
+
+        public virtual void SetScalarFunction(string name, int argumentsCount, bool deterministic, Action<SQLiteFunctionContext> function)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            var enc = SQLiteTextEncoding.SQLITE_UTF16;
+            if (deterministic)
+            {
+                enc |= SQLiteTextEncoding.SQLITE_DETERMINISTIC;
+            }
+
+            // a function is defined by the unique combination of name+argc+encoding
+            string key = name + "\0" + argumentsCount + "\0" + (int)enc;
+            if (function == null)
+            {
+                CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null, null, null));
+                _functionSinks.TryRemove(key, out ScalarFunctionSink sf);
+                return;
+            }
+
+            var sink = new ScalarFunctionSink();
+            sink.Database = this;
+            sink.Function = function;
+            sink.Name = name;
+            _functionSinks[key] = sink;
+
+            CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback, null, null));
+        }
+
+        private class ScalarFunctionSink
+        {
+            public Action<SQLiteFunctionContext> Function;
+            public SQLiteDatabase Database;
+            public string Name;
+            public xFunc Callback;
+
+            public ScalarFunctionSink()
+            {
+                Callback = new xFunc(Call);
+            }
+
+            public void Call(IntPtr context, int argsCount, IntPtr[] args)
+            {
+                var ctx = new SQLiteFunctionContext(Database, context, Name, argsCount, args);
+                Function(ctx);
+            }
+        }
+
+        public virtual void UnsetScalarFunction(string name, int argumentsCount) => SetScalarFunction(name, argumentsCount, true, null);
 
         public void LogInfo(object value, [CallerMemberName] string methodName = null) => Log(TraceLevel.Info, value, methodName);
         public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null) => Logger?.Log(level, value, methodName);
@@ -251,7 +321,7 @@ namespace SqlNado
             return ExecuteScalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1 COLLATE NOCASE LIMIT 1", 0, name) > 0;
         }
 
-        protected virtual internal object CoerceValueForBind(object value, SQLiteTypeOptions typeOptions)
+        public virtual object CoerceValueForBind(object value, SQLiteBindOptions bindOptions)
         {
             if (value == null || Convert.IsDBNull(value))
                 return null;
@@ -268,7 +338,7 @@ namespace SqlNado
                     }
                     else if (pk.Length == 1)
                     {
-                        value = CoerceValueForBind(pk[0], typeOptions);
+                        value = CoerceValueForBind(pk[0], bindOptions);
                     }
                     else // > 1
                     {
@@ -279,9 +349,9 @@ namespace SqlNado
 
             var type = GetBindType(value);
             var ctx = CreateBindContext();
-            if (typeOptions != null)
+            if (bindOptions != null)
             {
-                ctx.TypeOptions = typeOptions;
+                ctx.Options = bindOptions;
             }
 
             if (value != null)
@@ -289,7 +359,7 @@ namespace SqlNado
                 var valueType = value.GetType();
                 if (valueType.IsEnum)
                 {
-                    if (!ctx.TypeOptions.EnumAsString)
+                    if (!ctx.Options.EnumAsString)
                     {
                         value = Convert.ChangeType(value, Enum.GetUnderlyingType(valueType));
                     }
@@ -325,7 +395,7 @@ namespace SqlNado
 
             if (type.IsEnum)
             {
-                if (!TypeOptions.EnumAsString)
+                if (!BindOptions.EnumAsString)
                     return GetBindType(Enum.GetUnderlyingType(type), defaultType);
             }
 
@@ -814,7 +884,7 @@ namespace SqlNado
                 throw new ArgumentNullException(null, nameof(columnName));
 
             string sql = "UPDATE " + SQLiteStatement.EscapeName(tableName) + " SET " + SQLiteStatement.EscapeName(columnName) + "=? WHERE rowid=" + rowId;
-            ExecuteNonQuery(sql, new SQLiteZeroBlobParameter { Size = size });
+            ExecuteNonQuery(sql, new SQLiteZeroBlob { Size = size });
         }
 
         public SQLiteBlob OpenBlob(string tableName, string columnName, long rowId) => OpenBlob(tableName, columnName, rowId, SQLiteBlobOpenMode.ReadOnly);
@@ -1104,6 +1174,23 @@ namespace SqlNado
             _sqlite3_collation_needed16 = LoadProc<sqlite3_collation_needed16>();
             _sqlite3_create_collation16 = LoadProc<sqlite3_create_collation16>();
             _sqlite3_table_column_metadata = LoadProc<sqlite3_table_column_metadata>();
+            _sqlite3_create_function16 = LoadProc<sqlite3_create_function16>();
+            _sqlite3_value_blob = LoadProc<sqlite3_value_blob>();
+            _sqlite3_value_double = LoadProc<sqlite3_value_double>();
+            _sqlite3_value_int = LoadProc<sqlite3_value_int>();
+            _sqlite3_value_int64 = LoadProc<sqlite3_value_int64>();
+            _sqlite3_value_text16 = LoadProc<sqlite3_value_text16>();
+            _sqlite3_value_bytes16 = LoadProc<sqlite3_value_bytes16>();
+            _sqlite3_value_type = LoadProc<sqlite3_value_type>();
+            _sqlite3_result_blob = LoadProc<sqlite3_result_blob>();
+            _sqlite3_result_double = LoadProc<sqlite3_result_double>();
+            _sqlite3_result_error16 = LoadProc<sqlite3_result_error16>();
+            _sqlite3_result_error_code = LoadProc<sqlite3_result_error_code>();
+            _sqlite3_result_int = LoadProc<sqlite3_result_int>();
+            _sqlite3_result_int64 = LoadProc<sqlite3_result_int64>();
+            _sqlite3_result_null = LoadProc<sqlite3_result_null>();
+            _sqlite3_result_text16 = LoadProc<sqlite3_result_text16>();
+            _sqlite3_result_zeroblob = LoadProc<sqlite3_result_zeroblob>();
         }
 
         private static T LoadProc<T>() => LoadProc<T>(null);
@@ -1294,14 +1381,90 @@ namespace SqlNado
         internal delegate SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
         internal static sqlite3_table_column_metadata _sqlite3_table_column_metadata;
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void xFunc(IntPtr context, int argsCount, [In, Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] IntPtr[] args);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void xFinal(IntPtr context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode sqlite3_create_function16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name,
+            int argsCount, SQLiteTextEncoding encoding, IntPtr app, xFunc func, xFunc step, xFinal final);
+        private static sqlite3_create_function16 _sqlite3_create_function16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate IntPtr sqlite3_value_blob(IntPtr value);
+        internal static sqlite3_value_blob _sqlite3_value_blob;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate double sqlite3_value_double(IntPtr value);
+        internal static sqlite3_value_double _sqlite3_value_double;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate int sqlite3_value_int(IntPtr value);
+        internal static sqlite3_value_int _sqlite3_value_int;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate long sqlite3_value_int64(IntPtr value);
+        internal static sqlite3_value_int64 _sqlite3_value_int64;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate IntPtr sqlite3_value_text16(IntPtr value);
+        internal static sqlite3_value_text16 _sqlite3_value_text16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate int sqlite3_value_bytes16(IntPtr value);
+        internal static sqlite3_value_bytes16 _sqlite3_value_bytes16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate SQLiteColumnType sqlite3_value_type(IntPtr value);
+        internal static sqlite3_value_type _sqlite3_value_type;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
+        internal static sqlite3_result_blob _sqlite3_result_blob;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_double(IntPtr ctx, double value);
+        internal static sqlite3_result_double _sqlite3_result_double;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_error16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len);
+        internal static sqlite3_result_error16 _sqlite3_result_error16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
+        internal static sqlite3_result_error_code _sqlite3_result_error_code;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_int(IntPtr ctx, int value);
+        internal static sqlite3_result_int _sqlite3_result_int;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_int64(IntPtr ctx, long value);
+        internal static sqlite3_result_int64 _sqlite3_result_int64;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_null(IntPtr ctx);
+        internal static sqlite3_result_null _sqlite3_result_null;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_text16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len, IntPtr xDel);
+        internal static sqlite3_result_text16 _sqlite3_result_text16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void sqlite3_result_zeroblob(IntPtr ctx, int size);
+        internal static sqlite3_result_zeroblob _sqlite3_result_zeroblob;
+
         private enum SQLiteTextEncoding
         {
-            SQLITE_UTF8 = 1,            /* IMP: R-37514-35566 */
-            SQLITE_UTF16LE = 2,         /* IMP: R-03371-37637 */
-            SQLITE_UTF16BE = 3,         /* IMP: R-51971-34154 */
-            SQLITE_UTF16 = 4,           /* Use native byte order */
-            SQLITE_ANY = 5,             /* Deprecated */
-            SQLITE_UTF16_ALIGNED = 8,   /* sqlite3_create_collation only */
+            SQLITE_UTF8 = 1,                /* IMP: R-37514-35566 */
+            SQLITE_UTF16LE = 2,             /* IMP: R-03371-37637 */
+            SQLITE_UTF16BE = 3,             /* IMP: R-51971-34154 */
+            SQLITE_UTF16 = 4,               /* Use native byte order */
+            SQLITE_ANY = 5,                 /* Deprecated */
+            SQLITE_UTF16_ALIGNED = 8,       /* sqlite3_create_collation only */
+            SQLITE_DETERMINISTIC = 0x800    // function will always return the same result given the same inputs within a single SQL statement
         }
 
         // https://sqlite.org/c3ref/threadsafe.html

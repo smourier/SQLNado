@@ -1,5 +1,6 @@
 ﻿namespace SqlNado
 {
+    // must match https://sqlite.org/c3ref/c_blob.html
     public enum SQLiteColumnType
     {
         INTEGER = 1,

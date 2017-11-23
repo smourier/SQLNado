@@ -62,7 +62,7 @@ namespace SqlNado
         public virtual string Collation { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
         public virtual object DefaultValue { get; set; }
-        public virtual SQLiteTypeOptions TypeOptions { get; set; }
+        public virtual SQLiteBindOptions BindOptions { get; set; }
         public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
         public bool HasNonConstantDefaultValue => HasDefaultValue && IsDefaultValueIntrinsic;
         public bool IsRowId { get; internal set; }
@@ -105,7 +105,7 @@ namespace SqlNado
         public virtual object GetValueForBind(object obj)
         {
             var value = GetValue(obj);
-            return Table.Database.CoerceValueForBind(value, TypeOptions);
+            return Table.Database.CoerceValueForBind(value, BindOptions);
         }
 
         public virtual object GetValue(object obj) => GetValueFunc(obj);
@@ -185,7 +185,7 @@ namespace SqlNado
 
         protected virtual string ToLiteral(object value)
         {
-            value = Table.Database.CoerceValueForBind(value, TypeOptions);
+            value = Table.Database.CoerceValueForBind(value, BindOptions);
             // from here, we should have a limited set of types
 
             if (value is string svalue)
@@ -267,7 +267,7 @@ namespace SqlNado
             AutomaticType = attribute.AutomaticType;
             HasDefaultValue = attribute.HasDefaultValue;
             Collation = attribute.Collation;
-            TypeOptions = attribute.TypeOptions;
+            BindOptions = attribute.BindOptions;
             PrimaryKeyDirection = attribute.PrimaryKeyDirection;
             IsUnique = attribute.IsUnique;
             CheckExpression = attribute.CheckExpression;
