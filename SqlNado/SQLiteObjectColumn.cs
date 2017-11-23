@@ -186,22 +186,16 @@ namespace SqlNado
         protected virtual string ToLiteral(object value)
         {
             value = Table.Database.CoerceValueForBind(value, BindOptions);
-            // from here, we should have a limited set of types
+            // from here, we should have a limited set of types, the types supported by SQLite
 
             if (value is string svalue)
-                return SQLiteStatement.EscapeName(svalue);
+                return "'" + svalue.Replace("'", "''") + "'";
 
             if (value is byte[] bytes)
                 return "X'" + Conversions.ToHexa(bytes) + "'";
 
-            if (value is DateTime dt)
-                return string.Format(CultureInfo.InvariantCulture, "'{0}'", dt);
-
-            if (value is DateTimeOffset dto)
-                return string.Format(CultureInfo.InvariantCulture, "'{0}'", dto.DateTime);
-
-            if (value is Guid guid)
-                return string.Format(CultureInfo.InvariantCulture, "'{0}'", dto.DateTime);
+            if (value is bool b)
+                return b ? "1" : "0";
 
             return string.Format(CultureInfo.InvariantCulture, "{0}", value);
         }

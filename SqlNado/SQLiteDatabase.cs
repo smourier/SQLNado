@@ -162,7 +162,7 @@ namespace SqlNado
                 default:
                     if (e.CollationCulture != null)
                     {
-                        SetCollationFunction(name, e.CollationCulture.CompareInfo.GetStringComparer(e.CollationOptions));
+                        SetCollationFunction(name, Extensions.GetStringComparer(e.CollationCulture.CompareInfo, e.CollationOptions));
                     }
                     break;
             }
