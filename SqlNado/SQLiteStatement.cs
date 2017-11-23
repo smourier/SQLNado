@@ -401,6 +401,8 @@ namespace SqlNado
             return "\"" + name.Replace("\"", "\"\"") + "\"";
         }
 
+        public override string ToString() => Sql;
+
         protected virtual void Dispose(bool disposing)
         {
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);

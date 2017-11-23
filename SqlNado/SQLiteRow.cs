@@ -47,10 +47,7 @@ namespace SqlNado
 
                 throw new KeyNotFoundException();
             }
-            set
-            {
-                throw new NotSupportedException();
-            }
+            set => throw new NotSupportedException();
         }
 
         bool ICollection<KeyValuePair<string, object>>.Contains(KeyValuePair<string, object> item)

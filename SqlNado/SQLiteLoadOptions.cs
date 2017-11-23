@@ -15,6 +15,7 @@ namespace SqlNado
 
         public virtual SQLiteDatabase Database { get; }
         public virtual bool ObjectEventsDisabled { get; set; }
+        public virtual bool ObjectChangeEventsDisabled { get; set; }
         public virtual int MaximumRows { get; set; }
         public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
 
@@ -24,6 +25,7 @@ namespace SqlNado
         {
             var sb = new StringBuilder();
             sb.AppendLine("ObjectEventsDisabled=" + ObjectEventsDisabled);
+            sb.AppendLine("ObjectChangeEventsDisabled=" + ObjectChangeEventsDisabled);
             sb.AppendLine("MaximumRows=" + MaximumRows);
             return sb.ToString();
         }

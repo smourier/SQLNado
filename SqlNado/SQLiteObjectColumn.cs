@@ -68,6 +68,20 @@ namespace SqlNado
         public bool IsRowId { get; internal set; }
         internal bool CanBeRowId => IsPrimaryKey && DataType.EqualsIgnoreCase(SQLiteColumnType.INTEGER.ToString());
 
+        public static bool AreCollationsEqual(string collation1, string collation2)
+        {
+            if (collation1 == collation2)
+                return true;
+
+            if (string.IsNullOrWhiteSpace(collation1) && collation2 == "BINARY")
+                return true;
+
+            if (string.IsNullOrWhiteSpace(collation2) && collation1 == "BINARY")
+                return true;
+
+            return false;
+        }
+
         public virtual bool IsSynchronized(SQLiteColumn column)
         {
             if (column == null)
@@ -90,7 +104,7 @@ namespace SqlNado
             if (IsPrimaryKey != column.IsPrimaryKey)
                 return false;
 
-            if (Collation != column.Collation)
+            if (!AreCollationsEqual(Collation, column.Collation))
                 return false;
 
             if (AutoIncrements != column.AutoIncrements)
@@ -116,7 +130,40 @@ namespace SqlNado
                 throw new InvalidOperationException();
 
             options = options ?? new SQLiteLoadOptions(Table.Database);
-            SetValueAction(options, obj, value);
+
+            bool raiseOnErrorsChanged = false;
+            bool raiseOnPropertyChanging = false;
+            bool raiseOnPropertyChanged = false;
+            ISQLiteObjectChangeEvents ce = null;
+
+            if (options.ObjectChangeEventsDisabled)
+            {
+                ce = obj as ISQLiteObjectChangeEvents;
+                if (ce != null)
+                {
+                    raiseOnErrorsChanged = ce.RaiseOnErrorsChanged;
+                    raiseOnPropertyChanging = ce.RaiseOnPropertyChanging;
+                    raiseOnPropertyChanged = ce.RaiseOnPropertyChanged;
+
+                    ce.RaiseOnErrorsChanged = false;
+                    ce.RaiseOnPropertyChanging = false;
+                    ce.RaiseOnPropertyChanged = false;
+                }
+            }
+
+            try
+            {
+                SetValueAction(options, obj, value);
+            }
+            finally
+            {
+                if (ce != null)
+                {
+                    ce.RaiseOnErrorsChanged = raiseOnErrorsChanged;
+                    ce.RaiseOnPropertyChanging = raiseOnPropertyChanging;
+                    ce.RaiseOnPropertyChanged = raiseOnPropertyChanged;
+                }
+            }
         }
 
         public virtual string GetCreateSql(SQLiteCreateSqlOptions options)

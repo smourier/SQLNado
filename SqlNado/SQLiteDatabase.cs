@@ -663,7 +663,16 @@ namespace SqlNado
 
             var pk = instanceTable.GetPrimaryKey(instance);
             string sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName + " WHERE " + fkCol.EscapedName + "=?";
-            return Load<T>(sql, options, pk);
+
+            bool setProp = options.SetForeignKeyPropertyValue && fkCol.SetValueAction != null;
+            foreach (var obj in Load<T>(sql, options, pk))
+            {
+                if (setProp)
+                {
+                    fkCol.SetValue(options, obj, instance);
+                }
+                yield return obj;
+            }
         }
 
         public IEnumerable<SQLiteRow> GetTableRows<T>() => GetTableRows<T>(int.MaxValue);
@@ -1005,8 +1014,20 @@ namespace SqlNado
             if (conversionType == null)
                 throw new ArgumentNullException(nameof(conversionType));
 
+            if (input != null && input.GetType() == conversionType)
+            {
+                value = input;
+                return true;
+            }
+
             if (typeof(ISQLiteObject).IsAssignableFrom(conversionType))
             {
+                if (input == null)
+                {
+                    value = null;
+                    return false;
+                }
+
                 var instance = LoadByPrimaryKey(conversionType, input);
                 value = instance;
                 return instance != null;
