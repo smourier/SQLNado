@@ -76,6 +76,28 @@ namespace SqlNado
                         var lambda = (LambdaExpression)StripQuotes(callExpression.Arguments[1]);
                         Visit(lambda.Body);
                         return callExpression;
+
+                    case nameof(Queryable.OrderBy):
+                    case nameof(Queryable.OrderByDescending):
+                        Visit(callExpression.Arguments[0]);
+                        Writer.Write(" ORDER BY ");
+                        Visit(callExpression.Arguments[1]);
+                        if (callExpression.Method.Name == nameof(Queryable.OrderByDescending))
+                        {
+                            Writer.Write(" DESC");
+                        }
+                        return callExpression;
+
+                    case nameof(Queryable.ThenBy):
+                    case nameof(Queryable.ThenByDescending):
+                        Visit(callExpression.Arguments[0]);
+                        Writer.Write(", ");
+                        Visit(callExpression.Arguments[1]);
+                        if (callExpression.Method.Name == nameof(Queryable.ThenByDescending))
+                        {
+                            Writer.Write(" DESC");
+                        }
+                        return callExpression;
                 }
             }
 
@@ -134,35 +156,45 @@ namespace SqlNado
                         return callExpression;
 
                     case nameof(string.ToLower):
-                        Writer.Write(" lower(");
+                        Writer.Write("lower(");
                         Visit(callExpression.Object);
                         Writer.Write(')');
                         return callExpression;
 
                     case nameof(string.ToUpper):
-                        Writer.Write(" upper(");
+                        Writer.Write("upper(");
                         Visit(callExpression.Object);
                         Writer.Write(')');
                         return callExpression;
 
                     case nameof(string.IndexOf):
-                        Writer.Write(" (instr(");
-                        Visit(callExpression.Object);
-                        Writer.Write(',');
-                        Visit(callExpression.Arguments[0]);
-                        Writer.Write(")");
                         if (callExpression.Arguments.Count > 1 &&
                             callExpression.Arguments[1] is ConstantExpression ce2 &&
                             ce2.Value is StringComparison sc2)
                         {
-                            Writer.Write(" COLLATE ");
-                            Writer.Write(sc2.ToString());
+                            Database.EnsureQuerySupportFunctions();
+                            Writer.Write("(instr(");
+                            Visit(callExpression.Object);
+                            Writer.Write(',');
+                            Visit(callExpression.Arguments[0]);
+                            Writer.Write(',');
+                            Writer.Write((int)sc2);
+                            Writer.Write(")");
+                            Writer.Write("-1)"); // SQLite is 1-based
                         }
-                        Writer.Write("-1)"); // SQLite is 1-based
+                        else
+                        {
+                            Writer.Write("(instr(");
+                            Visit(callExpression.Object);
+                            Writer.Write(',');
+                            Visit(callExpression.Arguments[0]);
+                            Writer.Write(")");
+                            Writer.Write("-1)"); // SQLite is 1-based
+                        }
                         return callExpression;
 
                     case nameof(string.Substring):
-                        Writer.Write(" substr(");
+                        Writer.Write("substr(");
                         Visit(callExpression.Object);
                         Writer.Write(",(");
                         Visit(callExpression.Arguments[0]);
@@ -217,13 +249,37 @@ namespace SqlNado
                 switch (callExpression.Method.Name)
                 {
                     case nameof(Math.Abs):
-                        Writer.Write(" abs(");
+                        Writer.Write("abs(");
                         Visit(callExpression.Arguments[0]);
                         Writer.Write(')');
                         return callExpression;
                 }
             }
 
+            if (callExpression.Method.DeclaringType == typeof(QueryExtensions))
+            {
+                switch (callExpression.Method.Name)
+                {
+                    case nameof(QueryExtensions.Contains):
+                        if (callExpression.Arguments.Count > 2 &&
+                            callExpression.Arguments[2] is ConstantExpression ce3 &&
+                            ce3.Value is StringComparison sc3)
+                        {
+                            Database.EnsureQuerySupportFunctions();
+                            Writer.Write("(instr(");
+                            Visit(callExpression.Arguments[0]);
+                            Writer.Write(',');
+                            Visit(callExpression.Arguments[1]);
+                            Writer.Write(',');
+                            Writer.Write((int)sc3);
+                            Writer.Write(")");
+                            Writer.Write(">0)"); // SQLite is 1-based
+                        }
+                        return callExpression;
+                }
+            }
+
+            // kinda hack: generic ToString handling
             if (callExpression.Method.Name == "ToString" &&
                 callExpression.Method.GetParameters().Length == 0)
             {
@@ -250,6 +306,10 @@ namespace SqlNado
                     Writer.Write(" length(");
                     Visit(unaryExpression.Operand);
                     Writer.Write(")");
+                    break;
+
+                case ExpressionType.Quote:
+                    Visit(unaryExpression.Operand);
                     break;
 
                 // just let go. hopefully it should be ok with sqlite

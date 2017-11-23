@@ -87,11 +87,6 @@ namespace SqlNado.Temp
                     c.SetResult("héllo world");
                 });
 
-                while (true)
-                {
-                    db.LoadRows("SELECT 'toto' = 'tOtO' COLLATE c_1033").ToTableString(Console.Out);
-                    GC.Collect();
-                }
                 //db.Query<TestQuery>().Where(u => u.Department.Contains("h") || u.Department == "accounting").ToTableString(Console.Out);
                 //db.Query<TestQuery>().Where(u => u.Department.Substring(1) == "R" || u.Department.Substring(1) == "r").
                 //    Select(u => new { D = u.Department }).ToTableString(Console.Out);
@@ -99,7 +94,8 @@ namespace SqlNado.Temp
                 //db.Query<TestQuery>().Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
                 var sc = StringComparison.CurrentCultureIgnoreCase;
                 var eq = EqualityComparer<string>.Default;
-                //db.Query<TestQuery>().Where(u => u.Department.IndexOf("h", sc) >= 0).ToTableString(Console.Out);
+                db.Query<TestQuery>().Where(u => u.Department.Contains("h", sc)).ToTableString(Console.Out);
+                db.Query<TestQuery>().Where(u => u.Department.Contains("h", sc)).OrderBy(u => u.Name).ThenByDescending(u => u.MonthlySalary).ToTableString(Console.Out);
                 string h = "h";
                 string r = "r";
                 //TableStringExtensions.ToTableString(db.GetTable<TestQuery>(), Console.Out);

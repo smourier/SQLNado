@@ -21,6 +21,7 @@ namespace SqlNado
         private string _primaryKeyPersistenceSeparator = "\0";
         private static IntPtr _module;
         private IntPtr _handle;
+        private volatile bool _querySupportFunctionsAdded = false;
         private ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
         private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
         private ConcurrentDictionary<string, ScalarFunctionSink> _functionSinks = new ConcurrentDictionary<string, ScalarFunctionSink>(StringComparer.OrdinalIgnoreCase);
@@ -1023,6 +1024,29 @@ namespace SqlNado
 
             value = (T)obj;
             return true;
+        }
+
+        public virtual void EnsureQuerySupportFunctions()
+        {
+            lock (new object())
+            {
+                if (_querySupportFunctionsAdded)
+                    return;
+
+                _querySupportFunctionsAdded = true;
+
+                // https://sqlite.org/lang_corefunc.html#instr is only 2 args, we add one to add string comparison support
+                SetScalarFunction("instr", 3, true, (c) =>
+                {
+                    var x = c.Values[0].StringValue;
+                    var y = c.Values[1].StringValue;
+                    if (x != null && y != null)
+                    {
+                        var sc = (StringComparison)c.Values[2].Int32Value;
+                        c.SetResult(x.IndexOf(y, sc) + 1);
+                    }
+                });
+            }
         }
 
         protected internal IntPtr CheckDisposed()
