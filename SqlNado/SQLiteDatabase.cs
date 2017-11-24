@@ -40,6 +40,9 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(filePath));
 
             OpenOptions = options;
+#if DEBUG
+            ErrorOptions |= SQLiteErrorOptions.AddSqlText;
+#endif
             BindOptions = new SQLiteBindOptions();
             HookNativeProcs();
             filePath = Path.GetFullPath(filePath);
@@ -73,6 +76,7 @@ namespace SqlNado
         public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
         public IEnumerable<string> Collations => LoadObjects("PRAGMA collation_list").Select(row => (string)row[1]);
         public virtual ISQLiteLogger Logger { get; set; }
+        public virtual SQLiteErrorOptions ErrorOptions { get; set; }
         public virtual string DefaultColumnCollation { get; set; }
 
         public string PrimaryKeyPersistenceSeparator
@@ -1079,13 +1083,23 @@ namespace SqlNado
             return handle;
         }
 
-        protected internal SQLiteException CheckError(SQLiteErrorCode code, [CallerMemberName] string methodName = null) => CheckError(code, true, methodName);
-        protected internal SQLiteException CheckError(SQLiteErrorCode code, bool throwOnError, [CallerMemberName] string methodName = null)
+        protected internal SQLiteException CheckError(SQLiteErrorCode code, [CallerMemberName] string methodName = null) => CheckError(code, null, true, methodName);
+        protected internal SQLiteException CheckError(SQLiteErrorCode code, bool throwOnError, [CallerMemberName] string methodName = null) => CheckError(code, null, throwOnError, methodName);
+        protected internal SQLiteException CheckError(SQLiteErrorCode code, string sql, [CallerMemberName] string methodName = null) => CheckError(code, sql, true, methodName);
+        protected internal SQLiteException CheckError(SQLiteErrorCode code, string sql, bool throwOnError, [CallerMemberName] string methodName = null)
         {
             if (code == SQLiteErrorCode.SQLITE_OK)
                 return null;
 
             string msg = GetErrorMessage(Handle); // don't check disposed here. maybe too late
+            if (sql != null)
+            {
+                if (msg == null || !msg.EndsWith("."))
+                {
+                    msg += ".";
+                }
+                msg += " SQL statement was: `" + sql + "`";
+            }
             var ex = msg != null ? new SQLiteException(code, msg) : new SQLiteException(code);
             Log(TraceLevel.Error, ex.Message, methodName);
             if (throwOnError)
