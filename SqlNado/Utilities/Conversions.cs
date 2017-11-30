@@ -77,6 +77,63 @@ namespace SqlNado.Utilities
             return bytes;
         }
 
+        public static byte[] ToBytes(string text)
+        {
+            if (text == null)
+                return null;
+
+            if (text.Length == 0)
+                return new byte[0];
+
+            var list = new List<byte>();
+            bool lo = false;
+            byte prev = 0;
+            int offset;
+
+            // handle 0x or 0X notation
+            if ((text.Length >= 2) && (text[0] == '0') && ((text[1] == 'x') || (text[1] == 'X')))
+            {
+                offset = 2;
+            }
+            else
+            {
+                offset = 0;
+            }
+
+            for (int i = 0; i < text.Length - offset; i++)
+            {
+                byte b = GetHexaByte(text[i + offset]);
+                if (b == 0xFF)
+                    continue;
+
+                if (lo)
+                {
+                    list.Add((byte)(prev * 16 + b));
+                }
+                else
+                {
+                    prev = b;
+                }
+                lo = !lo;
+            }
+
+            return list.ToArray();
+        }
+
+        public static byte GetHexaByte(char c)
+        {
+            if (c >= '0' && c <= '9')
+                return (byte)(c - '0');
+
+            if (c >= 'A' && c <= 'F')
+                return (byte)(c - 'A' + 10);
+
+            if (c >= 'a' && c <= 'f')
+                return (byte)(c - 'a' + 10);
+
+            return 0xFF;
+        }
+
         public static string ToHexa(this byte[] bytes) => ToHexa(bytes, 0, (bytes?.Length).GetValueOrDefault());
         public static string ToHexa(this byte[] bytes, int count) => ToHexa(bytes, 0, count);
         public static string ToHexa(this byte[] bytes, int offset, int count)

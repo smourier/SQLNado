@@ -354,6 +354,15 @@ namespace SqlNado
                     value = col.GetValueForBind(instance);
                 }
 
+                if (col.HasDefaultValue && !col.IsDefaultValueIntrinsic && col.IsNullable)
+                {
+                    var def = col.GetDefaultValueForBind();
+                    if (value.Equals(def))
+                    {
+                        value = null;
+                    }
+                }
+
                 if (!col.InsertOnly && !col.IsPrimaryKey)
                 {
                     updateArgs.Add(value);

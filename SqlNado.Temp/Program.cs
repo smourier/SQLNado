@@ -39,6 +39,19 @@ namespace SqlNado.Temp
                 db.CollationNeeded += OnCollationNeeded;
                 db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
 
+                db.SynchronizeSchema<SimpleUser>();
+
+                TableStringExtensions.ToTableString(db.GetTable<SimpleUser>(), Console.Out);
+
+                var su = new SimpleUser();
+                su.Name = "toto";
+                su.Email = "a.b@x.com";
+                db.Save(su);
+
+                db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
+                db.LoadAll<SimpleUser>().ToTableString(Console.Out);
+                return;
+
                 //db.DeleteTable<UserWithBlob>();
                 //db.DeleteTable<Product>();
                 //db.Vacuum();
@@ -146,9 +159,19 @@ namespace SqlNado.Temp
 
     public class SimpleUser
     {
+        public const string GuidEmpt1 = "00000000-0000-0000-0000-000000000001";
+        public const string GuidEmpty = "00000000-0000-0000-0000-000000000000";
+
+        public SimpleUser()
+        {
+            MyGuid = new Guid(GuidEmpt1);
+        }
+
         [SQLiteColumn(IsPrimaryKey = true)]
         public string Email { get; set; }
         public string Name { get; set; }
+        [SQLiteColumn(IsNullable = true, DefaultValue = GuidEmpt1, HasDefaultValue = true)]
+        public Guid MyGuid { get; set; }
     }
 
     public class User : SQLiteBaseObject

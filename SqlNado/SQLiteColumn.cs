@@ -6,6 +6,7 @@ namespace SqlNado
     public sealed class SQLiteColumn
     {
         private string _name;
+        private object _defaultValue;
 
         internal SQLiteColumn(SQLiteTable table)
         {
@@ -45,7 +46,7 @@ namespace SqlNado
         [SQLiteColumn(Name = "notnull")]
         public bool IsNotNullable { get; internal set; }
         [SQLiteColumn(Name = "dflt_value")]
-        public object DefaultValue { get; internal set; }
+        public object DefaultValue { get => _defaultValue; set => _defaultValue = SQLiteObjectColumn.FromLiteral(value); }
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool IsRowId { get; internal set; }

@@ -93,10 +93,21 @@ namespace SqlNado
             if (IsNullable == column.IsNotNullable)
                 return false;
 
-            if (DefaultValue != null)
+            if (HasDefaultValue)
             {
-                if (!DefaultValue.Equals(column.DefaultValue))
-                    return false;
+                if (DefaultValue == null)
+                {
+                    if (column.DefaultValue != null)
+                        return false;
+
+                    // else ok
+                }
+                else
+                {
+                    var def = Table.Database.ChangeType(column.DefaultValue, DefaultValue.GetType());
+                    if (!DefaultValue.Equals(def))
+                        return false;
+                }
             }
             else if (column.DefaultValue != null)
                 return false;
@@ -115,6 +126,8 @@ namespace SqlNado
 
             return true;
         }
+
+        public virtual object GetDefaultValueForBind() => Table.Database.CoerceValueForBind(DefaultValue, BindOptions);
 
         public virtual object GetValueForBind(object obj)
         {
@@ -230,6 +243,29 @@ namespace SqlNado
             return sql;
         }
 
+        public static object FromLiteral(object value)
+        {
+            if (value == null)
+                return null;
+
+            if (value is string svalue)
+            {
+                if (svalue.Length > 1 && svalue[0] == '\'' && svalue[svalue.Length - 1] == '\'')
+                    return svalue.Substring(1, svalue.Length - 2);
+
+                if (svalue.Length > 2 &&
+                    (svalue[0] == 'x' || svalue[0] == 'X') &&
+                    svalue[1] == '\'' &&
+                    svalue[svalue.Length - 1] == '\'')
+                {
+                    string sb = svalue.Substring(2, svalue.Length - 3);
+                    return Conversions.ToBytes(sb);
+                }
+            }
+
+            return value;
+        }
+
         protected virtual string ToLiteral(object value)
         {
             value = Table.Database.CoerceValueForBind(value, BindOptions);
@@ -314,7 +350,13 @@ namespace SqlNado
             CheckExpression = attribute.CheckExpression;
             if (HasDefaultValue)
             {
-                DefaultValue = attribute.DefaultValue;
+                if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object value))
+                {
+                    string type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
+                    throw new SqlNadoException("0023: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
+                }
+
+                DefaultValue = value;
                 IsDefaultValueIntrinsic = attribute.IsDefaultValueIntrinsic;
             }
         }

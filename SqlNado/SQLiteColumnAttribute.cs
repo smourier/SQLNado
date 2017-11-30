@@ -6,6 +6,9 @@ namespace SqlNado
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = false)]
     public class SQLiteColumnAttribute : Attribute, IComparable, IComparable<SQLiteColumnAttribute>
     {
+        // because Guid.Empty is not a const
+        public const string GuidEmpty = "00000000-0000-0000-0000-000000000000";
+
         internal bool? _ignore;
         internal bool? _isNullable;
         internal bool? _isPrimaryKey;

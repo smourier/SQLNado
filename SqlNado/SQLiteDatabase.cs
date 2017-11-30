@@ -1012,6 +1012,46 @@ namespace SqlNado
             }
         }
 
+        public T ChangeType<T>(object input) => ChangeType<T>(input, default(T));
+        public T ChangeType<T>(object input, T defaultValue)
+        {
+            if (TryChangeType(input, out T value))
+                return value;
+
+            return defaultValue;
+        }
+
+        public object ChangeType(object input, Type conversionType)
+        {
+            if (conversionType == null)
+                throw new ArgumentNullException(nameof(conversionType));
+
+            if (TryChangeType(input, conversionType, out object value))
+                return value;
+
+            if (conversionType.IsValueType)
+                return Activator.CreateInstance(conversionType);
+
+            return null;
+        }
+
+        public object ChangeType(object input, Type conversionType, object defaultValue)
+        {
+            if (conversionType == null)
+                throw new ArgumentNullException(nameof(conversionType));
+
+            if (TryChangeType(input, conversionType, out object value))
+                return value;
+
+            if (TryChangeType(defaultValue, conversionType, out value))
+                return value;
+
+            if (conversionType.IsValueType)
+                return Activator.CreateInstance(conversionType);
+
+            return null;
+        }
+
         // note: we always use invariant culture when writing an reading by ourselves to the database
         public virtual bool TryChangeType(object input, Type conversionType, out object value)
         {
