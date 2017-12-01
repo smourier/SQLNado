@@ -736,7 +736,7 @@ namespace SqlNado
 
             options = options ?? new SQLiteLoadOptions(this);
 
-            using (var statement = PrepareStatement(sql, args))
+            using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
                 int index = 0;
                 do
@@ -852,7 +852,7 @@ namespace SqlNado
                 sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
             }
 
-            using (var statement = PrepareStatement(sql, args))
+            using (var statement = PrepareStatement(sql, options?.ErrorHandler, args))
             {
                 int index = 0;
                 do
@@ -935,7 +935,7 @@ namespace SqlNado
         public override string ToString() => FilePath;
 
         protected virtual SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type) => new SQLiteObjectTableBuilder(this, type);
-        protected virtual SQLiteStatement CreateStatement(string sql) => new SQLiteStatement(this, sql);
+        protected virtual SQLiteStatement CreateStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction> prepareErrorHandler) => new SQLiteStatement(this, sql, prepareErrorHandler);
         protected virtual SQLiteRow CreateRow(int index, string[] names, object[] values) => new SQLiteRow(index, names, values);
         protected virtual SQLiteBlob CreateBlob(IntPtr handle, string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode) => new SQLiteBlob(this, handle, tableName, columnName, rowId, mode);
         public virtual SQLiteBindContext CreateBindContext() => new SQLiteBindContext(this);
@@ -971,10 +971,19 @@ namespace SqlNado
             return CreateBlob(handle, tableName, columnName, rowId, mode);
         }
 
-        public SQLiteStatement PrepareStatement(string sql) => PrepareStatement(sql, null);
-        public virtual SQLiteStatement PrepareStatement(string sql, params object[] args)
+        public SQLiteStatement PrepareStatement(string sql, params object[] args) => PrepareStatement(sql, null, args);
+        public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
-            var statement = GetOrCreateStatement(sql);
+            SQLiteStatement statement;
+            if (errorHandler == null)
+            {
+                statement = GetOrCreateStatement(sql);
+            }
+            else
+            {
+                statement = CreateStatement(sql, errorHandler);
+            }
+
             if (args != null)
             {
                 for (int i = 0; i < args.Length; i++)
@@ -991,11 +1000,11 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(sql));
 
             if (!EnableStatementsCache)
-                return CreateStatement(sql);
+                return CreateStatement(sql, null);
 
             if (!_statementPools.TryGetValue(sql, out StatementPool pool))
             {
-                pool = new StatementPool(sql, CreateStatement);
+                pool = new StatementPool(sql, (s) => CreateStatement(s, null));
                 pool = _statementPools.AddOrUpdate(sql, pool, (k, o) => o);
             }
             return pool.Get();
@@ -1013,6 +1022,7 @@ namespace SqlNado
 
             public string Sql { get; }
             public Func<string, SQLiteStatement> CreateFunc { get; }
+            public int TotalUsage => _statements.Sum(s => s.Usage);
 
             public override string ToString() => Sql;
 
@@ -1026,7 +1036,7 @@ namespace SqlNado
                     {
                         // if the statement was still in use, we can't dispose it
                         // so we just mark it so the user will really dispose it when he'll call Dispose()
-                        if (Interlocked.CompareExchange(ref entry.Statement._lockCount, 1, 0) != 0)
+                        if (Interlocked.CompareExchange(ref entry.Statement._locked, 1, 0) != 0)
                         {
                             entry.Statement._realDispose = true;
                         }
@@ -1040,10 +1050,10 @@ namespace SqlNado
 
             public SQLiteStatement Get()
             {
-                var entry = _statements.FirstOrDefault(s => s.Statement._lockCount == 0);
+                var entry = _statements.FirstOrDefault(s => s.Statement._locked == 0);
                 if (entry != null)
                 {
-                    if (Interlocked.CompareExchange(ref entry.Statement._lockCount, 1, 0) != 0)
+                    if (Interlocked.CompareExchange(ref entry.Statement._locked, 1, 0) != 0)
                     {
                         // between the moment we got one and the moment we tried to lock it,
                         // another thread got it. In this case, we'll just create a new one...
@@ -1057,6 +1067,7 @@ namespace SqlNado
                     entry.CreationDate = DateTime.Now;
                     entry.Statement = CreateFunc(Sql);
                     entry.Statement._realDispose = false;
+                    entry.Statement._locked = 1;
                     _statements.Add(entry);
                 }
 
@@ -1116,7 +1127,7 @@ namespace SqlNado
         public T ExecuteScalar<T>(string sql, T defaultValue, params object[] args) => ExecuteScalar(sql, defaultValue, null, args);
         public virtual T ExecuteScalar<T>(string sql, T defaultValue, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
-            using (var statement = PrepareStatement(sql, args))
+            using (var statement = PrepareStatement(sql, errorHandler, args))
             {
                 statement.StepOne(errorHandler);
                 return statement.GetColumnValue(0, defaultValue);
@@ -1126,7 +1137,7 @@ namespace SqlNado
         public object ExecuteScalar(string sql, params object[] args) => ExecuteScalar(sql, null, args);
         public virtual object ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
-            using (var statement = PrepareStatement(sql, args))
+            using (var statement = PrepareStatement(sql, errorHandler, args))
             {
                 statement.StepOne(errorHandler);
                 return statement.GetColumnValue(0);
@@ -1136,7 +1147,7 @@ namespace SqlNado
         public int ExecuteNonQuery(string sql, params object[] args) => ExecuteNonQuery(sql, null, args);
         public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
-            using (var statement = PrepareStatement(sql, args))
+            using (var statement = PrepareStatement(sql, errorHandler, args))
             {
                 statement.StepOne(errorHandler);
                 return ChangesCount;
@@ -1146,7 +1157,7 @@ namespace SqlNado
         public IEnumerable<object[]> LoadObjects(string sql, params object[] args) => LoadObjects(sql, null, args);
         public virtual IEnumerable<object[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
-            using (var statement = PrepareStatement(sql, args))
+            using (var statement = PrepareStatement(sql, errorHandler, args))
             {
                 int index = 0;
                 do
@@ -1193,7 +1204,7 @@ namespace SqlNado
         public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRows(sql, null, args);
         public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
-            using (var statement = PrepareStatement(sql, args))
+            using (var statement = PrepareStatement(sql, errorHandler, args))
             {
                 int index = 0;
                 do
@@ -1367,6 +1378,7 @@ namespace SqlNado
                 }
                 msg += " SQL statement was: `" + sql + "`";
             }
+
             var ex = msg != null ? new SQLiteException(code, msg) : new SQLiteException(code);
             Log(TraceLevel.Error, ex.Message, methodName);
             if (throwOnError)

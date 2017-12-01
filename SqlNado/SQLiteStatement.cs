@@ -13,12 +13,12 @@ namespace SqlNado
     {
         private IntPtr _handle;
         internal bool _realDispose = true;
-        internal int _lockCount;
+        internal int _locked;
         private static readonly byte[] ZeroBytes = new byte[0];
         private Dictionary<string, int> _columnsIndices;
         private string[] _columnsNames;
 
-        public SQLiteStatement(SQLiteDatabase database, string sql)
+        public SQLiteStatement(SQLiteDatabase database, string sql, Func<SQLiteError, SQLiteOnErrorAction> prepareErrorHandler)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -29,7 +29,24 @@ namespace SqlNado
             Database = database;
             Sql = sql;
             database.Log(TraceLevel.Verbose, "Preparing statement `" + sql + "`", nameof(SQLiteStatement) + ".ctor");
-            database.CheckError(SQLiteDatabase._sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero), sql, true);
+
+            if (prepareErrorHandler != null)
+            {
+                var code = SQLiteDatabase._sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero);
+                if (code != SQLiteErrorCode.SQLITE_OK)
+                {
+                    var error = new SQLiteError(this, -1, code);
+                    var action = prepareErrorHandler(error);
+                    if (action == SQLiteOnErrorAction.Break || action == SQLiteOnErrorAction.Continue)
+                        return;
+
+                    database.CheckError(code, sql, true);
+                }
+            }
+            else
+            {
+                database.CheckError(SQLiteDatabase._sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero), sql, true);
+            }
         }
 
         [Browsable(false)]
@@ -451,7 +468,7 @@ namespace SqlNado
             {
                 SQLiteDatabase._sqlite3_reset(_handle);
                 SQLiteDatabase._sqlite3_clear_bindings(_handle);
-                Interlocked.Exchange(ref _lockCount, 0);
+                Interlocked.Exchange(ref _locked, 0);
             }
         }
 

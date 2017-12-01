@@ -1408,10 +1408,8 @@ namespace SqlNado.Utilities
 
     public static class TableStringExtensions
     {
-        private static readonly TableString _instance = new TableString();
-
-        public static string ToTableString<T>(this IEnumerable<T> enumerable) => _instance.Write(enumerable);
-        public static string ToTableString(this IEnumerable enumerable) => _instance.Write(enumerable);
+        public static string ToTableString<T>(this IEnumerable<T> enumerable) => new TableString().Write(enumerable);
+        public static string ToTableString(this IEnumerable enumerable) => new TableString().Write(enumerable);
 
         public static string ToTableString<T>(this IEnumerable<T> enumerable, int indent)
         {
@@ -1427,8 +1425,8 @@ namespace SqlNado.Utilities
             return ts.Write(enumerable);
         }
 
-        public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer) => _instance.Write(writer, enumerable);
-        public static void ToTableString(this IEnumerable enumerable, TextWriter writer) => _instance.Write(writer, enumerable);
+        public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
+        public static void ToTableString(this IEnumerable enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
 
         public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer, int indent)
         {

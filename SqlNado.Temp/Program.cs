@@ -40,8 +40,8 @@ namespace SqlNado.Temp
             }
             using (var db = new SQLiteDatabase("test.db"))
             {
-                db.Logger = new ConsoleLogger(true);
-                //db.EnableStatementsCache = true;
+                //db.Logger = new ConsoleLogger(true);
+                db.EnableStatementsCache = true;
                 db.CollationNeeded += OnCollationNeeded;
                 db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
 
@@ -49,6 +49,7 @@ namespace SqlNado.Temp
                 {
                     ThreadPool.QueueUserWorkItem((state) =>
                     {
+                        int ii = (int)state;
                         db.SynchronizeSchema<SimpleUser>();
 
                         TableStringExtensions.ToTableString(db.GetTable<SimpleUser>(), Console.Out);
@@ -60,8 +61,9 @@ namespace SqlNado.Temp
 
                         db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
                         db.LoadAll<SimpleUser>().ToTableString(Console.Out);
-                    });
+                    }, i);
                 }
+
                 Console.ReadLine();
                 db.GetStatementsCacheEntries().ToTableString(Console.Out);
                 return;

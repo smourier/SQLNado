@@ -383,21 +383,40 @@ namespace SqlNado
 
             string sql;
             int count = 0;
-            if (tryUpdate)
+            for (int retry = 0; retry < 2; retry++)
             {
-                sql = "UPDATE " + GetConflictResolutionClause(options.ConflictResolution) + EscapedName + " SET " + BuildColumnsUpdateSetStatement();
-                sql += " WHERE " + BuildWherePrimaryKeyStatement();
+                if (tryUpdate)
+                {
+                    sql = "UPDATE " + GetConflictResolutionClause(options.ConflictResolution) + EscapedName + " SET " + BuildColumnsUpdateSetStatement();
+                    sql += " WHERE " + BuildWherePrimaryKeyStatement();
 
-                pk.InsertRange(0, updateArgs);
-                count = Database.ExecuteNonQuery(sql, pk.ToArray());
-                // note the count is ok even if all values did not changed
-            }
+                    // do this only on the 1st pass
+                    if (retry == 0)
+                    {
+                        pk.InsertRange(0, updateArgs);
+                    }
+                    count = Database.ExecuteNonQuery(sql, pk.ToArray());
+                    // note the count is ok even if all values did not changed
+                }
 
-            if (count == 0)
-            {
-                sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsInsertStatement();
-                sql += ") VALUES (" + BuildColumnsInsertParametersStatement() + ")";
-                count = Database.ExecuteNonQuery(sql, insertArgs.ToArray());
+                if (count == 0)
+                {
+                    sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsInsertStatement();
+                    sql += ") VALUES (" + BuildColumnsInsertParametersStatement() + ")";
+
+                    Func<SQLiteError, SQLiteOnErrorAction> onError = (e) =>
+                    {
+                        // this can happen in multi-threaded scenarios, update didn't work, then someone inserted, and now insert does not work. update again
+                        if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT)
+                        {
+                            tryUpdate = true;
+                            return SQLiteOnErrorAction.Break;
+                        }
+
+                        return SQLiteOnErrorAction.Unhandled;
+                    };
+                    count = Database.ExecuteNonQuery(sql, onError, insertArgs.ToArray());
+                }
             }
 
             lo?.OnSaveAction(SQLiteObjectAction.Saved, options);
@@ -426,6 +445,15 @@ namespace SqlNado
                 sql = BuildCreateSql(Name);
                 Func<SQLiteError, SQLiteOnErrorAction> onError = (e) =>
                 {
+                    if (e.Code == SQLiteErrorCode.SQLITE_ERROR)
+                        return SQLiteOnErrorAction.Break;
+
+                    // this can happen in multi-threaded scenarios
+                    // kinda hacky but is there a smarter way? can SQLite be localized?
+                    var msg = SQLiteDatabase.GetErrorMessage(Database.Handle);
+                    if (msg != null && msg.IndexOf("already exists", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return SQLiteOnErrorAction.Break;
+
                     return SQLiteOnErrorAction.Unhandled;
                 };
                 return Database.ExecuteNonQuery(sql, onError);
