@@ -992,7 +992,7 @@ namespace SqlNado
                         }
                         else
                         {
-                            entry.Statement.Dispose();
+                            entry.Statement.InternalDispose();
                         }
                     }
                 }
