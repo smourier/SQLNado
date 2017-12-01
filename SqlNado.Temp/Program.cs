@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using SqlNado.Utilities;
 
 namespace SqlNado.Temp
@@ -33,6 +34,10 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
+            if (File.Exists("test.db"))
+            {
+                File.Delete("test.db");
+            }
             using (var db = new SQLiteDatabase("test.db"))
             {
                 db.Logger = new ConsoleLogger(true);
@@ -40,17 +45,24 @@ namespace SqlNado.Temp
                 db.CollationNeeded += OnCollationNeeded;
                 db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
 
-                db.SynchronizeSchema<SimpleUser>();
+                for (int i = 0; i < 10; i++)
+                {
+                    ThreadPool.QueueUserWorkItem((state) =>
+                    {
+                        db.SynchronizeSchema<SimpleUser>();
 
-                TableStringExtensions.ToTableString(db.GetTable<SimpleUser>(), Console.Out);
+                        TableStringExtensions.ToTableString(db.GetTable<SimpleUser>(), Console.Out);
 
-                var su = new SimpleUser();
-                su.Name = "toto";
-                su.Email = "a.b@x.com";
-                db.Save(su);
+                        var su = new SimpleUser();
+                        su.Name = "toto";
+                        su.Email = "a.b@x.com";
+                        db.Save(su);
 
-                db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
-                db.LoadAll<SimpleUser>().ToTableString(Console.Out);
+                        db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
+                        db.LoadAll<SimpleUser>().ToTableString(Console.Out);
+                    });
+                }
+                Console.ReadLine();
                 db.GetStatementsCacheEntries().ToTableString(Console.Out);
                 return;
 

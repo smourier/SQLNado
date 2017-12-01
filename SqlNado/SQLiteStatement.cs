@@ -12,7 +12,7 @@ namespace SqlNado
     public class SQLiteStatement : IDisposable
     {
         private IntPtr _handle;
-        internal bool _realDispose;
+        internal bool _realDispose = true;
         internal int _lockCount;
         private static readonly byte[] ZeroBytes = new byte[0];
         private Dictionary<string, int> _columnsIndices;
@@ -359,40 +359,64 @@ namespace SqlNado
 
         public SQLiteColumnType GetColumnType(int index) => SQLiteDatabase._sqlite3_column_type(CheckDisposed(), index);
 
-        public void StepAll() => Step((s, i) => true);
-        public void StepOne() => Step((s, i) => false);
-        public void StepMax(int maximumRows) => Step((s, i) => (i + 1) < maximumRows);
-        public virtual void Step(Func<SQLiteStatement, int, bool> func)
+        public int StepAll() => StepAll(null);
+        public int StepAll(Func<SQLiteError, SQLiteOnErrorAction> errorHandler) => Step((s, i) => true, errorHandler);
+        public int StepOne() => StepOne(null);
+        public int StepOne(Func<SQLiteError, SQLiteOnErrorAction> errorHandler) => Step((s, i) => false, errorHandler);
+        public int StepMax(int maximumRows) => StepMax(maximumRows, null);
+        public int StepMax(int maximumRows, Func<SQLiteError, SQLiteOnErrorAction> errorHandler) => Step((s, i) => (i + 1) < maximumRows, errorHandler);
+        public virtual int Step(Func<SQLiteStatement, int, bool> func, Func<SQLiteError, SQLiteOnErrorAction> errorHandler)
         {
             if (func == null)
                 throw new ArgumentNullException(nameof(func));
 
-            int i = 0;
+            int index = 0;
             var handle = CheckDisposed();
             do
             {
                 SQLiteErrorCode code = SQLiteDatabase._sqlite3_step(handle);
                 if (code == SQLiteErrorCode.SQLITE_DONE)
                 {
-                    Database.Log(TraceLevel.Verbose, "Step done at index " + i);
+                    index++;
+                    Database.Log(TraceLevel.Verbose, "Step done at index " + index);
                     break;
                 }
 
                 if (code == SQLiteErrorCode.SQLITE_ROW)
                 {
-                    bool cont = func(this, i);
+                    bool cont = func(this, index);
                     if (!cont)
                     {
-                        Database.Log(TraceLevel.Verbose, "Step break at index " + i);
+                        Database.Log(TraceLevel.Verbose, "Step break at index " + index);
                         break;
                     }
 
-                    i++;
+                    index++;
                     continue;
                 }
+
+                if (errorHandler != null)
+                {
+                    var error = new SQLiteError(this, index, code);
+                    var action = errorHandler(error);
+                    index = error.Index;
+                    code = error.Code;
+                    if (action == SQLiteOnErrorAction.Break) // don't increment index
+                        break;
+
+                    if (action == SQLiteOnErrorAction.Continue)
+                    {
+                        index++;
+                        continue;
+                    }
+
+                    // else throw
+                }
+
                 Database.CheckError(code);
             }
             while (true);
+            return index;
         }
 
         public static string EscapeName(string name)
@@ -405,11 +429,13 @@ namespace SqlNado
 
         public override string ToString() => Sql;
 
-        protected internal virtual void InternalDispose()
+        protected internal virtual void RealDispose()
         {
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {
+                SQLiteDatabase._sqlite3_reset(handle);
+                SQLiteDatabase._sqlite3_clear_bindings(handle);
                 SQLiteDatabase._sqlite3_finalize(handle);
             }
             GC.SuppressFinalize(this);
@@ -417,13 +443,18 @@ namespace SqlNado
 
         public virtual void Dispose()
         {
-            Interlocked.Exchange(ref _lockCount, 0);
             if (_realDispose)
             {
-                InternalDispose();
+                RealDispose();
+            }
+            else
+            {
+                SQLiteDatabase._sqlite3_reset(_handle);
+                SQLiteDatabase._sqlite3_clear_bindings(_handle);
+                Interlocked.Exchange(ref _lockCount, 0);
             }
         }
 
-        ~SQLiteStatement() => InternalDispose();
+        ~SQLiteStatement() => RealDispose();
     }
 }

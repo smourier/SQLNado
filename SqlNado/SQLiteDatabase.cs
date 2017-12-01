@@ -744,6 +744,7 @@ namespace SqlNado
                     var code = _sqlite3_step(statement.CheckDisposed());
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
+                        index++;
                         Log(TraceLevel.Verbose, "Step done at index " + index);
                         break;
                     }
@@ -762,6 +763,25 @@ namespace SqlNado
                         }
 
                         continue;
+                    }
+
+                    var errorHandler = options.ErrorHandler;
+                    if (errorHandler != null)
+                    {
+                        var error = new SQLiteError(statement, index, code);
+                        var action = errorHandler(error);
+                        index = error.Index;
+                        code = error.Code;
+                        if (action == SQLiteOnErrorAction.Break)
+                            break;
+
+                        if (action == SQLiteOnErrorAction.Continue)
+                        {
+                            index++;
+                            continue;
+                        }
+
+                        // else throw
                     }
 
                     CheckError(code);
@@ -840,6 +860,7 @@ namespace SqlNado
                     var code = _sqlite3_step(statement.Handle);
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
+                        index++;
                         Log(TraceLevel.Verbose, "Step done at index " + index);
                         break;
                     }
@@ -852,6 +873,25 @@ namespace SqlNado
 
                         index++;
                         continue;
+                    }
+
+                    var errorHandler = options?.ErrorHandler;
+                    if (errorHandler != null)
+                    {
+                        var error = new SQLiteError(statement, index, code);
+                        var action = errorHandler(error);
+                        index = error.Index;
+                        code = error.Code;
+                        if (action == SQLiteOnErrorAction.Break)
+                            break;
+
+                        if (action == SQLiteOnErrorAction.Continue)
+                        {
+                            index++;
+                            continue;
+                        }
+
+                        // else throw
                     }
 
                     CheckError(code);
@@ -992,7 +1032,7 @@ namespace SqlNado
                         }
                         else
                         {
-                            entry.Statement.InternalDispose();
+                            entry.Statement.RealDispose();
                         }
                     }
                 }
@@ -1016,6 +1056,7 @@ namespace SqlNado
                     entry = new StatementPoolEntry();
                     entry.CreationDate = DateTime.Now;
                     entry.Statement = CreateFunc(Sql);
+                    entry.Statement._realDispose = false;
                     _statements.Add(entry);
                 }
 
@@ -1061,7 +1102,7 @@ namespace SqlNado
                     {
                         Sql = pool.Value.Sql,
                         CreationDate = entry.CreationDate,
-                        LastUsageDate = entry.LastUsageDate,
+                        Duration = entry.LastUsageDate - entry.CreationDate,
                         Usage = entry.Usage,
                     };
                     list.Add(o);
@@ -1070,35 +1111,40 @@ namespace SqlNado
             return list.ToArray();
         }
 
-        public T ExecuteScalar<T>(string sql, params object[] args) => ExecuteScalar(sql, default(T), args);
-        public virtual T ExecuteScalar<T>(string sql, T defaultValue, params object[] args)
+        public T ExecuteScalar<T>(string sql, params object[] args) => ExecuteScalar(sql, default(T), null, args);
+        public T ExecuteScalar<T>(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args) => ExecuteScalar(sql, default(T), errorHandler, args);
+        public T ExecuteScalar<T>(string sql, T defaultValue, params object[] args) => ExecuteScalar(sql, defaultValue, null, args);
+        public virtual T ExecuteScalar<T>(string sql, T defaultValue, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
             using (var statement = PrepareStatement(sql, args))
             {
-                statement.StepOne();
+                statement.StepOne(errorHandler);
                 return statement.GetColumnValue(0, defaultValue);
             }
         }
 
-        public virtual object ExecuteScalar(string sql, params object[] args)
+        public object ExecuteScalar(string sql, params object[] args) => ExecuteScalar(sql, null, args);
+        public virtual object ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
             using (var statement = PrepareStatement(sql, args))
             {
-                statement.StepOne();
+                statement.StepOne(errorHandler);
                 return statement.GetColumnValue(0);
             }
         }
 
-        public virtual int ExecuteNonQuery(string sql, params object[] args)
+        public int ExecuteNonQuery(string sql, params object[] args) => ExecuteNonQuery(sql, null, args);
+        public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
             using (var statement = PrepareStatement(sql, args))
             {
-                statement.StepOne();
+                statement.StepOne(errorHandler);
                 return ChangesCount;
             }
         }
 
-        public virtual IEnumerable<object[]> LoadObjects(string sql, params object[] args)
+        public IEnumerable<object[]> LoadObjects(string sql, params object[] args) => LoadObjects(sql, null, args);
+        public virtual IEnumerable<object[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
             using (var statement = PrepareStatement(sql, args))
             {
@@ -1108,6 +1154,7 @@ namespace SqlNado
                     var code = _sqlite3_step(statement.Handle);
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
+                        index++;
                         Log(TraceLevel.Verbose, "Step done at index " + index);
                         break;
                     }
@@ -1119,13 +1166,32 @@ namespace SqlNado
                         continue;
                     }
 
+                    if (errorHandler != null)
+                    {
+                        var error = new SQLiteError(statement, index, code);
+                        var action = errorHandler(error);
+                        index = error.Index;
+                        code = error.Code;
+                        if (action == SQLiteOnErrorAction.Break)
+                            break;
+
+                        if (action == SQLiteOnErrorAction.Continue)
+                        {
+                            index++;
+                            continue;
+                        }
+
+                        // else throw
+                    }
+
                     CheckError(code);
                 }
                 while (true);
             }
         }
 
-        public virtual IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args)
+        public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRows(sql, null, args);
+        public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
         {
             using (var statement = PrepareStatement(sql, args))
             {
@@ -1135,6 +1201,7 @@ namespace SqlNado
                     var code = _sqlite3_step(statement.Handle);
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
+                        index++;
                         Log(TraceLevel.Verbose, "Step done at index " + index);
                         break;
                     }
@@ -1146,6 +1213,24 @@ namespace SqlNado
                         yield return row;
                         index++;
                         continue;
+                    }
+
+                    if (errorHandler != null)
+                    {
+                        var error = new SQLiteError(statement, index, code);
+                        var action = errorHandler(error);
+                        index = error.Index;
+                        code = error.Code;
+                        if (action == SQLiteOnErrorAction.Break)
+                            break;
+
+                        if (action == SQLiteOnErrorAction.Continue)
+                        {
+                            index++;
+                            continue;
+                        }
+
+                        // else throw
                     }
 
                     CheckError(code);

@@ -424,7 +424,11 @@ namespace SqlNado
             if (existing == null)
             {
                 sql = BuildCreateSql(Name);
-                return Database.ExecuteNonQuery(sql);
+                Func<SQLiteError, SQLiteOnErrorAction> onError = (e) =>
+                {
+                    return SQLiteOnErrorAction.Unhandled;
+                };
+                return Database.ExecuteNonQuery(sql, onError);
             }
 
             var deleted = existing.Columns.ToList();
