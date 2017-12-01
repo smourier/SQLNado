@@ -36,6 +36,7 @@ namespace SqlNado.Temp
             using (var db = new SQLiteDatabase("test.db"))
             {
                 db.Logger = new ConsoleLogger(true);
+                //db.EnableStatementsCache = true;
                 db.CollationNeeded += OnCollationNeeded;
                 db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
 
@@ -50,6 +51,7 @@ namespace SqlNado.Temp
 
                 db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
                 db.LoadAll<SimpleUser>().ToTableString(Console.Out);
+                db.GetStatementsCacheEntries().ToTableString(Console.Out);
                 return;
 
                 //db.DeleteTable<UserWithBlob>();
@@ -113,6 +115,7 @@ namespace SqlNado.Temp
                 string r = "r";
                 //TableStringExtensions.ToTableString(db.GetTable<TestQuery>(), Console.Out);
                 db.GetTable<TestQuery>().Columns.ToTableString(Console.Out);
+
             }
         }
 

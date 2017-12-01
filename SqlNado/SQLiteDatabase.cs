@@ -21,11 +21,15 @@ namespace SqlNado
         private string _primaryKeyPersistenceSeparator = "\0";
         private static IntPtr _module;
         private IntPtr _handle;
+        private bool _enableStatementsCache;
         private volatile bool _querySupportFunctionsAdded = false;
         private ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
         private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
         private ConcurrentDictionary<string, ScalarFunctionSink> _functionSinks = new ConcurrentDictionary<string, ScalarFunctionSink>(StringComparer.OrdinalIgnoreCase);
         private ConcurrentDictionary<string, CollationSink> _collationSinks = new ConcurrentDictionary<string, CollationSink>(StringComparer.OrdinalIgnoreCase);
+
+        // note the pool is case-sensitive. it may not be always optimized, but it's safer
+        private ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>();
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
 
@@ -78,6 +82,19 @@ namespace SqlNado
         public virtual ISQLiteLogger Logger { get; set; }
         public virtual SQLiteErrorOptions ErrorOptions { get; set; }
         public virtual string DefaultColumnCollation { get; set; }
+
+        public virtual bool EnableStatementsCache
+        {
+            get => _enableStatementsCache;
+            set
+            {
+                _enableStatementsCache = value;
+                if (!_enableStatementsCache)
+                {
+                    ClearStatementsCache();
+                }
+            }
+        }
 
         public string PrimaryKeyPersistenceSeparator
         {
@@ -917,7 +934,7 @@ namespace SqlNado
         public SQLiteStatement PrepareStatement(string sql) => PrepareStatement(sql, null);
         public virtual SQLiteStatement PrepareStatement(string sql, params object[] args)
         {
-            var statement = CreateStatement(sql);
+            var statement = GetOrCreateStatement(sql);
             if (args != null)
             {
                 for (int i = 0; i < args.Length; i++)
@@ -926,6 +943,131 @@ namespace SqlNado
                 }
             }
             return statement;
+        }
+
+        protected virtual SQLiteStatement GetOrCreateStatement(string sql)
+        {
+            if (sql == null)
+                throw new ArgumentNullException(nameof(sql));
+
+            if (!EnableStatementsCache)
+                return CreateStatement(sql);
+
+            if (!_statementPools.TryGetValue(sql, out StatementPool pool))
+            {
+                pool = new StatementPool(sql, CreateStatement);
+                pool = _statementPools.AddOrUpdate(sql, pool, (k, o) => o);
+            }
+            return pool.Get();
+        }
+
+        private class StatementPool
+        {
+            internal ConcurrentBag<StatementPoolEntry> _statements = new ConcurrentBag<StatementPoolEntry>();
+
+            public StatementPool(string sql, Func<string, SQLiteStatement> createFunc)
+            {
+                Sql = sql;
+                CreateFunc = createFunc;
+            }
+
+            public string Sql { get; }
+            public Func<string, SQLiteStatement> CreateFunc { get; }
+
+            public override string ToString() => Sql;
+
+            // only ClearStatementsCache calls this once it got a hold on us
+            // so we don't need locks or something here
+            public void Clear()
+            {
+                while (!_statements.IsEmpty)
+                {
+                    if (_statements.TryTake(out StatementPoolEntry entry))
+                    {
+                        // if the statement was still in use, we can't dispose it
+                        // so we just mark it so the user will really dispose it when he'll call Dispose()
+                        if (Interlocked.CompareExchange(ref entry.Statement._lockCount, 1, 0) != 0)
+                        {
+                            entry.Statement._realDispose = true;
+                        }
+                        else
+                        {
+                            entry.Statement.Dispose();
+                        }
+                    }
+                }
+            }
+
+            public SQLiteStatement Get()
+            {
+                var entry = _statements.FirstOrDefault(s => s.Statement._lockCount == 0);
+                if (entry != null)
+                {
+                    if (Interlocked.CompareExchange(ref entry.Statement._lockCount, 1, 0) != 0)
+                    {
+                        // between the moment we got one and the moment we tried to lock it,
+                        // another thread got it. In this case, we'll just create a new one...
+                        entry = null;
+                    }
+                }
+
+                if (entry == null)
+                {
+                    entry = new StatementPoolEntry();
+                    entry.CreationDate = DateTime.Now;
+                    entry.Statement = CreateFunc(Sql);
+                    _statements.Add(entry);
+                }
+
+                entry.LastUsageDate = DateTime.Now;
+                entry.Usage++;
+                return entry.Statement;
+            }
+        }
+
+        private class StatementPoolEntry
+        {
+            public SQLiteStatement Statement;
+            public DateTime CreationDate;
+            public DateTime LastUsageDate;
+            public int Usage;
+
+            public override string ToString() => Usage + " => " + Statement;
+        }
+
+        public virtual void ClearStatementsCache()
+        {
+            foreach (var key in _statementPools.Keys.ToArray())
+            {
+                if (_statementPools.TryRemove(key, out StatementPool pool))
+                {
+                    pool.Clear();
+                }
+            }
+        }
+
+        // for debugging purposes. returned object spec is not documented and may vary
+        // it's recommended to use TableString utility to dump this, for example db.GetStatementsCacheEntries().ToTableString(Console.Out);
+        public object[] GetStatementsCacheEntries()
+        {
+            var list = new List<object>();
+            var pools = _statementPools.ToArray();
+            foreach (var pool in pools)
+            {
+                var entries = pool.Value._statements.ToArray();
+                foreach (var entry in entries)
+                {
+                    var o = new
+                    {
+                        Sql = pool.Value.Sql,
+                        CreationDate = entry.CreationDate,
+                        LastUsageDate = entry.LastUsageDate,
+                        Usage = entry.Usage,
+                    };
+                    list.Add(o);
+                }
+            }
+            return list.ToArray();
         }
 
         public T ExecuteScalar<T>(string sql, params object[] args) => ExecuteScalar(sql, default(T), args);
@@ -1625,6 +1767,8 @@ namespace SqlNado
 
         protected virtual void Dispose(bool disposing)
         {
+            _enableStatementsCache = false;
+            ClearStatementsCache();
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {

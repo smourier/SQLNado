@@ -12,6 +12,8 @@ namespace SqlNado
     public class SQLiteStatement : IDisposable
     {
         private IntPtr _handle;
+        internal bool _realDispose;
+        internal int _lockCount;
         private static readonly byte[] ZeroBytes = new byte[0];
         private Dictionary<string, int> _columnsIndices;
         private string[] _columnsNames;
@@ -403,21 +405,25 @@ namespace SqlNado
 
         public override string ToString() => Sql;
 
-        protected virtual void Dispose(bool disposing)
+        protected internal virtual void InternalDispose()
         {
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {
                 SQLiteDatabase._sqlite3_finalize(handle);
             }
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        ~SQLiteStatement() => Dispose(false);
+        public virtual void Dispose()
+        {
+            Interlocked.Exchange(ref _lockCount, 0);
+            if (_realDispose)
+            {
+                InternalDispose();
+            }
+        }
+
+        ~SQLiteStatement() => InternalDispose();
     }
 }
