@@ -23,7 +23,8 @@ If you don't like all this, you can just copy the corresponding standard sqlite.
 ## Get Started
 Here is a simple Console App that should get you started:
 
-    using (var db = new SQLiteDatabase("my.db"))
+```csharp
+using (var db = new SQLiteDatabase("my.db"))
     {
         var customer = new Customer();
         customer.Email = "killroy@example.com";
@@ -51,6 +52,6 @@ Here is a simple Console App that should get you started:
         public string Email { get; set; }
         public string Name { get; set; }
     }
-    
-    When you run it, you should see this on the console.
-    ![Console Output](https://github.com/smourier/SQLNado/tree/master/SqlNado/doc/images/TableString1.png)
+```    
+When you run it, you should see this on the console.
+[Console Output](/doc/images/TableString1.png)
