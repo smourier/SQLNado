@@ -24,13 +24,16 @@ If you don't like all this, you can just copy the corresponding standard sqlite.
 Here is a simple Console App that should get you started:
 
 ```csharp
+// this will create the my.db file if it does not exists
 using (var db = new SQLiteDatabase("my.db"))
 {
     var customer = new Customer();
     customer.Email = "killroy@example.com";
     customer.Name = "Killroy";
 
-    // update or insert (using the primary key)
+    // updates or Insert (choice is made if there is already a primary key on the object).
+    // by default, the Save operation synchronize the table schema.
+    // if this is run for the first time, it will create the table using Customer type definition (properties).
     db.Save(customer);
 
     // dumps the customer list to the console
