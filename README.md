@@ -54,4 +54,4 @@ using (var db = new SQLiteDatabase("my.db"))
     }
 ```    
 When you run it, you should see this on the console.
-[Console Output](/doc/images/TableString1.png)
+[Console Output](/Doc/Images/TableString1.png?raw=true)
