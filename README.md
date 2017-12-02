@@ -54,4 +54,8 @@ using (var db = new SQLiteDatabase("my.db"))
     }
 ```    
 When you run it, you should see this on the console.
-[Console Output](/Doc/Images/TableString1.png?raw=true)
+![Console Output](/Doc/Images/TableString1.png?raw=true)
+
+These nice table outputs are created automatically by the [TableString](/SqlNado/Utilities/TableString.cs) utility that's part of SQLNado (but the file can be copied in any other C# project as it's self-sufficient).
+
+`TableString` computes tables from any `IEnumerable` instance. It works also for any object, like the Customer table schema example, but for object that are not IEnumerable there's not extension method, you have to use TableString or TableStringExtensions). What's cool is it computes columns widths so can fit within the console bounds. When working with tables from a database, it's *very* useful.
