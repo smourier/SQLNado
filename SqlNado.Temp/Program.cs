@@ -34,6 +34,9 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
+            DocProgram.Starter();
+
+            return;
             if (File.Exists("test.db"))
             {
                 File.Delete("test.db");
