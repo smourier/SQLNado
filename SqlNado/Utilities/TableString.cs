@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SqlNado.Utilities
@@ -15,7 +16,8 @@ namespace SqlNado.Utilities
     {
         private const int ColumnBorderWidth = 1;
         private const int AbsoluteMinimumColumnWidth = 1;
-        private static int _defaultMaximumWidth = Console.WindowWidth;
+        private static Lazy<bool> _isConsoleValid = new Lazy<bool>(GetConsoleValidity, true);
+        private static int _defaultMaximumWidth = ConsoleWindowWidth;
         private List<TableStringColumn> _columns = new List<TableStringColumn>();
         private int _minimumColumnWidth;
         private int _maximumWidth;
@@ -103,11 +105,26 @@ namespace SqlNado.Utilities
         public virtual ConsoleColor? DefaultBackgroundColor { get => _defaultBackgroundColor ?? GlobalBackgroundColor; set => _defaultBackgroundColor = value; }
 
         public static int GlobalMaximumWidth { get => _defaultMaximumWidth; set => _defaultMaximumWidth = Math.Max(value, AbsoluteMinimumColumnWidth); }
-        public static int ConsoleMaximumNumberOfColumns => new TableString { MaximumWidth = Console.WindowWidth }.MaximumNumberOfColumnsWithoutPadding;
+        public static int ConsoleMaximumNumberOfColumns => new TableString { MaximumWidth = ConsoleWindowWidth }.MaximumNumberOfColumnsWithoutPadding;
         public static ConsoleColor? GlobalHeaderForegroundColor { get; set; }
         public static ConsoleColor? GlobalHeaderBackgroundColor { get; set; }
         public static ConsoleColor? GlobalForegroundColor { get; set; }
         public static ConsoleColor? GlobalBackgroundColor { get; set; }
+        public static bool IsConsoleValid => _isConsoleValid.Value;
+        public static int ConsoleWindowWidth => IsConsoleValid ? Console.WindowWidth : int.MaxValue;
+
+        private static bool GetConsoleValidity()
+        {
+            try
+            {
+                var width = Console.WindowWidth;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         public int MaximumNumberOfColumnsWithoutPadding
         {
@@ -298,7 +315,7 @@ namespace SqlNado.Utilities
                 return;
 
             bool consoleMode = IsInConsoleMode(writer);
-            bool useConsoleWriter = MaximumWidth > 0 && consoleMode && Console.WindowWidth == MaximumWidth;
+            bool useConsoleWriter = MaximumWidth > 0 && consoleMode && ConsoleWindowWidth == MaximumWidth;
             var cw = useConsoleWriter ? new ConsoleModeTextWriter(writer, MaximumWidth) : writer;
 
             // switch to indented writer if needed
@@ -568,7 +585,7 @@ namespace SqlNado.Utilities
 
                 // this is a small trick. When we may be outputing to the console with another textwriter, 
                 // just remove one to avoid the auto WriteLine effect from the console
-                if (!IsInConsoleMode(writer) && Console.WindowWidth == MaximumWidth)
+                if (!IsInConsoleMode(writer) && ConsoleWindowWidth == MaximumWidth)
                 {
                     maxWidth--;
                 }
@@ -666,7 +683,7 @@ namespace SqlNado.Utilities
         }
 
         protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object> getValueFunc) => new TableStringColumn(this, name, getValueFunc);
-        public virtual bool IsInConsoleMode(TextWriter writer) => writer == Console.Out || writer is ConsoleModeTextWriter;
+        public virtual bool IsInConsoleMode(TextWriter writer) => IsConsoleValid && (writer == Console.Out || writer is ConsoleModeTextWriter);
 
         public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, string text) => WriteWithColor(writer, foreground, Console.BackgroundColor, text);
         public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, ConsoleColor background, string text)
