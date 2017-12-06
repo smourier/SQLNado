@@ -5,11 +5,16 @@ namespace SqlNado
 {
     public class SQLiteSaveOptions
     {
-        public SQLiteSaveOptions()
+        public SQLiteSaveOptions(SQLiteDatabase database)
         {
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
+
+            Database = database;
             Index = -1;
         }
 
+        public SQLiteDatabase Database { get; }
         public virtual bool SynchronizeSchema { get; set; }
         public virtual bool DeleteUnusedColumns { get; set; }
         public virtual bool ObjectEventsDisabled { get; set; }

@@ -142,7 +142,7 @@ namespace SqlNado
             if (SetValueAction == null)
                 throw new InvalidOperationException();
 
-            options = options ?? new SQLiteLoadOptions(Table.Database);
+            options = options ?? Table.Database.CreateLoadOptions();
 
             bool raiseOnErrorsChanged = false;
             bool raiseOnPropertyChanging = false;

@@ -47,7 +47,7 @@ namespace SqlNado
 #if DEBUG
             ErrorOptions |= SQLiteErrorOptions.AddSqlText;
 #endif
-            BindOptions = new SQLiteBindOptions();
+            BindOptions = CreateBindOptions();
             HookNativeProcs();
             filePath = Path.GetFullPath(filePath);
             CheckError(_sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
@@ -112,7 +112,7 @@ namespace SqlNado
         {
             get
             {
-                var options = new SQLiteLoadOptions(this);
+                var options = CreateLoadOptions();
                 options.GetInstanceFunc = (t, s, o) => new SQLiteTable(this);
                 return Load<SQLiteTable>("WHERE type='table'", options);
             }
@@ -122,7 +122,7 @@ namespace SqlNado
         {
             get
             {
-                var options = new SQLiteLoadOptions(this);
+                var options = CreateLoadOptions();
                 options.GetInstanceFunc = (t, s, o) => new SQLiteIndex(this);
                 return Load<SQLiteIndex>("WHERE type='index'", options);
             }
@@ -529,7 +529,12 @@ namespace SqlNado
             if (enumerable == null)
                 return 0;
 
-            options = options ?? new SQLiteSaveOptions() { UseSavePoint = true, SynchronizeSchema = true };
+            if (options == null)
+            {
+                options = CreateSaveOptions();
+                options.UseSavePoint = true;
+                options.SynchronizeSchema = true;
+            }
 
             int count = 0;
             int i = 0;
@@ -638,7 +643,11 @@ namespace SqlNado
             if (obj == null)
                 return false;
 
-            options = options ?? new SQLiteSaveOptions() { SynchronizeSchema = true };
+            if (options == null)
+            {
+                options = CreateSaveOptions();
+                options.SynchronizeSchema = true;
+            }
 
             var table = GetObjectTable(obj.GetType());
             if (options.SynchronizeSchema)
@@ -663,7 +672,7 @@ namespace SqlNado
             if (table.LoadAction == null)
                 throw new SqlNadoException("0014: Table '" + table.Name + "' does not define a LoadAction.");
 
-            options = options ?? new SQLiteLoadForeignKeyOptions(this);
+            options = options ?? CreateLoadForeignKeyOptions();
 
             var fkCol = options.ForeignKeyColumn;
             if (fkCol == null)
@@ -713,7 +722,13 @@ namespace SqlNado
             return LoadRows(sql);
         }
 
-        public IEnumerable<T> LoadAll<T>(int maximumRows) => Load<T>(null, new SQLiteLoadOptions(this) { MaximumRows = maximumRows });
+        public IEnumerable<T> LoadAll<T>(int maximumRows)
+        {
+            var options = CreateLoadOptions();
+            options.MaximumRows = maximumRows;
+            return Load<T>(null, options);
+        }
+
         public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
         public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options) => Load<T>(null, options);
         public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
@@ -734,7 +749,7 @@ namespace SqlNado
                 sql = newsql;
             }
 
-            options = options ?? new SQLiteLoadOptions(this);
+            options = options ?? CreateLoadOptions();
 
             using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
@@ -790,6 +805,16 @@ namespace SqlNado
             }
         }
 
+        public T LoadByPrimaryKeyOrCreate<T>(object key) => LoadByPrimaryKeyOrCreate<T>(key, null);
+        public T LoadByPrimaryKeyOrCreate<T>(object key, SQLiteLoadOptions options) => (T)LoadByPrimaryKeyOrCreate(typeof(T), key, options);
+        public object LoadByPrimaryKeyOrCreate(Type objectType, object key) => LoadByPrimaryKeyOrCreate(objectType, key, null);
+        public virtual object LoadByPrimaryKeyOrCreate(Type objectType, object key, SQLiteLoadOptions options)
+        {
+            options = options ?? CreateLoadOptions();
+            options.CreateIfNotLoaded = true;
+            return LoadByPrimaryKey(objectType, key, options);
+        }
+
         public T LoadByPrimaryKey<T>(object key) => LoadByPrimaryKey<T>(key, null);
         public virtual T LoadByPrimaryKey<T>(object key, SQLiteLoadOptions options) => (T)LoadByPrimaryKey(typeof(T), key, options);
 
@@ -802,6 +827,26 @@ namespace SqlNado
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
 
+            var keys = CoerceToCompositeKey(key);
+            if (keys.Length == 0)
+                throw new ArgumentException(null, nameof(key));
+
+            var table = GetObjectTable(objectType);
+            if (table.LoadAction == null)
+                throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
+
+            string sql = "SELECT * FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
+            var obj = Load(objectType, sql, options, keys).FirstOrDefault();
+            if (obj == null && (options?.CreateIfNotLoaded).GetValueOrDefault())
+            {
+                obj = table.GetInstance(objectType, options);
+                table.SetPrimaryKey(options, obj, keys);
+            }
+            return obj;
+        }
+
+        public virtual object[] CoerceToCompositeKey(object key)
+        {
             if (!(key is object[] keys))
             {
                 if (key is Array array)
@@ -821,16 +866,7 @@ namespace SqlNado
                     keys = new object[] { key };
                 }
             }
-
-            if (keys.Length == 0)
-                throw new ArgumentException(null, nameof(key));
-
-            var table = GetObjectTable(objectType);
-            if (table.LoadAction == null)
-                throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
-
-            string sql = "SELECT * FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
-            return Load(objectType, sql, options, keys).FirstOrDefault();
+            return keys;
         }
 
         public virtual SQLiteQuery<T> Query<T>() => new SQLiteQuery<T>(this);
@@ -938,6 +974,11 @@ namespace SqlNado
         protected virtual SQLiteStatement CreateStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction> prepareErrorHandler) => new SQLiteStatement(this, sql, prepareErrorHandler);
         protected virtual SQLiteRow CreateRow(int index, string[] names, object[] values) => new SQLiteRow(index, names, values);
         protected virtual SQLiteBlob CreateBlob(IntPtr handle, string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode) => new SQLiteBlob(this, handle, tableName, columnName, rowId, mode);
+        public virtual SQLiteLoadOptions CreateLoadOptions() => new SQLiteLoadOptions(this);
+        public virtual SQLiteLoadForeignKeyOptions CreateLoadForeignKeyOptions() => new SQLiteLoadForeignKeyOptions(this);
+        public virtual SQLiteSaveOptions CreateSaveOptions() => new SQLiteSaveOptions(this);
+        public virtual SQLiteBindOptions CreateBindOptions() => new SQLiteBindOptions(this);
+        public virtual SQLiteDeleteOptions CreateDeleteOptions() => new SQLiteDeleteOptions(this);
         public virtual SQLiteBindContext CreateBindContext() => new SQLiteBindContext(this);
 
         public virtual int GetBlobSize(string tableName, string columnName, long rowId)

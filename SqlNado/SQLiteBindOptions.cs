@@ -1,9 +1,19 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 
 namespace SqlNado
 {
     public class SQLiteBindOptions
     {
+        public SQLiteBindOptions(SQLiteDatabase database)
+        {
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
+
+            Database = database;
+        }
+
+        public SQLiteDatabase Database { get; }
         public virtual bool GuidAsBlob { get; set; }
         public virtual string GuidAsStringFormat { get; set; }
         public virtual bool TimeSpanAsInt64 { get; set; } // ticks

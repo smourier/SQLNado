@@ -1,21 +1,73 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 
 namespace SqlNado.Utilities
 {
-    public class InteractiveShell
+    public class InteractiveShell : InteractiveShell<SQLiteDatabase>
+    {
+    }
+
+    public class InteractiveShell<T> where T : SQLiteDatabase
     {
         public ISQLiteLogger Logger { get; set; }
 
-        protected virtual bool HandleLine(string line) => false;
+        protected virtual bool HandleLine(T database, string line) => false;
+        protected virtual T CreateDatabase(string filePath, SQLiteOpenOptions options) => (T)Activator.CreateInstance(typeof(T), new object[] { filePath, options });
 
-        public virtual void Run(string filePath)
+        protected virtual void Write(TraceLevel level, string message)
         {
-            using (var db = new SQLiteDatabase(filePath))
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            switch (level)
+            {
+                case TraceLevel.Error:
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    break;
+
+                case TraceLevel.Warning:
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    break;
+
+                case TraceLevel.Verbose:
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    break;
+
+                case TraceLevel.Off:
+                    return;
+            }
+
+            try
+            {
+                Console.WriteLine(message);
+            }
+            finally
+            {
+                Console.ResetColor();
+            }
+        }
+
+        protected virtual void LineHandling(T database)
+        {
+        }
+
+        protected virtual void LineHandled(T database)
+        {
+        }
+
+        public void Run(string filePath) => Run(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE);
+        public virtual void Run(string filePath, SQLiteOpenOptions options)
+        {
+            if (filePath == null)
+                throw new ArgumentNullException(nameof(filePath));
+
+            using (var db = CreateDatabase(filePath, options))
             {
                 db.Logger = Logger;
                 do
                 {
+                    LineHandling(db);
                     var line = Console.ReadLine();
                     if (line == null)
                         break;
@@ -24,7 +76,7 @@ namespace SqlNado.Utilities
                         line.EqualsIgnoreCase("b") || line.EqualsIgnoreCase("q") || line.EqualsIgnoreCase("e"))
                         break;
 
-                    if (HandleLine(line))
+                    if (HandleLine(db, line))
                         continue;
 
                     if (line.EqualsIgnoreCase("clear") || line.EqualsIgnoreCase("cls"))
@@ -41,7 +93,7 @@ namespace SqlNado.Utilities
 
                     if (line.EqualsIgnoreCase("tables"))
                     {
-                        db.Tables.Select(t => new { Name = t.Name, RootPage = t.RootPage, Sql = t.Sql }).ToTableString(Console.Out);
+                        db.Tables.Select(t => new { t.Name, t.RootPage, t.Sql }).ToTableString(Console.Out);
                         continue;
                     }
 
@@ -123,16 +175,9 @@ namespace SqlNado.Utilities
                     }
                     catch (SQLiteException sx)
                     {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        try
-                        {
-                            Console.WriteLine(sx.Message);
-                        }
-                        finally
-                        {
-                            Console.ResetColor();
-                        }
+                        Write(TraceLevel.Error, sx.Message);
                     }
+                    LineHandled(db);
                 }
                 while (true);
             }

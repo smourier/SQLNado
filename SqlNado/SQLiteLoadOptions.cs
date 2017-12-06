@@ -13,9 +13,10 @@ namespace SqlNado
             Database = database;
         }
 
-        public virtual SQLiteDatabase Database { get; }
+        public SQLiteDatabase Database { get; }
         public virtual bool ObjectEventsDisabled { get; set; }
         public virtual bool ObjectChangeEventsDisabled { get; set; }
+        public virtual bool CreateIfNotLoaded { get; set; }
         public virtual int MaximumRows { get; set; }
         public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
         public virtual Func<SQLiteError, SQLiteOnErrorAction> ErrorHandler { get; set; }

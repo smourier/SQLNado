@@ -118,6 +118,24 @@ namespace SqlNado
             return list.ToArray();
         }
 
+        public virtual void SetPrimaryKey(SQLiteLoadOptions options, object instance, object[] primaryKey)
+        {
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
+            if (primaryKey == null)
+                throw new ArgumentNullException(nameof(primaryKey));
+
+            var pkCols = PrimaryKeyColumns.ToList();
+            if (pkCols.Count != primaryKey.Length)
+                throw new ArgumentException(null, nameof(primaryKey));
+
+            for (int i = 0; i < primaryKey.Length; i++)
+            {
+                pkCols[i].SetValue(options, instance, primaryKey[i]);
+            }
+        }
+
         public T GetInstance<T>(SQLiteStatement statement) => GetInstance<T>(statement, null);
         public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions options)
         {
@@ -277,7 +295,7 @@ namespace SqlNado
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
 
-            options = options ?? new SQLiteLoadOptions(Database);
+            options = options ?? Database.CreateLoadOptions();
             var instance = (T)GetInstance(typeof(T), statement, options);
             if (!options.ObjectEventsDisabled)
             {
@@ -304,7 +322,7 @@ namespace SqlNado
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
 
-            options = options ?? new SQLiteLoadOptions(Database);
+            options = options ?? Database.CreateLoadOptions();
             var instance = GetInstance(objectType, statement, options);
             if (!options.ObjectEventsDisabled)
             {
@@ -328,7 +346,7 @@ namespace SqlNado
             if (instance == null)
                 return false;
 
-            options = options ?? new SQLiteSaveOptions();
+            options = options ?? Database.CreateSaveOptions();
 
             InitializeAutomaticColumns(instance);
 
@@ -436,7 +454,7 @@ namespace SqlNado
             if (Columns.Count == 0)
                 throw new SqlNadoException("0006: Object table '" + Name + "' has no columns.");
 
-            options = options ?? new SQLiteSaveOptions();
+            options = options ?? Database.CreateSaveOptions();
 
             string sql;
             var existing = Table;

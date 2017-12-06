@@ -242,7 +242,7 @@ namespace SqlNado
                         {
                             att.DataType = SQLiteColumnType.TEXT.ToString();
                             // we need to force this column type options
-                            att.BindOptions = att.BindOptions ?? new SQLiteBindOptions();
+                            att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
                             att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
                         }
                     }
