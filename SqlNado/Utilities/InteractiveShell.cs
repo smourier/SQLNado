@@ -56,6 +56,25 @@ namespace SqlNado.Utilities
         {
         }
 
+        protected virtual void WriteDatabaseHelp(T datatabase)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Database help");
+            Console.WriteLine(" check                Checks database integrity.");
+            Console.WriteLine(" clear                Clears the console.");
+            Console.WriteLine(" quit                 Exits this shell.");
+            Console.WriteLine(" rows <name>          Outputs table rows. Name can contain * wildcard.");
+            Console.WriteLine(" stats                Outputs database statistics.");
+            Console.WriteLine(" tables               Outputs the list of tables in the database.");
+            Console.WriteLine(" table <name>         Outputs table information. Name can contain * wildcard.");
+            Console.WriteLine(" this                 Outputs database information.");
+            Console.WriteLine(" vacuum               Shrinks the database.");
+            Console.WriteLine(" <sql>                Any SQL request.");
+            Console.WriteLine();
+        }
+
+        protected virtual void WriteHelp(T datatabase) => WriteDatabaseHelp(datatabase);
+
         public void Run(string filePath) => Run(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE);
         public virtual void Run(string filePath, SQLiteOpenOptions options)
         {
@@ -79,27 +98,59 @@ namespace SqlNado.Utilities
                     if (HandleLine(db, line))
                         continue;
 
+                    if (line.EqualsIgnoreCase("help"))
+                    {
+                        WriteHelp(db);
+                        LineHandled(db);
+                        continue;
+                    }
+
                     if (line.EqualsIgnoreCase("clear") || line.EqualsIgnoreCase("cls"))
                     {
                         Console.Clear();
+                        LineHandled(db);
                         continue;
                     }
 
                     if (line.EqualsIgnoreCase("this"))
                     {
                         TableStringExtensions.ToTableString(db, Console.Out);
+                        LineHandled(db);
+                        continue;
+                    }
+
+                    if (line.EqualsIgnoreCase("check"))
+                    {
+                        Console.WriteLine(db.CheckIntegrity() ? "ok" : "not ok");
+                        LineHandled(db);
+                        continue;
+                    }
+
+                    if (line.EqualsIgnoreCase("vacuum"))
+                    {
+                        db.Vacuum();
+                        LineHandled(db);
                         continue;
                     }
 
                     if (line.EqualsIgnoreCase("tables"))
                     {
                         db.Tables.Select(t => new { t.Name, t.RootPage, t.Sql }).ToTableString(Console.Out);
+                        LineHandled(db);
+                        continue;
+                    }
+
+                    if (line.EqualsIgnoreCase("indices"))
+                    {
+                        db.Indices.ToTableString(Console.Out);
+                        LineHandled(db);
                         continue;
                     }
 
                     if (line.EqualsIgnoreCase("stats"))
                     {
                         db.Tables.Select(t => new { TableName = t.Name, Count = t.GetCount() }).ToTableString(Console.Out);
+                        LineHandled(db);
                         continue;
                     }
 
@@ -110,6 +161,7 @@ namespace SqlNado.Utilities
                         if (starPos < 0)
                         {
                             TableStringExtensions.ToTableString(db.GetTable(split[1]), Console.Out);
+                            LineHandled(db);
                             continue;
                         }
 
@@ -121,6 +173,7 @@ namespace SqlNado.Utilities
                                 Console.WriteLine("[" + table.Name + "]");
                                 TableStringExtensions.ToTableString(table, Console.Out);
                             }
+                            LineHandled(db);
                             continue;
                         }
 
@@ -129,6 +182,7 @@ namespace SqlNado.Utilities
                             Console.WriteLine("[" + table.Name + "]");
                             TableStringExtensions.ToTableString(table, Console.Out);
                         }
+                        LineHandled(db);
                         continue;
                     }
 
@@ -144,6 +198,7 @@ namespace SqlNado.Utilities
                         if (starPos < 0)
                         {
                             TableStringExtensions.ToTableString(db.GetTable(split[1])?.GetRows(maxRows), Console.Out);
+                            LineHandled(db);
                             continue;
                         }
 
@@ -155,6 +210,7 @@ namespace SqlNado.Utilities
                                 Console.WriteLine("[" + table.Name + "]");
                                 TableStringExtensions.ToTableString(table.GetRows(maxRows), Console.Out);
                             }
+                            LineHandled(db);
                             continue;
                         }
 
@@ -163,6 +219,7 @@ namespace SqlNado.Utilities
                             Console.WriteLine("[" + table.Name + "]");
                             TableStringExtensions.ToTableString(table.GetRows(maxRows), Console.Out);
                         }
+                        LineHandled(db);
                         continue;
                     }
 
