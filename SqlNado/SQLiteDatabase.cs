@@ -835,6 +835,9 @@ namespace SqlNado
             if (table.LoadAction == null)
                 throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
 
+            if (!table.HasPrimaryKey)
+                throw new SqlNadoException("0025: Table '" + table.Name + "' does not define a primary key.");
+
             string sql = "SELECT * FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
             var obj = Load(objectType, sql, options, keys).FirstOrDefault();
             if (obj == null && (options?.CreateIfNotLoaded).GetValueOrDefault())
@@ -881,7 +884,7 @@ namespace SqlNado
 
             var table = GetObjectTable(objectType);
             if (table.LoadAction == null)
-                throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
+                throw new SqlNadoException("0024: Table '" + table.Name + "' does not define a LoadAction.");
 
             if (sql == null)
             {
