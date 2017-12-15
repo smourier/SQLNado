@@ -17,6 +17,7 @@ namespace SqlNado
         public virtual bool ObjectEventsDisabled { get; set; }
         public virtual bool ObjectChangeEventsDisabled { get; set; }
         public virtual bool CreateIfNotLoaded { get; set; }
+        public virtual bool DontConvertPrimaryKey { get; set; }
         public virtual int MaximumRows { get; set; }
         public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
         public virtual Func<SQLiteError, SQLiteOnErrorAction> ErrorHandler { get; set; }
@@ -26,6 +27,8 @@ namespace SqlNado
         public override string ToString()
         {
             var sb = new StringBuilder();
+            sb.AppendLine("CreateIfNotLoaded=" + CreateIfNotLoaded);
+            sb.AppendLine("DontConvertPrimaryKey=" + DontConvertPrimaryKey);
             sb.AppendLine("ObjectEventsDisabled=" + ObjectEventsDisabled);
             sb.AppendLine("ObjectChangeEventsDisabled=" + ObjectChangeEventsDisabled);
             sb.AppendLine("MaximumRows=" + MaximumRows);

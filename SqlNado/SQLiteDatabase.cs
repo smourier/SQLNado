@@ -827,16 +827,34 @@ namespace SqlNado
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
 
-            var keys = CoerceToCompositeKey(key);
-            if (keys.Length == 0)
-                throw new ArgumentException(null, nameof(key));
-
             var table = GetObjectTable(objectType);
             if (table.LoadAction == null)
                 throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
 
-            if (!table.HasPrimaryKey)
+            var pk = table.PrimaryKeyColumns.ToArray();
+            if (pk.Length == 0)
                 throw new SqlNadoException("0025: Table '" + table.Name + "' does not define a primary key.");
+
+            var keys = CoerceToCompositeKey(key);
+            if (keys.Length == 0)
+                throw new ArgumentException(null, nameof(key));
+
+            if (keys.Length != pk.Length)
+                throw new SqlNadoException("0026: Table '" + table.Name + "' primary key has " + pk.Length + " colum(s). Passed composite key contains " + keys.Length + " item(s).");
+
+            if (options == null || !options.DontConvertPrimaryKey)
+            {
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    if (keys[i] != null && !pk[i].ClrType.IsAssignableFrom(keys[i].GetType()))
+                    {
+                        if (TryChangeType(keys[i], pk[i].ClrType, out object k))
+                        {
+                            keys[i] = k;
+                        }
+                    }
+                }
+            }
 
             string sql = "SELECT * FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
             var obj = Load(objectType, sql, options, keys).FirstOrDefault();
