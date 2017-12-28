@@ -34,9 +34,9 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
-            DocProgram.Starter();
+            //DocProgram.Starter();
 
-            return;
+            //return;
             if (File.Exists("test.db"))
             {
                 File.Delete("test.db");
@@ -48,24 +48,30 @@ namespace SqlNado.Temp
                 db.CollationNeeded += OnCollationNeeded;
                 db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
 
-                for (int i = 0; i < 10; i++)
-                {
-                    ThreadPool.QueueUserWorkItem((state) =>
-                    {
-                        int ii = (int)state;
-                        db.SynchronizeSchema<SimpleUser>();
+                var user = new User(db);
+                user.Name = "bob";
+                user.Email = "bob@example.com";
+                user.Photo = File.ReadAllBytes(@"D:\temp\aelyo_smo.png");
+                db.Save(user);
 
-                        TableStringExtensions.ToTableString(db.GetTable<SimpleUser>(), Console.Out);
+                //for (int i = 0; i < 10; i++)
+                //{
+                //    ThreadPool.QueueUserWorkItem((state) =>
+                //    {
+                //        int ii = (int)state;
+                //        db.SynchronizeSchema<SimpleUser>();
 
-                        var su = new SimpleUser();
-                        su.Name = "toto";
-                        su.Email = "a.b@x.com";
-                        db.Save(su);
+                //        TableStringExtensions.ToTableString(db.GetTable<SimpleUser>(), Console.Out);
 
-                        db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
-                        db.LoadAll<SimpleUser>().ToTableString(Console.Out);
-                    }, i);
-                }
+                //        var su = new SimpleUser();
+                //        su.Name = "toto";
+                //        su.Email = "a.b@x.com";
+                //        db.Save(su);
+
+                //        db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
+                //        db.LoadAll<SimpleUser>().ToTableString(Console.Out);
+                //    }, i);
+                //}
 
                 Console.ReadLine();
                 db.GetStatementsCacheEntries().ToTableString(Console.Out);

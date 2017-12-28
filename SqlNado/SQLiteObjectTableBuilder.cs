@@ -199,8 +199,11 @@ namespace SqlNado
                 var et = Conversions.GetEnumeratedType(property.PropertyType);
                 if (et != null)
                 {
-                    if (att == null || !att._ignore.HasValue || att._ignore.Value)
-                        return null;
+                    if (et != typeof(byte))
+                    {
+                        if (att == null || !att._ignore.HasValue || att._ignore.Value)
+                            return null;
+                    }
                 }
             }
 
