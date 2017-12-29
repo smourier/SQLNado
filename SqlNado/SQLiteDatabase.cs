@@ -30,6 +30,7 @@ namespace SqlNado
 
         // note the pool is case-sensitive. it may not be always optimized, but it's safer
         private ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>();
+        private collationNeeded _collationNeeded;
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
 
@@ -51,7 +52,8 @@ namespace SqlNado
             HookNativeProcs();
             filePath = Path.GetFullPath(filePath);
             CheckError(_sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
-            CheckError(_sqlite3_collation_needed16(_handle, IntPtr.Zero, NativeCollationNeeded));
+            _collationNeeded = NativeCollationNeeded;
+            CheckError(_sqlite3_collation_needed16(_handle, IntPtr.Zero, _collationNeeded));
             FilePath = filePath;
             AddDefaultBindTypes();
         }
@@ -1931,6 +1933,7 @@ namespace SqlNado
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {
+                _sqlite3_collation_needed16(handle, IntPtr.Zero, null);
                 _sqlite3_close(handle);
             }
         }
