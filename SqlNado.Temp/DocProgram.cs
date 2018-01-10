@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using SqlNado.Utilities;
 
 namespace SqlNado.Temp
@@ -12,8 +10,8 @@ namespace SqlNado.Temp
             using (var db = new SQLiteDatabase("my.db"))
             {
                 var customer = new Customer();
-                customer.Email = "killroy@example.com";
-                customer.Name = "Killroy";
+                customer.Email = "kilroy@example.com";
+                customer.Name = "Kilroy";
 
                 // update or insert (using the primary key)
                 db.Save(customer);

@@ -41,7 +41,7 @@ namespace SqlNado.Temp
             {
                 File.Delete("test.db");
             }
-            using (var db = new SQLiteDatabase("test.db"))
+            using (var db = new SQLiteDatabase(""))
             {
                 //db.Logger = new ConsoleLogger(true);
                 db.EnableStatementsCache = true;
@@ -51,7 +51,6 @@ namespace SqlNado.Temp
                 var user = new User(db);
                 user.Name = "bob";
                 user.Email = "bob@example.com";
-                user.Photo = File.ReadAllBytes(@"D:\temp\aelyo_smo.png");
                 db.Save(user);
 
                 //for (int i = 0; i < 10; i++)

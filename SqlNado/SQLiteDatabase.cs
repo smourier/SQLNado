@@ -50,7 +50,6 @@ namespace SqlNado
 #endif
             BindOptions = CreateBindOptions();
             HookNativeProcs();
-            filePath = Path.GetFullPath(filePath);
             CheckError(_sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
             _collationNeeded = NativeCollationNeeded;
             CheckError(_sqlite3_collation_needed16(_handle, IntPtr.Zero, _collationNeeded));
