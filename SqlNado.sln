@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Temp", "SqlNado.Tem
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Cli", "SqlNado.Cli\SqlNado.Cli.csproj", "{D184B8AF-6BC4-4E8E-9BE5-F4519374F04B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Tests", "SqlNado.Tests\SqlNado.Tests.csproj", "{48CADD57-A74C-45CA-B727-801CD00A9C5C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{D184B8AF-6BC4-4E8E-9BE5-F4519374F04B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D184B8AF-6BC4-4E8E-9BE5-F4519374F04B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D184B8AF-6BC4-4E8E-9BE5-F4519374F04B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{48CADD57-A74C-45CA-B727-801CD00A9C5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{48CADD57-A74C-45CA-B727-801CD00A9C5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{48CADD57-A74C-45CA-B727-801CD00A9C5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{48CADD57-A74C-45CA-B727-801CD00A9C5C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -419,8 +419,22 @@ namespace SqlNado
 
                 if (count == 0)
                 {
-                    sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName + " (" + BuildColumnsInsertStatement();
-                    sql += ") VALUES (" + BuildColumnsInsertParametersStatement() + ")";
+                    var columnsInsertStatement = BuildColumnsInsertStatement();
+                    var columnsInsertParametersStatement = BuildColumnsInsertParametersStatement();
+                    sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName;
+                    if (!string.IsNullOrEmpty(columnsInsertStatement))
+                    {
+                        sql += " (" + columnsInsertStatement + ")";
+                    }
+
+                    if (string.IsNullOrEmpty(columnsInsertParametersStatement))
+                    {
+                        sql += " DEFAULT VALUES";
+                    }
+                    else
+                    {
+                        sql += " VALUES (" + BuildColumnsInsertParametersStatement() + ")";
+                    }
 
                     Func<SQLiteError, SQLiteOnErrorAction> onError = (e) =>
                     {
