@@ -1271,7 +1271,7 @@ namespace SqlNado.Utilities
             return string.Join(Environment.NewLine, enumerable.Cast<object>());
         }
 
-        private IEnumerable<Tuple<object, object>> Values
+        protected virtual IEnumerable<Tuple<object, object>> Values
         {
             get
             {
@@ -1321,7 +1321,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        private class ComparableComparer : IComparer<Tuple<object, object>>
+        protected class ComparableComparer : IComparer<Tuple<object, object>>
         {
             public int Compare(Tuple<object, object> x, Tuple<object, object> y) => ((IComparable)x.Item1).CompareTo((IComparable)y.Item1);
         }
@@ -1364,6 +1364,65 @@ namespace SqlNado.Utilities
                 WriteObject(sw);
                 return sw.ToString();
             }
+        }
+    }
+
+    public class StructTableString : ObjectTableString
+    {
+        public StructTableString(object obj)
+            : base(obj)
+        {
+        }
+
+        protected override IEnumerable<Tuple<object, object>> Values
+        {
+            get
+            {
+                var list = new List<Tuple<object, object>>();
+                int i = 0;
+                if (Object != null && !(Object is string))
+                {
+                    foreach (var field in Object.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
+                    {
+                        var browsable = field.GetCustomAttribute<BrowsableAttribute>();
+                        if (browsable != null && !browsable.Browsable)
+                            continue;
+
+                        object value = GetValue(field, Object, ThrowOnPropertyGetError);
+                        list.Add(new Tuple<object, object>(field.Name, value));
+                        i++;
+                    }
+
+                    list.Sort(new ComparableComparer());
+                }
+
+                if (i == 0)
+                {
+                    list.Add(new Tuple<object, object>(Object?.GetType(), Object));
+                }
+                return list;
+            }
+        }
+
+        internal static object GetValue(FieldInfo field, object obj, bool throwOnError)
+        {
+            object value;
+            if (throwOnError)
+            {
+                value = field.GetValue(obj);
+            }
+            else
+            {
+                try
+                {
+                    value = field.GetValue(obj);
+                }
+                catch (Exception e)
+                {
+                    value = "#ERR: " + e.Message;
+                }
+            }
+            return value;
         }
     }
 
