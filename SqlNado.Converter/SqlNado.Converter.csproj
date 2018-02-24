@@ -44,6 +44,7 @@
       <Link>CommandLine.cs</Link>
     </Compile>
     <Compile Include="DatabaseConverter.cs" />
+    <Compile Include="DatabaseConverterOptions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
