@@ -6,6 +6,7 @@ namespace SqlNado.Converter
     public enum DatabaseConverterOptions
     {
         None = 0x0,
-        OneFile = 0x1,
+        DeriveFromBaseObject = 0x1,
+        KeepRowguid = 0x2,
     }
 }

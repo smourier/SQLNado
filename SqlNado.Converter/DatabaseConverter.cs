@@ -1,5 +1,6 @@
 ﻿using System;
 using System.CodeDom.Compiler;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -155,24 +156,116 @@ namespace SqlNado.Converter
             using (var reader = CreateDatabaseReader())
             {
                 var schema = reader.ReadAll();
+                bool removeRowGuids = schema.Provider == "System.Data.SqlClient" && !Options.HasFlag(DatabaseConverterOptions.KeepRowguid);
+
                 foreach (var table in schema.Tables)
                 {
+                    var tableAtts = new Dictionary<string, string>();
                     string className = GetValidIdentifier(table.Name);
-                    writer.WriteLine("public class " + className);
+                    if (className != table.Name)
+                    {
+                        tableAtts[nameof(SQLiteTableAttribute.Name)] = table.Name;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(table.SchemaOwner))
+                    {
+                        tableAtts[nameof(SQLiteTableAttribute.Schema)] = table.SchemaOwner;
+                    }
+
+                    if (tableAtts.Count > 0)
+                    {
+                        writer.WriteLine("[SQLiteTable(" + string.Join(", ", tableAtts.Select(a => a.Key + " = " + a.Value)) + ")]");
+                    }
+
+                    string baseClassName = null;
+                    bool derived = Options.HasFlag(DatabaseConverterOptions.DeriveFromBaseObject);
+                    if (derived)
+                    {
+                        baseClassName = " : SQLiteBaseObject";
+                    }
+
+                    writer.WriteLine("public class " + className + baseClassName);
                     writer.WriteLine("{");
                     writer.Indent++;
 
-                    writer.WriteLine("public " + className + "()");
+                    if (derived)
+                    {
+                        writer.WriteLine("public " + className + "(SQLiteDatabase db)");
+                        writer.Indent++;
+                        writer.WriteLine(": base(db)");
+                        writer.Indent--;
+                    }
+                    else
+                    {
+                        writer.WriteLine("public " + className + "()");
+                    }
+
                     writer.WriteLine("{");
                     writer.Indent++;
                     writer.Indent--;
                     writer.WriteLine("}");
                     writer.WriteLine();
 
-                    foreach (var col in table.Columns.Where(c => !c.IsComputed))
+                    var propertyNames = new List<string>();
+
+                    foreach (var col in table.Columns.Where(c => !c.IsComputed && c.DataType != null))
                     {
+                        if (removeRowGuids &&
+                            string.Compare(col.Name, "rowguid", StringComparison.OrdinalIgnoreCase) == 0 &&
+                            col.DataType.NetDataType == typeof(Guid).FullName)
+                            continue;
+
+                        var colAtts = new Dictionary<string, string>();
+                        if (col.IsPrimaryKey)
+                        {
+                            colAtts[nameof(SQLiteColumnAttribute.IsPrimaryKey)] = true.ToString().ToLowerInvariant();
+                        }
+
                         string propertyName = GetValidIdentifier(col.Name);
-                        writer.WriteLine("public " + col.DataType.NetDataType + " " + propertyName + " { get; set; }");
+                        if (string.Compare(propertyName, className, StringComparison.OrdinalIgnoreCase) == 0)
+                        {
+                            int itest = 0;
+                            const string suffix = "Property";
+                            string baseName = propertyName + suffix;
+                            while (propertyNames.Contains(baseName, StringComparer.OrdinalIgnoreCase))
+                            {
+                                itest++;
+                                baseName = propertyName + suffix + itest;
+                            }
+
+                            propertyName = baseName;
+                        }
+
+                        propertyNames.Add(propertyName);
+
+                        if (propertyName != col.Name)
+                        {
+                            colAtts[nameof(SQLiteColumnAttribute.Name)] = "@\"" + col.Name.Replace("\"", "\"\"") + "\"";
+                        }
+
+                        if (col.Nullable)
+                        {
+                            colAtts[nameof(SQLiteColumnAttribute.IsNullable)] = true.ToString().ToLowerInvariant();
+                        }
+
+                        if (col.IsAutoNumber)
+                        {
+                            colAtts[nameof(SQLiteColumnAttribute.AutoIncrements)] = true.ToString().ToLowerInvariant();
+                        }
+
+                        if (colAtts.Count > 0)
+                        {
+                            writer.WriteLine("[SQLiteColumn(" + string.Join(", ", colAtts.Select(a => a.Key + " = " + a.Value)) + ")]");
+                        }
+
+                        if (derived)
+                        {
+                            writer.WriteLine("public " + col.DataType.NetDataType + " " + propertyName + " { get => DictionaryObjectGetPropertyValue<" + col.DataType.NetDataType + ">(); set => DictionaryObjectSetPropertyValue(value); }");
+                        }
+                        else
+                        {
+                            writer.WriteLine("public " + col.DataType.NetDataType + " " + propertyName + " { get; set; }");
+                        }
                     }
 
                     writer.Indent--;
