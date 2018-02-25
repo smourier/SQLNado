@@ -16,9 +16,15 @@ SQLNado supports all of SQLite features when using SQL commands, and also suppor
 The only requirement is netstandard 2.0 (100% nuget free!). Note that it's only been validated on the Windows 32 and 64-bit platform, and it requires the standard SQLite native dlls.
 
 ## Installation
-I recommend to rename sqlite.dll for 32 *and* 64-bit to sqlite.x86.dll and sqlite.x64.dll. Once you've done that, you can copy both files aside your running executable (or *bin* directory for a web site). SQLNado source code expects that and this way your program will be able to run as 32-bit or as 64-bit without having to change the native sqlite.dll. You won't have to build two setups either. You can get native sqlite.dll from sqlite.org site or you can get them from here already renamed: https://github.com/smourier/SQLNado/tree/master/SqlNado
+We recommend to rename sqlite.dll for 32 *and* 64-bit to sqlite.x86.dll and sqlite.x64.dll. Once you've done that, you can copy both files aside your running executable (or *bin* directory for a web site). SQLNado source code expects that and this way your program will be able to run as 32-bit or as 64-bit without having to change the native sqlite.dll. You won't have to build two setups either. You can get native sqlite.dll from sqlite.org site or you can get them from here already renamed: https://github.com/smourier/SQLNado/tree/master/SqlNado
 
 If you don't like all this, you can just copy the corresponding standard sqlite.dll aside your running executable also, but make sure you use the proper 32 or 64-bit version.
+
+## Amalgamation (or "So, where is the Nuget, Dude?")
+SQLNado is currently not provided as a Nuget (this may change someday if required).
+What we do instead is provide it as a single, 100% independent, C# file located here https://github.com/smourier/SQLNado/tree/master/Amalgamation
+
+The amalgamation contains everything an application needs to embed SQLNado. Combining all the code for SQLNado into one big file makes it easier to deploy — there is just one file to keep track of (yeah, I borrowed that phrase from SQLite's site https://www.sqlite.org/amalgamation.html page because it's cool)
 
 ## Get Started
 Here is a simple Console App that should get you started:
