@@ -47,6 +47,11 @@ namespace SqlNado
                 table.DisableRowId = typeAtt.WithoutRowId;
             }
 
+            if (typeAtt != null)
+            {
+                table.Schema = typeAtt.Schema.Nullify();
+            }
+
             var attributes = EnumerateColumnAttributes().ToList();
             attributes.Sort();
 

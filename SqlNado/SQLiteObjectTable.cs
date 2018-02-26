@@ -26,6 +26,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public string Name { get; }
+        public string Schema { get; set; } // unused in SqlNado's SQLite
         public virtual IReadOnlyList<SQLiteObjectColumn> Columns => _columns;
         public virtual IEnumerable<SQLiteObjectColumn> PrimaryKeyColumns => _columns.Where(c => c.IsPrimaryKey);
         [Browsable(false)]

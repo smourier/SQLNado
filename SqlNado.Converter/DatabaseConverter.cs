@@ -148,6 +148,14 @@ namespace SqlNado.Converter
             Convert(itw);
         }
 
+        private static string ToVerbatim(string text)
+        {
+            if (text == null)
+                return "null";
+
+            return "@\"" + text.Replace("\"", "\"\"") + "\"";
+        }
+
         public virtual void Convert(IndentedTextWriter writer)
         {
             if (writer == null)
@@ -164,12 +172,12 @@ namespace SqlNado.Converter
                     string className = GetValidIdentifier(table.Name);
                     if (className != table.Name)
                     {
-                        tableAtts[nameof(SQLiteTableAttribute.Name)] = table.Name;
+                        tableAtts[nameof(SQLiteTableAttribute.Name)] = ToVerbatim(table.Name);
                     }
 
                     if (!string.IsNullOrWhiteSpace(table.SchemaOwner))
                     {
-                        tableAtts[nameof(SQLiteTableAttribute.Schema)] = table.SchemaOwner;
+                        tableAtts[nameof(SQLiteTableAttribute.Schema)] = ToVerbatim(table.SchemaOwner);
                     }
 
                     if (tableAtts.Count > 0)
@@ -240,7 +248,7 @@ namespace SqlNado.Converter
 
                         if (propertyName != col.Name)
                         {
-                            colAtts[nameof(SQLiteColumnAttribute.Name)] = "@\"" + col.Name.Replace("\"", "\"\"") + "\"";
+                            colAtts[nameof(SQLiteColumnAttribute.Name)] = ToVerbatim(col.Name);
                         }
 
                         if (col.Nullable)
