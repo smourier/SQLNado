@@ -4275,12 +4275,17 @@ namespace SqlNado
                 possibleRowIdColumns[0].IsRowId = true;
             }
 
+            Expression body;
             if (expressions.Count > 0)
             {
                 expressions.Insert(0, valueParameter);
+                body = Expression.Block(variables, expressions);
+            }
+            else
+            {
+                body = Expression.Empty();
             }
 
-            var body = Expression.Block(variables, expressions);
             var lambda = Expression.Lambda<Action<SQLiteStatement, SQLiteLoadOptions, object>>(body,
                 statementParameter,
                 optionsParameter,

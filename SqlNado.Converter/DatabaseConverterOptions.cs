@@ -8,5 +8,6 @@ namespace SqlNado.Converter
         None = 0x0,
         DeriveFromBaseObject = 0x1,
         KeepRowguid = 0x2,
+        AddNamespaceAndUsings = 0x4,
     }
 }

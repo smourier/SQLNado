@@ -29,6 +29,7 @@ namespace SqlNado.Converter
         public string ProviderName { get; }
         public DatabaseConverterOptions Options { get; set; }
         public string TargetNamespace { get; set; }
+        public string Namespace { get; set; }
 
         protected virtual DatabaseReader CreateDatabaseReader()
         {
@@ -156,18 +157,46 @@ namespace SqlNado.Converter
             return "@\"" + text.Replace("\"", "\"\"") + "\"";
         }
 
+        protected virtual bool IncludeTable(DatabaseTable table)
+        {
+            bool sqlserver = table.DatabaseSchema.Provider == "System.Data.SqlClient";
+            if (sqlserver && table.Name == "sysdiagrams" && table.SchemaOwner == "dbo")
+                return false;
+
+            return true;
+        }
+
         public virtual void Convert(IndentedTextWriter writer)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
 
+            bool derived = Options.HasFlag(DatabaseConverterOptions.DeriveFromBaseObject);
+            bool ns = Options.HasFlag(DatabaseConverterOptions.AddNamespaceAndUsings) && Namespace != null;
+            if (ns)
+            {
+                writer.WriteLine("using SqlNado;");
+                if (derived)
+                {
+                    writer.WriteLine("using SqlNado.Utilities;");
+                }
+                writer.WriteLine();
+                writer.WriteLine("namespace " + Namespace);
+                writer.WriteLine("{");
+                writer.Indent++;
+            }
+
             using (var reader = CreateDatabaseReader())
             {
                 var schema = reader.ReadAll();
-                bool removeRowGuids = schema.Provider == "System.Data.SqlClient" && !Options.HasFlag(DatabaseConverterOptions.KeepRowguid);
+                bool sqlserver = schema.Provider == "System.Data.SqlClient";
+                bool removeRowGuids = sqlserver && !Options.HasFlag(DatabaseConverterOptions.KeepRowguid);
 
                 foreach (var table in schema.Tables)
                 {
+                    if (!IncludeTable(table))
+                        continue;
+
                     var tableAtts = new Dictionary<string, string>();
                     string className = GetValidIdentifier(table.Name);
                     if (className != table.Name)
@@ -186,7 +215,6 @@ namespace SqlNado.Converter
                     }
 
                     string baseClassName = null;
-                    bool derived = Options.HasFlag(DatabaseConverterOptions.DeriveFromBaseObject);
                     if (derived)
                     {
                         baseClassName = " : SQLiteBaseObject";
@@ -279,6 +307,12 @@ namespace SqlNado.Converter
                     writer.Indent--;
                     writer.WriteLine("}");
                     writer.WriteLine();
+                }
+
+                if (ns)
+                {
+                    writer.Indent--;
+                    writer.WriteLine("}");
                 }
             }
         }
