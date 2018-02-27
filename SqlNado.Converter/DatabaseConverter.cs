@@ -30,6 +30,7 @@ namespace SqlNado.Converter
         public DatabaseConverterOptions Options { get; set; }
         public string TargetNamespace { get; set; }
         public string Namespace { get; set; }
+        public string BaseTypeName { get; set; }
 
         protected virtual DatabaseReader CreateDatabaseReader()
         {
@@ -217,7 +218,16 @@ namespace SqlNado.Converter
                     string baseClassName = null;
                     if (derived)
                     {
-                        baseClassName = " : SQLiteBaseObject";
+                        if (string.IsNullOrWhiteSpace(BaseTypeName))
+                        {
+                            baseClassName = typeof(SQLiteBaseObject).Name;
+                        }
+                        else
+                        {
+                            baseClassName = BaseTypeName;
+                        }
+
+                        baseClassName = " : " + baseClassName;
                     }
 
                     writer.WriteLine("public class " + className + baseClassName);
@@ -244,11 +254,37 @@ namespace SqlNado.Converter
 
                     var propertyNames = new List<string>();
 
-                    foreach (var col in table.Columns.Where(c => !c.IsComputed && c.DataType != null))
+                    foreach (var col in table.Columns.Where(c => !c.IsComputed))
                     {
                         if (removeRowGuids &&
                             string.Compare(col.Name, "rowguid", StringComparison.OrdinalIgnoreCase) == 0 &&
-                            col.DataType.NetDataType == typeof(Guid).FullName)
+                            col.DataType?.NetDataType == typeof(Guid).FullName)
+                            continue;
+
+                        string clrType = col.DataType?.NetDataType;
+                        if (clrType == null)
+                        {
+                            // handle some well-known types
+                            if (sqlserver)
+                            {
+                                switch (col.DbDataType)
+                                {
+                                    case "geography":
+                                        clrType = "Microsoft.SqlServer.Types.SqlGeography";
+                                        break;
+
+                                    case "geometry":
+                                        clrType = "Microsoft.SqlServer.Types.SqlGeometry";
+                                        break;
+
+                                    case "hierarchyid":
+                                        clrType = "Microsoft.SqlServer.Types.SqlHierarchyId";
+                                        break;
+                                }
+                            }
+                        }
+
+                        if (clrType == null)
                             continue;
 
                         var colAtts = new Dictionary<string, string>();
@@ -296,11 +332,11 @@ namespace SqlNado.Converter
 
                         if (derived)
                         {
-                            writer.WriteLine("public " + col.DataType.NetDataType + " " + propertyName + " { get => DictionaryObjectGetPropertyValue<" + col.DataType.NetDataType + ">(); set => DictionaryObjectSetPropertyValue(value); }");
+                            writer.WriteLine("public " + clrType + " " + propertyName + " { get => DictionaryObjectGetPropertyValue<" + clrType + ">(); set => DictionaryObjectSetPropertyValue(value); }");
                         }
                         else
                         {
-                            writer.WriteLine("public " + col.DataType.NetDataType + " " + propertyName + " { get; set; }");
+                            writer.WriteLine("public " + clrType + " " + propertyName + " { get; set; }");
                         }
                     }
 

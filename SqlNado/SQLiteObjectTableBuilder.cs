@@ -280,7 +280,7 @@ namespace SqlNado
             if (att.GetValueExpression == null)
             {
                 // equivalent of
-                // att.GetValueFunc = (o) => property.GetValue(o);
+                // att.GetValueExpression = (o) => property.GetValue(o);
 
                 var instanceParameter = Expression.Parameter(typeof(object));
                 var instance = Expression.Convert(instanceParameter, property.DeclaringType);
@@ -296,7 +296,7 @@ namespace SqlNado
             if (!att.IsReadOnly && att.SetValueExpression == null && property.SetMethod != null)
             {
                 // equivalent of
-                // att.SetValueAction = (options, o, v) => {
+                // att.SetValueExpression = (options, o, v) => {
                 //      if (options.TryChangeType(v, typeof(property), options.FormatProvider, out object newv))
                 //      {
                 //          property.SetValue(o, newv);

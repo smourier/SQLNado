@@ -791,6 +791,8 @@ namespace SqlNado
         public bool EnforceForeignKeys { get => ExecuteScalar<bool>("PRAGMA foreign_keys"); set => ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); }
         public int BusyTimeout { get => ExecuteScalar<int>("PRAGMA busy_timeout"); set => ExecuteNonQuery("PRAGMA busy_timeout=" + value); }
         public int CacheSize { get => ExecuteScalar<int>("PRAGMA cache_size"); set => ExecuteNonQuery("PRAGMA cache_size=" + value); }
+        public SQLiteSynchronousMode SynchronousMode { get => ExecuteScalar<SQLiteSynchronousMode>("PRAGMA synchronous"); set => ExecuteNonQuery("PRAGMA synchronous=" + value); }
+        public SQLiteJournalMode JournalMode { get => ExecuteScalar<SQLiteJournalMode>("PRAGMA journal_mode"); set => ExecuteNonQuery("PRAGMA journal_mode=" + value); }
         public int DataVersion => ExecuteScalar<int>("PRAGMA data_version");
         public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
         public IEnumerable<string> Collations => LoadObjects("PRAGMA collation_list").Select(row => (string)row[1]);
@@ -3200,6 +3202,19 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    public enum SQLiteJournalMode
+    {
+        Delete,
+        Truncate,
+        Persist,
+        Memory,
+        Wal,
+        Off
+    }
+}
+
+namespace SqlNado
+{
     public class SQLiteLoadForeignKeyOptions : SQLiteLoadOptions
     {
         public SQLiteLoadForeignKeyOptions(SQLiteDatabase database)
@@ -4456,7 +4471,7 @@ namespace SqlNado
             if (att.GetValueExpression == null)
             {
                 // equivalent of
-                // att.GetValueFunc = (o) => property.GetValue(o);
+                // att.GetValueExpression = (o) => property.GetValue(o);
 
                 var instanceParameter = Expression.Parameter(typeof(object));
                 var instance = Expression.Convert(instanceParameter, property.DeclaringType);
@@ -4472,7 +4487,7 @@ namespace SqlNado
             if (!att.IsReadOnly && att.SetValueExpression == null && property.SetMethod != null)
             {
                 // equivalent of
-                // att.SetValueAction = (options, o, v) => {
+                // att.SetValueExpression = (options, o, v) => {
                 //      if (options.TryChangeType(v, typeof(property), options.FormatProvider, out object newv))
                 //      {
                 //          property.SetValue(o, newv);
@@ -5952,6 +5967,17 @@ namespace SqlNado
         }
 
         ~SQLiteStatement() => RealDispose();
+    }
+}
+
+namespace SqlNado
+{
+    public enum SQLiteSynchronousMode
+    {
+        Off = 0,
+        Normal = 1,
+        Full = 2,
+        Extra = 3
     }
 }
 
@@ -8480,11 +8506,53 @@ namespace SqlNado.Utilities
         SQLiteDatabase ISQLiteObject.Database { get; set; }
         protected SQLiteDatabase Database => ((ISQLiteObject)this).Database;
 
-        public virtual bool Save() => Database.Save(this);
-        public virtual bool Delete() => Database.Delete(this);
+        public bool Save() => Database.Save(this);
+        public virtual bool Save(SQLiteSaveOptions options) => Database.Save(this, options);
+
+        public bool Delete() => Database.Delete(this);
+        public virtual bool Delete(SQLiteDeleteOptions options) => Database.Delete(this, options);
 
         protected IEnumerable<T> LoadByForeignKey<T>() => LoadByForeignKey<T>(null);
         protected virtual IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options) => Database.LoadByForeignKey<T>(this, options);
+    }
+}
+
+namespace SqlNado.Utilities
+{
+    public abstract class SQLiteBasePublicObject : SQLiteBaseObject
+    {
+        protected SQLiteBasePublicObject(SQLiteDatabase database)
+            : base(database)
+        {
+        }
+
+        [SQLiteColumn(Ignore = true)]
+        public ConcurrentDictionary<string, DictionaryObjectProperty> ChangedProperties => DictionaryObjectChangedProperties;
+
+        [SQLiteColumn(Ignore = true)]
+        public ConcurrentDictionary<string, DictionaryObjectProperty> Properties => DictionaryObjectProperties;
+
+        [SQLiteColumn(Ignore = true)]
+        public bool HasChanged => ChangedProperties.Count > 0;
+
+        [SQLiteColumn(Ignore = true)]
+        public bool HasErrors => DictionaryObjectHasErrors;
+
+        [SQLiteColumn(Ignore = true)]
+        public new SQLiteDatabase Database => base.Database;
+
+        public new IEnumerable<T> LoadByForeignKey<T>() => base.LoadByForeignKey<T>();
+        public new IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options) => base.LoadByForeignKey<T>(options);
+
+        public void CommitChanges() => DictionaryObjectCommitChanges();
+        public void RollbackChanges() => DictionaryObjectRollbackChanges();
+        public void RollbackChanges(DictionaryObjectPropertySetOptions options) => DictionaryObjectRollbackChanges(options);
+
+        public T GetPropertyValue<T>([CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue<T>(name);
+        public T GetPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue(defaultValue, name);
+
+        public bool SetPropertyValue(object value, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, name);
+        public bool SetPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, options, name);
     }
 }
 

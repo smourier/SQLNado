@@ -44,6 +44,7 @@ namespace SqlNado.Converter
             var converter = new DatabaseConverter(args[0], args[1]);
             converter.Options = CommandLine.GetArgument("options", DatabaseConverterOptions.None);
             converter.Namespace = CommandLine.GetNullifiedArgument("ns");
+            converter.BaseTypeName = CommandLine.GetNullifiedArgument("base");
             converter.Convert(Console.Out);
         }
 
@@ -57,12 +58,13 @@ namespace SqlNado.Converter
             Console.WriteLine("Optional Parameters:");
             Console.WriteLine("    /options:<flags>                 Options for output.");
             Console.WriteLine("        0: None                          No option (default value).");
-            Console.WriteLine("        1: DeriveFromBaseObject          Generated C# classes derive from SQLiteBaseObject.");
+            Console.WriteLine("        1: DeriveFromBaseObject          Generated C# classes derive from a base class. See /base argument.");
             Console.WriteLine("        2: KeepRowguid                   Keep rowguid columns. By default they are removed. SQL Server provider only.");
             Console.WriteLine("        4: AddNamespaceAndUsings         Adds surrounding namespace and required usings.");
             Console.WriteLine();
             Console.WriteLine("    /nologo                          Do not display the header logo text.");
             Console.WriteLine("    /ns:<namespace>                  Namespace name to generate. Requires options AddNamespaceAndUsings.");
+            Console.WriteLine("    /base:<typename>                 Base type name to use. Default value is SQLiteBaseObject.");
             Console.WriteLine();
             Console.WriteLine("Examples:");
             Console.WriteLine("    " + Assembly.GetEntryAssembly().GetName().Name.ToUpperInvariant() + " \"Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\\mypath1\\nw.mdb\" System.Data.OleDb");
