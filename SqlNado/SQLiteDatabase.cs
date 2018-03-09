@@ -753,6 +753,8 @@ namespace SqlNado
             }
 
             options = options ?? CreateLoadOptions();
+            if (options.TestTableExists && !TableExists<T>())
+                yield break;
 
             using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
@@ -912,7 +914,11 @@ namespace SqlNado
                 sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
             }
 
-            using (var statement = PrepareStatement(sql, options?.ErrorHandler, args))
+            options = options ?? CreateLoadOptions();
+            if (options.TestTableExists && !TableExists(objectType))
+                yield break;
+
+            using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
                 int index = 0;
                 do
@@ -935,7 +941,7 @@ namespace SqlNado
                         continue;
                     }
 
-                    var errorHandler = options?.ErrorHandler;
+                    var errorHandler = options.ErrorHandler;
                     if (errorHandler != null)
                     {
                         var error = new SQLiteError(statement, index, code);

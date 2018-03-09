@@ -19,6 +19,7 @@ namespace SqlNado
         public virtual bool CreateIfNotLoaded { get; set; }
         public virtual bool DontConvertPrimaryKey { get; set; }
         public virtual int MaximumRows { get; set; }
+        public virtual bool TestTableExists { get; set; }
         public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
         public virtual Func<SQLiteError, SQLiteOnErrorAction> ErrorHandler { get; set; }
 

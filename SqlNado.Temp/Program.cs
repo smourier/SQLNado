@@ -34,6 +34,17 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
+            using (var db = new SQLiteDatabase(":memory:"))
+            {
+                //if (db.TableExists<SimpleUser>())
+                //{
+                db.LoadAll<SimpleUser>(new SQLiteLoadOptions(db) { TestTableExists = false }).ToTableString(Console.Out);
+                //}
+            }
+        }
+
+        static void SafeMain2(string[] args)
+        {
             //DocProgram.Starter();
 
             //return;
