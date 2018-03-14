@@ -1093,18 +1093,6 @@ namespace SqlNado
                 ctx.Options = bindOptions;
             }
 
-            if (value != null)
-            {
-                var valueType = value.GetType();
-                if (valueType.IsEnum)
-                {
-                    if (!ctx.Options.EnumAsString)
-                    {
-                        value = Convert.ChangeType(value, Enum.GetUnderlyingType(valueType));
-                    }
-                }
-            }
-
             ctx.Value = value;
             return type.ConvertFunc(ctx);
         }
@@ -1135,7 +1123,10 @@ namespace SqlNado
             if (type.IsEnum)
             {
                 if (!BindOptions.EnumAsString)
-                    return GetBindType(Enum.GetUnderlyingType(type), defaultType);
+                {
+                    var et = GetEnumBindType(type);
+                    return _bindTypes.AddOrUpdate(type, et, (k, o) => et);
+                }
             }
 
             foreach (var kv in _bindTypes)
@@ -1148,6 +1139,16 @@ namespace SqlNado
             }
 
             return defaultType ?? SQLiteBindType.ObjectToStringType;
+        }
+
+        public virtual SQLiteBindType GetEnumBindType(Type enumType)
+        {
+            if (!enumType.IsEnum)
+                throw new ArgumentException(null, nameof(enumType));
+
+            var ut = Enum.GetUnderlyingType(enumType);
+            var type = new SQLiteBindType(ctx => Convert.ChangeType(ctx.Value, ut), enumType);
+            return type;
         }
 
         public virtual void AddBindType(SQLiteBindType type)
@@ -1467,6 +1468,8 @@ namespace SqlNado
             }
 
             options = options ?? CreateLoadOptions();
+            if (options.TestTableExists && !TableExists<T>())
+                yield break;
 
             using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
@@ -1626,7 +1629,11 @@ namespace SqlNado
                 sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
             }
 
-            using (var statement = PrepareStatement(sql, options?.ErrorHandler, args))
+            options = options ?? CreateLoadOptions();
+            if (options.TestTableExists && !TableExists(objectType))
+                yield break;
+
+            using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
                 int index = 0;
                 do
@@ -1649,7 +1656,7 @@ namespace SqlNado
                         continue;
                     }
 
-                    var errorHandler = options?.ErrorHandler;
+                    var errorHandler = options.ErrorHandler;
                     if (errorHandler != null)
                     {
                         var error = new SQLiteError(statement, index, code);
@@ -3255,6 +3262,7 @@ namespace SqlNado
         public virtual bool CreateIfNotLoaded { get; set; }
         public virtual bool DontConvertPrimaryKey { get; set; }
         public virtual int MaximumRows { get; set; }
+        public virtual bool TestTableExists { get; set; }
         public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
         public virtual Func<SQLiteError, SQLiteOnErrorAction> ErrorHandler { get; set; }
 

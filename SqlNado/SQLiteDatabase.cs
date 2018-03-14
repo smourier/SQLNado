@@ -379,18 +379,6 @@ namespace SqlNado
                 ctx.Options = bindOptions;
             }
 
-            if (value != null)
-            {
-                var valueType = value.GetType();
-                if (valueType.IsEnum)
-                {
-                    if (!ctx.Options.EnumAsString)
-                    {
-                        value = Convert.ChangeType(value, Enum.GetUnderlyingType(valueType));
-                    }
-                }
-            }
-
             ctx.Value = value;
             return type.ConvertFunc(ctx);
         }
@@ -421,7 +409,10 @@ namespace SqlNado
             if (type.IsEnum)
             {
                 if (!BindOptions.EnumAsString)
-                    return GetBindType(Enum.GetUnderlyingType(type), defaultType);
+                {
+                    var et = GetEnumBindType(type);
+                    return _bindTypes.AddOrUpdate(type, et, (k, o) => et);
+                }
             }
 
             foreach (var kv in _bindTypes)
@@ -434,6 +425,16 @@ namespace SqlNado
             }
 
             return defaultType ?? SQLiteBindType.ObjectToStringType;
+        }
+
+        public virtual SQLiteBindType GetEnumBindType(Type enumType)
+        {
+            if (!enumType.IsEnum)
+                throw new ArgumentException(null, nameof(enumType));
+
+            var ut = Enum.GetUnderlyingType(enumType);
+            var type = new SQLiteBindType(ctx => Convert.ChangeType(ctx.Value, ut), enumType);
+            return type;
         }
 
         public virtual void AddBindType(SQLiteBindType type)
