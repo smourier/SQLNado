@@ -36,10 +36,12 @@ namespace SqlNado.Temp
         {
             using (var db = new SQLiteDatabase(":memory:"))
             {
+                db.SynchronizeSchema<SimpleUser>();
                 //if (db.TableExists<SimpleUser>())
                 //{
                 db.LoadAll<SimpleUser>(new SQLiteLoadOptions(db) { TestTableExists = false }).ToTableString(Console.Out);
                 //}
+
             }
         }
 

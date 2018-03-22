@@ -538,6 +538,7 @@ namespace SqlNado
                 options = CreateSaveOptions();
                 options.UseSavePoint = true;
                 options.SynchronizeSchema = true;
+                options.SynchronizeIndices = true;
             }
 
             int count = 0;
@@ -562,6 +563,7 @@ namespace SqlNado
                     else
                     {
                         options.SynchronizeSchema = false;
+                        options.SynchronizeIndices = false;
                     }
 
                     if (Save(obj, options))
@@ -651,6 +653,7 @@ namespace SqlNado
             {
                 options = CreateSaveOptions();
                 options.SynchronizeSchema = true;
+                options.SynchronizeIndices = true;
             }
 
             var table = GetObjectTable(obj.GetType());

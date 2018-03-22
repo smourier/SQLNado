@@ -1,7 +1,7 @@
 ﻿/*
 MIT License
 
-Copyright (c) 2017 Simon Mourier
+Copyright (c) 2017-2018 Simon Mourier
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -666,6 +666,7 @@ namespace SqlNado
         internal bool? _isDefaultValueIntrinsic;
         internal bool? _autoIncrements;
         internal int? _sortOrder;
+        private List<SQLiteIndexAttribute> _indices = new List<SQLiteIndexAttribute>();
 
         public virtual string Name { get; set; }
         public virtual string DataType { get; set; }
@@ -687,7 +688,8 @@ namespace SqlNado
         public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
         public virtual SQLiteBindOptions BindOptions { get; set; }
         public virtual object DefaultValue { get; set; }
-        
+        public virtual IList<SQLiteIndexAttribute> Indices => _indices;
+
         public virtual Expression<Func<object, object>> GetValueExpression { get; set; }
         public virtual Expression<Action<SQLiteLoadOptions, object, object>> SetValueExpression { get; set; }
 
@@ -1275,6 +1277,7 @@ namespace SqlNado
                 options = CreateSaveOptions();
                 options.UseSavePoint = true;
                 options.SynchronizeSchema = true;
+                options.SynchronizeIndices = true;
             }
 
             int count = 0;
@@ -1299,6 +1302,7 @@ namespace SqlNado
                     else
                     {
                         options.SynchronizeSchema = false;
+                        options.SynchronizeIndices = false;
                     }
 
                     if (Save(obj, options))
@@ -1388,6 +1392,7 @@ namespace SqlNado
             {
                 options = CreateSaveOptions();
                 options.SynchronizeSchema = true;
+                options.SynchronizeIndices = true;
             }
 
             var table = GetObjectTable(obj.GetType());
@@ -3252,17 +3257,52 @@ namespace SqlNado
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
     public class SQLiteIndexAttribute : Attribute
     {
-        public SQLiteIndexAttribute()
+        public const int DefaultOrder = -1;
+
+        public SQLiteIndexAttribute(string name)
         {
-            Order = -1;
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException(null, nameof(name));
+
+            Order = DefaultOrder;
+            Name = name;
         }
 
-        public virtual string Name { get; set; }
+        public virtual string Name { get; }
         public virtual string SchemaName { get; set; }
         public virtual bool IsUnique { get; set; }
         public virtual int Order { get; set; }
         public virtual string CollationName { get; set; }
         public virtual SQLiteDirection? Direction { get; set; }
+
+        public override string ToString()
+        {
+            string s = Name + ":" + Order;
+
+            var atts = new List<string>();
+            if (IsUnique)
+            {
+                atts.Add("U");
+            }
+
+            if (!string.IsNullOrWhiteSpace(CollationName))
+            {
+                atts.Add("COLLATE " + CollationName);
+            }
+
+            if (Direction.HasValue)
+            {
+                atts.Add(Direction == SQLiteDirection.Ascending ? "ASC" : "DESC");
+            }
+
+            if (atts.Count > 0)
+                return s + " (" + string.Join("", atts) + ")";
+
+            return s;
+        }
     }
 }
 
@@ -3427,22 +3467,22 @@ namespace SqlNado
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
 
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
 
             if (clrType == null)
                 throw new ArgumentNullException(nameof(clrType));
 
-            if (name == null)
-                throw new ArgumentNullException(nameof(name));
-
             if (getValueFunc == null)
                 throw new ArgumentNullException(nameof(getValueFunc));
 
             Table = table;
+            Name = name;
             DataType = dataType;
             ClrType = clrType;
-            Name = name;
             GetValueFunc = getValueFunc;
             SetValueAction = setValueAction; // can be null for RO props
         }
@@ -3776,9 +3816,57 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    public class SQLiteObjectIndex
+    {
+        public SQLiteObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns)
+        {
+            if (table == null)
+                throw new ArgumentNullException(nameof(table));
+
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            if (columns == null)
+                throw new ArgumentNullException(nameof(columns));
+
+            Table = table;
+            Name = name;
+            Columns = columns;
+        }
+
+        public SQLiteObjectTable Table { get; }
+        public string Name { get; }
+        public IReadOnlyList<SQLiteIndexedColumn> Columns { get; }
+        public virtual string SchemaName { get; set; }
+        public virtual bool IsUnique { get; set; }
+
+        public override string ToString()
+        {
+            string s = Name;
+
+            if (!string.IsNullOrWhiteSpace(SchemaName))
+            {
+                s = SchemaName + "." + Name;
+            }
+
+            s += " (" + string.Join(", ", Columns) + ")";
+
+            if (IsUnique)
+            {
+                s += " (U)";
+            }
+
+            return s;
+        }
+    }
+}
+
+namespace SqlNado
+{
     public class SQLiteObjectTable
     {
         private List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
+        private List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
         private static Random _random = new Random(Environment.TickCount);
         internal const string TempTablePrefix = "__temp";
 
@@ -3799,6 +3887,7 @@ namespace SqlNado
         public string Schema { get; set; } // unused in SqlNado's SQLite
         public virtual IReadOnlyList<SQLiteObjectColumn> Columns => _columns;
         public virtual IEnumerable<SQLiteObjectColumn> PrimaryKeyColumns => _columns.Where(c => c.IsPrimaryKey);
+        public virtual IReadOnlyList<SQLiteObjectIndex> Indices => _indices;
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool HasPrimaryKey => _columns.Any(c => c.IsPrimaryKey);
@@ -3812,6 +3901,17 @@ namespace SqlNado
 
         public override string ToString() => Name;
         public SQLiteObjectColumn GetColumn(string name) => _columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(name));
+
+        public virtual void AddIndex(SQLiteObjectIndex index)
+        {
+            if (index == null)
+                throw new ArgumentNullException(nameof(index));
+
+            if (Indices.Any(c => c.Name.EqualsIgnoreCase(index.Name)))
+                throw new SqlNadoException("0027: There is already a '" + index.Name + "' index in the '" + Name + "' table.");
+
+            _indices.Add(index);
+        }
 
         public virtual void AddColumn(SQLiteObjectColumn column)
         {
@@ -4234,6 +4334,14 @@ namespace SqlNado
             return "OR " + res.ToString().ToUpperInvariant() + " ";
         }
 
+        public virtual void SynchronizeIndices(SQLiteSaveOptions options)
+        {
+            foreach (var index in Indices)
+            {
+                Database.CreateIndex(index.SchemaName, index.Name, index.IsUnique, index.Table.Name, index.Columns, null);
+            }
+        }
+
         public virtual int SynchronizeSchema(SQLiteSaveOptions options)
         {
             if (Columns.Count == 0)
@@ -4259,7 +4367,13 @@ namespace SqlNado
 
                     return SQLiteOnErrorAction.Unhandled;
                 }
-                return Database.ExecuteNonQuery(sql, onError);
+
+                var c = Database.ExecuteNonQuery(sql, onError);
+                if (options.SynchronizeIndices)
+                {
+                    SynchronizeIndices(options);
+                }
+                return c;
             }
 
             var deleted = existing.Columns.ToList();
@@ -4306,6 +4420,11 @@ namespace SqlNado
                     count += Database.ExecuteNonQuery(sql);
                     sql = "ALTER TABLE " + tempTableName + " RENAME TO " + EscapedName;
                     count += Database.ExecuteNonQuery(sql);
+
+                    if (options.SynchronizeIndices)
+                    {
+                        SynchronizeIndices(options);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -4323,6 +4442,12 @@ namespace SqlNado
                 sql = "ALTER TABLE " + EscapedName + " ADD COLUMN " + column.GetCreateSql(SQLiteCreateSqlOptions.ForAlterColumn);
                 count += Database.ExecuteNonQuery(sql);
             }
+
+            if (options.SynchronizeIndices)
+            {
+                SynchronizeIndices(options);
+            }
+
             return count;
         }
     }
@@ -4347,6 +4472,8 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public Type Type { get; }
 
+        protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
+        protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
         protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
@@ -4387,9 +4514,21 @@ namespace SqlNado
             var valueParameter = Expression.Variable(typeof(object), "value");
             variables.Add(valueParameter);
 
+            var indices = new Dictionary<string, IReadOnlyList<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>>(StringComparer.OrdinalIgnoreCase);
+
             var possibleRowIdColumns = new List<SQLiteObjectColumn>();
             foreach (var attribute in attributes)
             {
+                foreach (var idx in attribute.Indices)
+                {
+                    if (!indices.TryGetValue(idx.Name, out var atts))
+                    {
+                        atts = new List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>();
+                        indices.Add(idx.Name, atts);
+                    }
+                    ((List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>)atts).Add(new Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>(attribute, idx));
+                }
+
                 var column = CreateObjectColumn(table, attribute.Name, attribute.DataType, attribute.ClrType,
                     attribute.GetValueExpression.Compile(),
                     attribute.SetValueExpression?.Compile());
@@ -4438,7 +4577,60 @@ namespace SqlNado
                 optionsParameter,
                 instanceParameter);
             table.LoadAction = lambda.Compile();
+
+            AddIndices(table, indices);
             return table;
+        }
+
+        protected virtual void AddIndices(SQLiteObjectTable table, IDictionary<string, IReadOnlyList<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>> indices)
+        {
+            if (table == null)
+                throw new ArgumentNullException(nameof(table));
+
+            if (indices == null)
+                throw new ArgumentNullException(nameof(indices));
+
+            foreach (var index in indices)
+            {
+                var list = index.Value;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    SQLiteColumnAttribute col = list[i].Item1;
+                    SQLiteIndexAttribute idx = list[i].Item2;
+                    if (idx.Order == SQLiteIndexAttribute.DefaultOrder)
+                    {
+                        idx.Order = i;
+                    }
+                }
+
+                var columns = new List<SQLiteIndexedColumn>();
+                bool unique = false;
+                string schemaName = null;
+                foreach (var kv in list.OrderBy(l => l.Item2.Order))
+                {
+                    var col = CreateIndexedColumn(kv.Item1.Name);
+                    col.CollationName = kv.Item2.CollationName;
+                    col.Direction = kv.Item2.Direction;
+
+                    // if at least one defines unique, it's unique
+                    if (kv.Item2.IsUnique)
+                    {
+                        unique = true;
+                    }
+
+                    // first schema defined is used
+                    if (!string.IsNullOrWhiteSpace(kv.Item2.SchemaName))
+                    {
+                        schemaName = kv.Item2.SchemaName;
+                    }
+                    columns.Add(col);
+                }
+
+                var oidx = CreateObjectIndex(table, index.Key, columns);
+                oidx.IsUnique = unique;
+                oidx.SchemaName = schemaName;
+                table.AddIndex(oidx);
+            }
         }
 
         protected virtual IEnumerable<SQLiteColumnAttribute> EnumerateColumnAttributes()
@@ -4662,6 +4854,10 @@ namespace SqlNado
                 att.SetValueExpression = lambda;
             }
 
+            foreach (var idx in property.GetCustomAttributes<SQLiteIndexAttribute>())
+            {
+                att.Indices.Add(idx);
+            }
             return att;
         }
     }
@@ -5612,6 +5808,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public virtual bool SynchronizeSchema { get; set; }
+        public virtual bool SynchronizeIndices { get; set; }
         public virtual bool DeleteUnusedColumns { get; set; }
         public virtual bool ObjectEventsDisabled { get; set; }
         public virtual SQLiteConflictResolution ConflictResolution { get; set; }
@@ -5625,6 +5822,7 @@ namespace SqlNado
         {
             var sb = new StringBuilder();
             sb.AppendLine("SynchronizeSchema=" + SynchronizeSchema);
+            sb.AppendLine("SynchronizeIndices=" + SynchronizeIndices);
             sb.AppendLine("DeleteUnusedColumns=" + DeleteUnusedColumns);
             sb.AppendLine("ObjectEventsDisabled=" + ObjectEventsDisabled);
             sb.AppendLine("ConflictResolution=" + ConflictResolution);
@@ -6328,7 +6526,7 @@ namespace SqlNado
             {
                 var options = Table.Database.CreateLoadOptions();
                 options.GetInstanceFunc = (t, s, o) => new SQLiteIndexColumn(this);
-                return Table.Database.Load<SQLiteIndexColumn>("PRAGMA index_xinfo(" + Name + ")", options);
+                return Table.Database.Load<SQLiteIndexColumn>("PRAGMA index_xinfo(" + SQLiteStatement.EscapeName(Name) + ")", options);
             }
         }
 

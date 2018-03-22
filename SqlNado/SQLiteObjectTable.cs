@@ -477,6 +477,14 @@ namespace SqlNado
             return "OR " + res.ToString().ToUpperInvariant() + " ";
         }
 
+        public virtual void SynchronizeIndices(SQLiteSaveOptions options)
+        {
+            foreach (var index in Indices)
+            {
+                Database.CreateIndex(index.SchemaName, index.Name, index.IsUnique, index.Table.Name, index.Columns, null);
+            }
+        }
+
         public virtual int SynchronizeSchema(SQLiteSaveOptions options)
         {
             if (Columns.Count == 0)
@@ -502,7 +510,13 @@ namespace SqlNado
 
                     return SQLiteOnErrorAction.Unhandled;
                 }
-                return Database.ExecuteNonQuery(sql, onError);
+
+                var c = Database.ExecuteNonQuery(sql, onError);
+                if (options.SynchronizeIndices)
+                {
+                    SynchronizeIndices(options);
+                }
+                return c;
             }
 
             var deleted = existing.Columns.ToList();
@@ -549,6 +563,11 @@ namespace SqlNado
                     count += Database.ExecuteNonQuery(sql);
                     sql = "ALTER TABLE " + tempTableName + " RENAME TO " + EscapedName;
                     count += Database.ExecuteNonQuery(sql);
+
+                    if (options.SynchronizeIndices)
+                    {
+                        SynchronizeIndices(options);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -569,10 +588,7 @@ namespace SqlNado
 
             if (options.SynchronizeIndices)
             {
-                foreach (var index in Indices)
-                {
-                    Database.CreateIndex(index.SchemaName, index.Name, index.IsUnique, index.Table.Name, index.Columns, null);
-                }
+                SynchronizeIndices(options);
             }
 
             return count;
