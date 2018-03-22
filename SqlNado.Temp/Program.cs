@@ -208,6 +208,15 @@ namespace SqlNado.Temp
         public string Name { get; set; }
         [SQLiteColumn(IsNullable = true, DefaultValue = GuidEmpt1, HasDefaultValue = true)]
         public Guid MyGuid { get; set; }
+
+        [SQLiteIndex("myindex")]
+        public string Id { get; set; }
+
+        [SQLiteIndex("myindex")]
+        public string Id2 { get; set; }
+
+        [SQLiteIndex("toto", IsUnique = true)]
+        public string Id3 { get; set; }
     }
 
     public class User : SQLiteBaseObject

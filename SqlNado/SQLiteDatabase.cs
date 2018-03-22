@@ -1424,6 +1424,53 @@ namespace SqlNado
             }
         }
 
+        public void CreateIndex(string name, string tableName, IEnumerable<SQLiteIndexedColumn> columns) => CreateIndex(null, name, false, tableName, columns, null);
+        public void CreateIndex(string name, bool unique, string tableName, IEnumerable<SQLiteIndexedColumn> columns) => CreateIndex(null, name, unique, tableName, columns, null);
+        public virtual void CreateIndex(string schemaName, string name, bool unique, string tableName, IEnumerable<SQLiteIndexedColumn> columns, string whereExpression)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            if (tableName == null)
+                throw new ArgumentNullException(nameof(tableName));
+
+            if (columns == null)
+                throw new ArgumentNullException(nameof(columns));
+
+            if (!columns.Any())
+                throw new ArgumentException(null, nameof(columns));
+
+            string sql = "CREATE " + (unique ? "UNIQUE " : null) + "INDEX IF NOT EXISTS ";
+            if (!string.IsNullOrWhiteSpace(schemaName))
+            {
+                sql += schemaName + ".";
+            }
+            sql += name + " ON " + SQLiteStatement.EscapeName(tableName) + " (";
+            sql += string.Join(",", columns.Select(c => c.GetCreateSql()));
+            sql += ")";
+
+            if (!string.IsNullOrWhiteSpace(whereExpression))
+            {
+                sql += " WHERE " + whereExpression;
+            }
+            ExecuteNonQuery(sql);
+        }
+
+        public void DeleteIndex(string name) => DeleteIndex(null, name);
+        public virtual void DeleteIndex(string schemaName, string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            string sql = "DROP INDEX IF EXISTS ";
+            if (!string.IsNullOrWhiteSpace(schemaName))
+            {
+                sql += schemaName + ".";
+            }
+            sql += name;
+            ExecuteNonQuery(sql);
+        }
+
         protected internal IntPtr CheckDisposed()
         {
             var handle = _handle;

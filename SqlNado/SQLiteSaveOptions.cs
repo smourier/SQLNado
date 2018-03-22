@@ -16,6 +16,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public virtual bool SynchronizeSchema { get; set; }
+        public virtual bool SynchronizeIndices { get; set; }
         public virtual bool DeleteUnusedColumns { get; set; }
         public virtual bool ObjectEventsDisabled { get; set; }
         public virtual SQLiteConflictResolution ConflictResolution { get; set; }
@@ -29,6 +30,7 @@ namespace SqlNado
         {
             var sb = new StringBuilder();
             sb.AppendLine("SynchronizeSchema=" + SynchronizeSchema);
+            sb.AppendLine("SynchronizeIndices=" + SynchronizeIndices);
             sb.AppendLine("DeleteUnusedColumns=" + DeleteUnusedColumns);
             sb.AppendLine("ObjectEventsDisabled=" + ObjectEventsDisabled);
             sb.AppendLine("ConflictResolution=" + ConflictResolution);

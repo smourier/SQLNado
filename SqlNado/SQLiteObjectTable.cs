@@ -9,6 +9,7 @@ namespace SqlNado
     public class SQLiteObjectTable
     {
         private List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
+        private List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
         private static Random _random = new Random(Environment.TickCount);
         internal const string TempTablePrefix = "__temp";
 
@@ -29,6 +30,7 @@ namespace SqlNado
         public string Schema { get; set; } // unused in SqlNado's SQLite
         public virtual IReadOnlyList<SQLiteObjectColumn> Columns => _columns;
         public virtual IEnumerable<SQLiteObjectColumn> PrimaryKeyColumns => _columns.Where(c => c.IsPrimaryKey);
+        public virtual IReadOnlyList<SQLiteObjectIndex> Indices => _indices;
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool HasPrimaryKey => _columns.Any(c => c.IsPrimaryKey);
@@ -43,6 +45,17 @@ namespace SqlNado
         public override string ToString() => Name;
         public SQLiteObjectColumn GetColumn(string name) => _columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(name));
 
+        public virtual void AddIndex(SQLiteObjectIndex index)
+        {
+            if (index == null)
+                throw new ArgumentNullException(nameof(index));
+
+            if (Indices.Any(c => c.Name.EqualsIgnoreCase(index.Name)))
+                throw new SqlNadoException("0027: There is already a '" + index.Name + "' index in the '" + Name + "' table.");
+
+            _indices.Add(index);
+        }
+
         public virtual void AddColumn(SQLiteObjectColumn column)
         {
             if (column == null)
@@ -55,7 +68,7 @@ namespace SqlNado
             _columns.Add(column);
         }
 
-        public virtual string BuildCreateSql(string tableName)
+        public virtual string GetCreateSql(string tableName)
         {
             string sql = "CREATE TABLE " + SQLiteStatement.EscapeName(tableName) + " (";
             sql += string.Join(",", Columns.Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
@@ -437,7 +450,7 @@ namespace SqlNado
                         sql += " VALUES (" + BuildColumnsInsertParametersStatement() + ")";
                     }
 
-                    Func<SQLiteError, SQLiteOnErrorAction> onError = (e) =>
+                    SQLiteOnErrorAction onError(SQLiteError e)
                     {
                         // this can happen in multi-threaded scenarios, update didn't work, then someone inserted, and now insert does not work. update again
                         if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT)
@@ -447,7 +460,7 @@ namespace SqlNado
                         }
 
                         return SQLiteOnErrorAction.Unhandled;
-                    };
+                    }
                     count = Database.ExecuteNonQuery(sql, onError, insertArgs.ToArray());
                 }
             }
@@ -475,8 +488,8 @@ namespace SqlNado
             var existing = Table;
             if (existing == null)
             {
-                sql = BuildCreateSql(Name);
-                Func<SQLiteError, SQLiteOnErrorAction> onError = (e) =>
+                sql = GetCreateSql(Name);
+                SQLiteOnErrorAction onError(SQLiteError e)
                 {
                     if (e.Code == SQLiteErrorCode.SQLITE_ERROR)
                         return SQLiteOnErrorAction.Break;
@@ -488,7 +501,7 @@ namespace SqlNado
                         return SQLiteOnErrorAction.Break;
 
                     return SQLiteOnErrorAction.Unhandled;
-                };
+                }
                 return Database.ExecuteNonQuery(sql, onError);
             }
 
@@ -524,7 +537,7 @@ namespace SqlNado
                 // Note this may fail depending on column unicity, constraint violation, etc.
                 // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
                 string tempTableName = TempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
-                sql = BuildCreateSql(tempTableName);
+                sql = GetCreateSql(tempTableName);
                 count += Database.ExecuteNonQuery(sql);
                 bool dropped = false;
                 try
@@ -553,6 +566,15 @@ namespace SqlNado
                 sql = "ALTER TABLE " + EscapedName + " ADD COLUMN " + column.GetCreateSql(SQLiteCreateSqlOptions.ForAlterColumn);
                 count += Database.ExecuteNonQuery(sql);
             }
+
+            if (options.SynchronizeIndices)
+            {
+                foreach (var index in Indices)
+                {
+                    Database.CreateIndex(index.SchemaName, index.Name, index.IsUnique, index.Table.Name, index.Columns, null);
+                }
+            }
+
             return count;
         }
     }

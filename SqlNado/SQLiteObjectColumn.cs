@@ -16,22 +16,22 @@ namespace SqlNado
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
 
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
 
             if (clrType == null)
                 throw new ArgumentNullException(nameof(clrType));
 
-            if (name == null)
-                throw new ArgumentNullException(nameof(name));
-
             if (getValueFunc == null)
                 throw new ArgumentNullException(nameof(getValueFunc));
 
             Table = table;
+            Name = name;
             DataType = dataType;
             ClrType = clrType;
-            Name = name;
             GetValueFunc = getValueFunc;
             SetValueAction = setValueAction; // can be null for RO props
         }

@@ -1,4 +1,27 @@
-﻿using SqlNado.Utilities;
+﻿/*
+MIT License
+
+Copyright (c) 2017 Simon Mourier
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+using SqlNado.Utilities;
 using System.CodeDom.Compiler;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -629,7 +652,7 @@ namespace SqlNado
 
 namespace SqlNado
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     public class SQLiteColumnAttribute : Attribute, IComparable, IComparable<SQLiteColumnAttribute>
     {
         // because Guid.Empty is not a const
@@ -2138,6 +2161,53 @@ namespace SqlNado
             }
         }
 
+        public void CreateIndex(string name, string tableName, IEnumerable<SQLiteIndexedColumn> columns) => CreateIndex(null, name, false, tableName, columns, null);
+        public void CreateIndex(string name, bool unique, string tableName, IEnumerable<SQLiteIndexedColumn> columns) => CreateIndex(null, name, unique, tableName, columns, null);
+        public virtual void CreateIndex(string schemaName, string name, bool unique, string tableName, IEnumerable<SQLiteIndexedColumn> columns, string whereExpression)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            if (tableName == null)
+                throw new ArgumentNullException(nameof(tableName));
+
+            if (columns == null)
+                throw new ArgumentNullException(nameof(columns));
+
+            if (!columns.Any())
+                throw new ArgumentException(null, nameof(columns));
+
+            string sql = "CREATE " + (unique ? "UNIQUE " : null) + "INDEX IF NOT EXISTS ";
+            if (!string.IsNullOrWhiteSpace(schemaName))
+            {
+                sql += schemaName + ".";
+            }
+            sql += name + " ON " + SQLiteStatement.EscapeName(tableName) + " (";
+            sql += string.Join(",", columns.Select(c => c.GetCreateSql()));
+            sql += ")";
+
+            if (!string.IsNullOrWhiteSpace(whereExpression))
+            {
+                sql += " WHERE " + whereExpression;
+            }
+            ExecuteNonQuery(sql);
+        }
+
+        public void DeleteIndex(string name) => DeleteIndex(null, name);
+        public virtual void DeleteIndex(string schemaName, string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            string sql = "DROP INDEX IF EXISTS ";
+            if (!string.IsNullOrWhiteSpace(schemaName))
+            {
+                sql += schemaName + ".";
+            }
+            sql += name;
+            ExecuteNonQuery(sql);
+        }
+
         protected internal IntPtr CheckDisposed()
         {
             var handle = _handle;
@@ -3179,6 +3249,25 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    public class SQLiteIndexAttribute : Attribute
+    {
+        public SQLiteIndexAttribute()
+        {
+            Order = -1;
+        }
+
+        public virtual string Name { get; set; }
+        public virtual string SchemaName { get; set; }
+        public virtual bool IsUnique { get; set; }
+        public virtual int Order { get; set; }
+        public virtual string CollationName { get; set; }
+        public virtual SQLiteDirection? Direction { get; set; }
+    }
+}
+
+namespace SqlNado
+{
     public class SQLiteIndexColumn : IComparable<SQLiteIndexColumn>
     {
         internal SQLiteIndexColumn(SQLiteTableIndex index)
@@ -3202,6 +3291,41 @@ namespace SqlNado
         public bool IsRowId => Id == -1;
 
         public int CompareTo(SQLiteIndexColumn other) => Ordinal.CompareTo(other.Ordinal);
+
+        public override string ToString() => Name;
+    }
+}
+
+namespace SqlNado
+{
+    public class SQLiteIndexedColumn
+    {
+        public SQLiteIndexedColumn(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
+
+            Name = name;
+        }
+
+        public string Name { get; }
+        public virtual string CollationName { get; set; }
+        public virtual SQLiteDirection? Direction { get; set; }
+
+        public virtual string GetCreateSql()
+        {
+            string s = Name;
+            if (!string.IsNullOrWhiteSpace(CollationName))
+            {
+                s += " COLLATE " + CollationName;
+            }
+
+            if (Direction.HasValue)
+            {
+                s += " " + (Direction.Value == SQLiteDirection.Ascending ? "ASC" : "DESC");
+            }
+            return s;
+        }
 
         public override string ToString() => Name;
     }
@@ -3701,7 +3825,7 @@ namespace SqlNado
             _columns.Add(column);
         }
 
-        public virtual string BuildCreateSql(string tableName)
+        public virtual string GetCreateSql(string tableName)
         {
             string sql = "CREATE TABLE " + SQLiteStatement.EscapeName(tableName) + " (";
             sql += string.Join(",", Columns.Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
@@ -4083,7 +4207,7 @@ namespace SqlNado
                         sql += " VALUES (" + BuildColumnsInsertParametersStatement() + ")";
                     }
 
-                    Func<SQLiteError, SQLiteOnErrorAction> onError = (e) =>
+                    SQLiteOnErrorAction onError(SQLiteError e)
                     {
                         // this can happen in multi-threaded scenarios, update didn't work, then someone inserted, and now insert does not work. update again
                         if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT)
@@ -4093,7 +4217,7 @@ namespace SqlNado
                         }
 
                         return SQLiteOnErrorAction.Unhandled;
-                    };
+                    }
                     count = Database.ExecuteNonQuery(sql, onError, insertArgs.ToArray());
                 }
             }
@@ -4121,8 +4245,8 @@ namespace SqlNado
             var existing = Table;
             if (existing == null)
             {
-                sql = BuildCreateSql(Name);
-                Func<SQLiteError, SQLiteOnErrorAction> onError = (e) =>
+                sql = GetCreateSql(Name);
+                SQLiteOnErrorAction onError(SQLiteError e)
                 {
                     if (e.Code == SQLiteErrorCode.SQLITE_ERROR)
                         return SQLiteOnErrorAction.Break;
@@ -4134,7 +4258,7 @@ namespace SqlNado
                         return SQLiteOnErrorAction.Break;
 
                     return SQLiteOnErrorAction.Unhandled;
-                };
+                }
                 return Database.ExecuteNonQuery(sql, onError);
             }
 
@@ -4170,7 +4294,7 @@ namespace SqlNado
                 // Note this may fail depending on column unicity, constraint violation, etc.
                 // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
                 string tempTableName = TempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
-                sql = BuildCreateSql(tempTableName);
+                sql = GetCreateSql(tempTableName);
                 count += Database.ExecuteNonQuery(sql);
                 bool dropped = false;
                 try

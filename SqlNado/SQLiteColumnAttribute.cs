@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace SqlNado
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     public class SQLiteColumnAttribute : Attribute, IComparable, IComparable<SQLiteColumnAttribute>
     {
         // because Guid.Empty is not a const
@@ -17,6 +18,7 @@ namespace SqlNado
         internal bool? _isDefaultValueIntrinsic;
         internal bool? _autoIncrements;
         internal int? _sortOrder;
+        private List<SQLiteIndexAttribute> _indices = new List<SQLiteIndexAttribute>();
 
         public virtual string Name { get; set; }
         public virtual string DataType { get; set; }
@@ -38,7 +40,8 @@ namespace SqlNado
         public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
         public virtual SQLiteBindOptions BindOptions { get; set; }
         public virtual object DefaultValue { get; set; }
-        
+        public virtual IList<SQLiteIndexAttribute> Indices => _indices;
+
         public virtual Expression<Func<object, object>> GetValueExpression { get; set; }
         public virtual Expression<Action<SQLiteLoadOptions, object, object>> SetValueExpression { get; set; }
 

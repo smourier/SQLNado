@@ -24,6 +24,8 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public Type Type { get; }
 
+        protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
+        protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
         protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
@@ -64,9 +66,21 @@ namespace SqlNado
             var valueParameter = Expression.Variable(typeof(object), "value");
             variables.Add(valueParameter);
 
+            var indices = new Dictionary<string, IReadOnlyList<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>>(StringComparer.OrdinalIgnoreCase);
+
             var possibleRowIdColumns = new List<SQLiteObjectColumn>();
             foreach (var attribute in attributes)
             {
+                foreach (var idx in attribute.Indices)
+                {
+                    if (!indices.TryGetValue(idx.Name, out var atts))
+                    {
+                        atts = new List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>();
+                        indices.Add(idx.Name, atts);
+                    }
+                    ((List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>)atts).Add(new Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>(attribute, idx));
+                }
+
                 var column = CreateObjectColumn(table, attribute.Name, attribute.DataType, attribute.ClrType,
                     attribute.GetValueExpression.Compile(),
                     attribute.SetValueExpression?.Compile());
@@ -115,7 +129,60 @@ namespace SqlNado
                 optionsParameter,
                 instanceParameter);
             table.LoadAction = lambda.Compile();
+
+            AddIndices(table, indices);
             return table;
+        }
+
+        protected virtual void AddIndices(SQLiteObjectTable table, IDictionary<string, IReadOnlyList<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>> indices)
+        {
+            if (table == null)
+                throw new ArgumentNullException(nameof(table));
+
+            if (indices == null)
+                throw new ArgumentNullException(nameof(indices));
+
+            foreach (var index in indices)
+            {
+                var list = index.Value;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    SQLiteColumnAttribute col = list[i].Item1;
+                    SQLiteIndexAttribute idx = list[i].Item2;
+                    if (idx.Order == SQLiteIndexAttribute.DefaultOrder)
+                    {
+                        idx.Order = i;
+                    }
+                }
+
+                var columns = new List<SQLiteIndexedColumn>();
+                bool unique = false;
+                string schemaName = null;
+                foreach (var kv in list.OrderBy(l => l.Item2.Order))
+                {
+                    var col = CreateIndexedColumn(kv.Item1.Name);
+                    col.CollationName = kv.Item2.CollationName;
+                    col.Direction = kv.Item2.Direction;
+
+                    // if at least one defines unique, it's unique
+                    if (kv.Item2.IsUnique)
+                    {
+                        unique = true;
+                    }
+
+                    // first schema defined is used
+                    if (!string.IsNullOrWhiteSpace(kv.Item2.SchemaName))
+                    {
+                        schemaName = kv.Item2.SchemaName;
+                    }
+                    columns.Add(col);
+                }
+
+                var oidx = CreateObjectIndex(table, index.Key, columns);
+                oidx.IsUnique = unique;
+                oidx.SchemaName = schemaName;
+                table.AddIndex(oidx);
+            }
         }
 
         protected virtual IEnumerable<SQLiteColumnAttribute> EnumerateColumnAttributes()
@@ -339,6 +406,10 @@ namespace SqlNado
                 att.SetValueExpression = lambda;
             }
 
+            foreach (var idx in property.GetCustomAttributes<SQLiteIndexAttribute>())
+            {
+                att.Indices.Add(idx);
+            }
             return att;
         }
     }
