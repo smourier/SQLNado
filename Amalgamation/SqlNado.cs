@@ -5978,14 +5978,16 @@ namespace SqlNado
             }
             else if (bindValue is byte[] bytes)
             {
-                Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[]: " + Conversions.ToHexa(bytes, 32));
+                //Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[]: " + Conversions.ToHexa(bytes, 32));
+                Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[" + bytes.Length + "]");
                 code = BindParameter(index, bytes);
             }
             else if (bindValue is ISQLiteBlobObject blob)
             {
                 if (blob.TryGetData(out bytes))
                 {
-                    Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[] from ISQLiteBlobObject: " + Conversions.ToHexa(bytes, 32));
+                    //Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[] from ISQLiteBlobObject: " + Conversions.ToHexa(bytes, 32));
+                    Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[" + bytes.Length + "] from ISQLiteBlobObject");
                     code = BindParameter(index, bytes);
                 }
                 else
@@ -6889,7 +6891,7 @@ namespace SqlNado.Utilities
             if (count < 0)
                 throw new ArgumentException(null, nameof(count));
 
-            if (offset >= bytes.Length)
+            if (offset > bytes.Length)
                 throw new ArgumentException(null, nameof(offset));
 
             count = Math.Min(count, bytes.Length - offset);

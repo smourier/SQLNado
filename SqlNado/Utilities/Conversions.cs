@@ -147,7 +147,7 @@ namespace SqlNado.Utilities
             if (count < 0)
                 throw new ArgumentException(null, nameof(count));
 
-            if (offset >= bytes.Length)
+            if (offset > bytes.Length)
                 throw new ArgumentException(null, nameof(offset));
 
             count = Math.Min(count, bytes.Length - offset);
