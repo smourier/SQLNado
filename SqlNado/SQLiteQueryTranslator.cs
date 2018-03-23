@@ -28,6 +28,8 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public TextWriter Writer { get; }
         public SQLiteBindOptions BindOptions { get => _bindOptions ?? Database.BindOptions; set => _bindOptions = value; }
+        public int? Skip { get; private set; }
+        public int? Take { get; private set; }
 
         private static string BuildNotSupported(string text) => "0023: " + text + " is not handled by the Expression Translator.";
 
@@ -38,6 +40,24 @@ namespace SqlNado
 
             expression = PartialEvaluator.Eval(expression);
             Visit(expression);
+            if (Skip.HasValue || Take.HasValue)
+            {
+                Writer.Write(" LIMIT ");
+                if (Take.HasValue)
+                {
+                    Writer.Write(Take.Value);
+                }
+                else
+                {
+                    Writer.Write("-1");
+                }
+
+                if (Skip.HasValue)
+                {
+                    Writer.Write(" OFFSET ");
+                    Writer.Write(Skip.Value);
+                }
+            }
         }
 
         protected virtual string SubTranslate(Expression expression)
@@ -97,6 +117,22 @@ namespace SqlNado
                         {
                             Writer.Write(" DESC");
                         }
+                        return callExpression;
+
+                    case nameof(Queryable.First):
+                    case nameof(Queryable.FirstOrDefault):
+                        Visit(callExpression.Arguments[0]);
+                        Take = 1;
+                        return callExpression;
+
+                    case nameof(Queryable.Take):
+                        Visit(callExpression.Arguments[0]);
+                        Take = (int)((ConstantExpression)callExpression.Arguments[1]).Value;
+                        return callExpression;
+
+                    case nameof(Queryable.Skip):
+                        Visit(callExpression.Arguments[0]);
+                        Skip = (int)((ConstantExpression)callExpression.Arguments[1]).Value;
                         return callExpression;
                 }
             }
@@ -564,6 +600,7 @@ namespace SqlNado
 
                 private Expression Evaluate(Expression expression)
                 {
+                    bool modified = false;
                     var type = expression.Type;
                     if (expression.NodeType == ExpressionType.Convert)
                     {
@@ -571,6 +608,7 @@ namespace SqlNado
                         if (GetNonNullableType(u.Operand.Type) == GetNonNullableType(type))
                         {
                             expression = ((UnaryExpression)expression).Operand;
+                            modified = true;
                         }
                     }
 
@@ -589,11 +627,29 @@ namespace SqlNado
                     if (type.IsValueType)
                     {
                         expression = Expression.Convert(expression, typeof(object));
+                        modified = true;
+                    }
+
+                    // avoid stack overflow (infinite recursion)
+                    if (!modified && expression is MethodCallExpression mce)
+                    {
+                        var parameters = mce.Method.GetParameters();
+                        if (parameters.Length == 0 && mce.Method.ReturnType == type)
+                            return expression;
+
+                        // like Queryable extensions methods (First, FirstOrDefault, etc.)
+                        if (parameters.Length == 1 && mce.Method.IsStatic)
+                        {
+                            var iqt = typeof(IQueryable<>).MakeGenericType(type);
+                            if (iqt == parameters[0].ParameterType)
+                                return expression;
+                        }
                     }
 
                     var lambda = Expression.Lambda<Func<object>>(expression);
                     Func<object> fn = lambda.Compile();
-                    return PostEval(Expression.Constant(fn(), type));
+                    var constant = Expression.Constant(fn(), type);
+                    return PostEval(constant);
                 }
 
                 private static object GetValue(MemberInfo member, object instance)

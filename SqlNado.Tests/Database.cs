@@ -8,7 +8,7 @@ namespace SqlNado.Tests
     public class Database
     {
         [TestMethod]
-        public void CreateDatase()
+        public void CreateDatabase()
         {
             using (var db = new SQLiteDatabase(":memory:"))
             {

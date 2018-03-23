@@ -65,7 +65,7 @@ namespace SqlNado
         private class QueryProvider : IQueryProvider
         {
             private SQLiteQuery<T> _query;
-            private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerable), BindingFlags.Public | BindingFlags.Instance);
+            private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance);
 
             public QueryProvider(SQLiteQuery<T> query)
             {
@@ -85,17 +85,48 @@ namespace SqlNado
                     throw new ArgumentNullException(nameof(expression));
 
                 string sql = _query.GetQueryText(expression);
+                sql = NormalizeSelect(sql);
                 var elementType = Conversions.GetEnumeratedType(typeof(TResult));
                 if (elementType == null)
                 {
                     if (typeof(TResult) != typeof(string) && typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
                         return (TResult)_query.Database.Load(typeof(object), sql);
 
-                    throw new ArgumentException(null, nameof(expression));
+                    return (TResult)(_query.Database.Load(typeof(TResult), sql).FirstOrDefault());
                 }
 
                 var ee = _executeEnumerable.MakeGenericMethod(elementType);
-                return (TResult)ee.Invoke(this, new object[] { expression });
+                return (TResult)ee.Invoke(this, new object[] { sql });
+            }
+
+            // poor man tentative to fix queries without Where() specified
+            private static string NormalizeSelect(string sql)
+            {
+                if (sql != null && sql.Length > 2)
+                {
+                    const string token = "SELECT ";
+                    if (!sql.StartsWith(token))
+                    {
+                        // escaped table name have a ", let's use that information
+                        if (sql.Length > token.Length && sql[0] == '"')
+                        {
+                            int pos = sql.IndexOf('"', 1);
+                            if (pos > 1)
+                                return token + "* FROM (" + sql.Substring(0, pos + 1) + ")" + sql.Substring(pos + 1);
+                        }
+
+                        return token + "* FROM " + sql;
+                    }
+                }
+                return sql;
+            }
+
+            private IEnumerable<TResult> ExecuteEnumerableWithText<TResult>(string sql)
+            {
+                foreach (var item in _query.Database.Load<TResult>(sql))
+                {
+                    yield return item;
+                }
             }
 
             public IEnumerable<TResult> ExecuteEnumerable<TResult>(Expression expression)
@@ -104,6 +135,7 @@ namespace SqlNado
                     throw new ArgumentNullException(nameof(expression));
 
                 string sql = _query.GetQueryText(expression);
+                sql = NormalizeSelect(sql);
                 foreach (var item in _query.Database.Load<TResult>(sql))
                 {
                     yield return item;

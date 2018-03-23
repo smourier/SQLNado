@@ -353,7 +353,7 @@ namespace SqlNado
                 if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object value))
                 {
                     string type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
-                    throw new SqlNadoException("0023: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
+                    throw new SqlNadoException("0028: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
                 }
 
                 DefaultValue = value;
