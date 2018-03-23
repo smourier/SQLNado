@@ -89,13 +89,25 @@ namespace SqlNado
     public enum SQLiteAutomaticColumnType
     {
         None,
+        NewGuid,
         NewGuidIfEmpty,
         DateTimeNow,
         DateTimeNowUtc,
+        DateTimeNowIfNotSet,
+        DateTimeNowUtcIfNotSet,
         TimeOfDay,
         TimeOfDayUtc,
+        TimeOfDayIfNotSet,
+        TimeOfDayUtcIfNotSet,
         Random,
+        RandomIfZero,
         EnvironmentTickCount,
+        EnvironmentTickCountIfZero,
+        EnvironmentMachineNameIfNull,
+        EnvironmentDomainNameIfNull,
+        EnvironmentUserNameIfNull,
+        EnvironmentDomainUserNameIfNull,
+        EnvironmentDomainMachineUserNameIfNull,
         EnvironmentMachineName,
         EnvironmentDomainName,
         EnvironmentUserName,
@@ -4087,8 +4099,13 @@ namespace SqlNado
             foreach (var col in Columns.Where(c => c.SetValueAction != null && c.AutomaticType != SQLiteAutomaticColumnType.None))
             {
                 var value = col.GetValue(instance);
+                string s;
                 switch (col.AutomaticType)
                 {
+                    case SQLiteAutomaticColumnType.NewGuid:
+                        col.SetValue(null, instance, Guid.NewGuid());
+                        break;
+
                     case SQLiteAutomaticColumnType.NewGuidIfEmpty:
                         if (value is Guid guid && guid == Guid.Empty)
                         {
@@ -4096,23 +4113,33 @@ namespace SqlNado
                         }
                         break;
 
-                    case SQLiteAutomaticColumnType.TimeOfDay:
-                    case SQLiteAutomaticColumnType.TimeOfDayUtc:
+                    case SQLiteAutomaticColumnType.TimeOfDayIfNotSet:
+                    case SQLiteAutomaticColumnType.TimeOfDayUtcIfNotSet:
                         if (value is TimeSpan ts && ts == TimeSpan.Zero)
                         {
-                            col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.TimeOfDay ? DateTime.Now.TimeOfDay : DateTime.UtcNow.TimeOfDay);
+                            col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.TimeOfDayIfNotSet ? DateTime.Now.TimeOfDay : DateTime.UtcNow.TimeOfDay);
+                        }
+                        break;
+
+                    case SQLiteAutomaticColumnType.TimeOfDay:
+                    case SQLiteAutomaticColumnType.TimeOfDayUtc:
+                        col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.TimeOfDay ? DateTime.Now.TimeOfDay : DateTime.UtcNow.TimeOfDay);
+                        break;
+
+                    case SQLiteAutomaticColumnType.DateTimeNowIfNotSet:
+                    case SQLiteAutomaticColumnType.DateTimeNowUtcIfNotSet:
+                        if (value is DateTime dt && dt == DateTime.MinValue)
+                        {
+                            col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.DateTimeNowIfNotSet ? DateTime.Now : DateTime.UtcNow);
                         }
                         break;
 
                     case SQLiteAutomaticColumnType.DateTimeNow:
                     case SQLiteAutomaticColumnType.DateTimeNowUtc:
-                        if (value is DateTime dt && dt == DateTime.MinValue)
-                        {
-                            col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.DateTimeNow ? DateTime.Now : DateTime.UtcNow);
-                        }
+                        col.SetValue(null, instance, col.AutomaticType == SQLiteAutomaticColumnType.DateTimeNow ? DateTime.Now : DateTime.UtcNow);
                         break;
 
-                    case SQLiteAutomaticColumnType.Random:
+                    case SQLiteAutomaticColumnType.RandomIfZero:
                         if (value is int ir && ir == 0)
                         {
                             col.SetValue(null, instance, _random.Next());
@@ -4123,7 +4150,18 @@ namespace SqlNado
                         }
                         break;
 
-                    case SQLiteAutomaticColumnType.EnvironmentTickCount:
+                    case SQLiteAutomaticColumnType.Random:
+                        if (value is int)
+                        {
+                            col.SetValue(null, instance, _random.Next());
+                        }
+                        else if (value is double)
+                        {
+                            col.SetValue(null, instance, _random.NextDouble());
+                        }
+                        break;
+
+                    case SQLiteAutomaticColumnType.EnvironmentTickCountIfZero:
                         if (value is int i && i == 0)
                         {
                             col.SetValue(null, instance, Environment.TickCount);
@@ -4134,32 +4172,76 @@ namespace SqlNado
                         }
                         break;
 
+                    case SQLiteAutomaticColumnType.EnvironmentTickCount:
+                        if (value is int)
+                        {
+                            col.SetValue(null, instance, Environment.TickCount);
+                        }
+                        else if (value is long)
+                        {
+                            col.SetValue(null, instance, SQLiteDatabase.GetTickCount64());
+                        }
+                        break;
+
                     case SQLiteAutomaticColumnType.EnvironmentMachineName:
                     case SQLiteAutomaticColumnType.EnvironmentDomainName:
                     case SQLiteAutomaticColumnType.EnvironmentUserName:
                     case SQLiteAutomaticColumnType.EnvironmentDomainUserName:
                     case SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName:
-                        if (value == null || (value is string s && s == null))
+                        switch (col.AutomaticType)
+                        {
+                            case SQLiteAutomaticColumnType.EnvironmentMachineName:
+                                s = Environment.MachineName;
+                                break;
+
+                            case SQLiteAutomaticColumnType.EnvironmentDomainName:
+                                s = Environment.UserDomainName;
+                                break;
+
+                            case SQLiteAutomaticColumnType.EnvironmentUserName:
+                                s = Environment.UserName;
+                                break;
+
+                            case SQLiteAutomaticColumnType.EnvironmentDomainUserName:
+                                s = Environment.UserDomainName + @"\" + Environment.UserName;
+                                break;
+
+                            case SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName:
+                                s = Environment.UserDomainName + @"\" + Environment.MachineName + @"\" + Environment.UserName;
+                                break;
+
+                            default:
+                                continue;
+                        }
+                        col.SetValue(null, instance, s);
+                        break;
+
+                    case SQLiteAutomaticColumnType.EnvironmentMachineNameIfNull:
+                    case SQLiteAutomaticColumnType.EnvironmentDomainNameIfNull:
+                    case SQLiteAutomaticColumnType.EnvironmentUserNameIfNull:
+                    case SQLiteAutomaticColumnType.EnvironmentDomainUserNameIfNull:
+                    case SQLiteAutomaticColumnType.EnvironmentDomainMachineUserNameIfNull:
+                        if (value == null || (value is string s2 && s2 == null))
                         {
                             switch (col.AutomaticType)
                             {
-                                case SQLiteAutomaticColumnType.EnvironmentMachineName:
+                                case SQLiteAutomaticColumnType.EnvironmentMachineNameIfNull:
                                     s = Environment.MachineName;
                                     break;
 
-                                case SQLiteAutomaticColumnType.EnvironmentDomainName:
+                                case SQLiteAutomaticColumnType.EnvironmentDomainNameIfNull:
                                     s = Environment.UserDomainName;
                                     break;
 
-                                case SQLiteAutomaticColumnType.EnvironmentUserName:
+                                case SQLiteAutomaticColumnType.EnvironmentUserNameIfNull:
                                     s = Environment.UserName;
                                     break;
 
-                                case SQLiteAutomaticColumnType.EnvironmentDomainUserName:
+                                case SQLiteAutomaticColumnType.EnvironmentDomainUserNameIfNull:
                                     s = Environment.UserDomainName + @"\" + Environment.UserName;
                                     break;
 
-                                case SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName:
+                                case SQLiteAutomaticColumnType.EnvironmentDomainMachineUserNameIfNull:
                                     s = Environment.UserDomainName + @"\" + Environment.MachineName + @"\" + Environment.UserName;
                                     break;
 
@@ -4242,7 +4324,7 @@ namespace SqlNado
             var pk = new List<object>();
             foreach (var col in Columns)
             {
-                if (col.AutomaticValue || col.ComputedValue)
+                if ((col.AutomaticValue || col.ComputedValue) && !col.IsPrimaryKey)
                     continue;
 
                 object value;
@@ -4264,14 +4346,17 @@ namespace SqlNado
                     }
                 }
 
-                if (!col.InsertOnly && !col.IsPrimaryKey)
+                if (!col.AutomaticValue && !col.ComputedValue)
                 {
-                    updateArgs.Add(value);
-                }
+                    if (!col.InsertOnly && !col.IsPrimaryKey)
+                    {
+                        updateArgs.Add(value);
+                    }
 
-                if (!col.UpdateOnly)
-                {
-                    insertArgs.Add(value);
+                    if (!col.UpdateOnly)
+                    {
+                        insertArgs.Add(value);
+                    }
                 }
 
                 if (col.IsPrimaryKey)
@@ -4280,7 +4365,7 @@ namespace SqlNado
                 }
             }
 
-            bool tryUpdate = HasPrimaryKey && pk.Count > 0;
+            bool tryUpdate = HasPrimaryKey && pk.Count > 0 && updateArgs.Count > 0;
 
             string sql;
             int count = 0;
@@ -4300,38 +4385,38 @@ namespace SqlNado
                     // note the count is ok even if all values did not changed
                 }
 
-                if (count == 0)
+                if (count > 0 || retry > 0)
+                    break;
+
+                var columnsInsertStatement = BuildColumnsInsertStatement();
+                var columnsInsertParametersStatement = BuildColumnsInsertParametersStatement();
+                sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName;
+                if (!string.IsNullOrEmpty(columnsInsertStatement))
                 {
-                    var columnsInsertStatement = BuildColumnsInsertStatement();
-                    var columnsInsertParametersStatement = BuildColumnsInsertParametersStatement();
-                    sql = "INSERT " + GetConflictResolutionClause(options.ConflictResolution) + "INTO " + EscapedName;
-                    if (!string.IsNullOrEmpty(columnsInsertStatement))
-                    {
-                        sql += " (" + columnsInsertStatement + ")";
-                    }
-
-                    if (string.IsNullOrEmpty(columnsInsertParametersStatement))
-                    {
-                        sql += " DEFAULT VALUES";
-                    }
-                    else
-                    {
-                        sql += " VALUES (" + BuildColumnsInsertParametersStatement() + ")";
-                    }
-
-                    SQLiteOnErrorAction onError(SQLiteError e)
-                    {
-                        // this can happen in multi-threaded scenarios, update didn't work, then someone inserted, and now insert does not work. update again
-                        if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT)
-                        {
-                            tryUpdate = true;
-                            return SQLiteOnErrorAction.Break;
-                        }
-
-                        return SQLiteOnErrorAction.Unhandled;
-                    }
-                    count = Database.ExecuteNonQuery(sql, onError, insertArgs.ToArray());
+                    sql += " (" + columnsInsertStatement + ")";
                 }
+
+                if (string.IsNullOrEmpty(columnsInsertParametersStatement))
+                {
+                    sql += " DEFAULT VALUES";
+                }
+                else
+                {
+                    sql += " VALUES (" + BuildColumnsInsertParametersStatement() + ")";
+                }
+
+                SQLiteOnErrorAction onError(SQLiteError e)
+                {
+                    // this can happen in multi-threaded scenarios, update didn't work, then someone inserted, and now insert does not work. try update again
+                    if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT)
+                    {
+                        tryUpdate = true;
+                        return SQLiteOnErrorAction.Break;
+                    }
+
+                    return SQLiteOnErrorAction.Unhandled;
+                }
+                count = Database.ExecuteNonQuery(sql, onError, insertArgs.ToArray());
             }
 
             lo?.OnSaveAction(SQLiteObjectAction.Saved, options);
@@ -9142,10 +9227,10 @@ namespace SqlNado.Utilities
             CreationDateUtc = DateTime.UtcNow;
         }
 
-        [SQLiteColumn(InsertOnly = true, AutomaticType = SQLiteAutomaticColumnType.DateTimeNowUtc)]
+        [SQLiteColumn(InsertOnly = true, AutomaticType = SQLiteAutomaticColumnType.DateTimeNowUtcIfNotSet)]
         public DateTime CreationDateUtc { get => DictionaryObjectGetPropertyValue<DateTime>(); set => DictionaryObjectSetPropertyValue(value); }
 
-        [SQLiteColumn(InsertOnly = true, AutomaticType = SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName)]
+        [SQLiteColumn(InsertOnly = true, AutomaticType = SQLiteAutomaticColumnType.EnvironmentDomainMachineUserNameIfNull)]
         public string CreationUserName { get => DictionaryObjectGetPropertyValue<string>(); set => DictionaryObjectSetPropertyValue(value); }
 
         [SQLiteColumn(AutomaticType = SQLiteAutomaticColumnType.DateTimeNowUtc)]
