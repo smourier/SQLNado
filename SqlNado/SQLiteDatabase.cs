@@ -1107,7 +1107,19 @@ namespace SqlNado
             {
                 while (!_statements.IsEmpty)
                 {
-                    if (_statements.TryTake(out StatementPoolEntry entry))
+                    StatementPoolEntry entry = null;
+                    bool taken;
+                    try
+                    {
+                        // for some reason, this can throw in rare conditions
+                        taken = _statements.TryTake(out entry);
+                    }
+                    catch
+                    {
+                        taken = false;
+                    }
+
+                    if (taken && entry != null)
                     {
                         // if the statement was still in use, we can't dispose it
                         // so we just mark it so the user will really dispose it when he'll call Dispose()
@@ -1186,10 +1198,10 @@ namespace SqlNado
                 {
                     var o = new
                     {
-                        Sql = pool.Value.Sql,
-                        CreationDate = entry.CreationDate,
+                        pool.Value.Sql,
+                        entry.CreationDate,
                         Duration = entry.LastUsageDate - entry.CreationDate,
-                        Usage = entry.Usage,
+                        entry.Usage,
                     };
                     list.Add(o);
                 }

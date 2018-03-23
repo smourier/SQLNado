@@ -1846,7 +1846,19 @@ namespace SqlNado
             {
                 while (!_statements.IsEmpty)
                 {
-                    if (_statements.TryTake(out StatementPoolEntry entry))
+                    StatementPoolEntry entry = null;
+                    bool taken;
+                    try
+                    {
+                        // for some reason, this can throw in rare conditions
+                        taken = _statements.TryTake(out entry);
+                    }
+                    catch
+                    {
+                        taken = false;
+                    }
+
+                    if (taken && entry != null)
                     {
                         // if the statement was still in use, we can't dispose it
                         // so we just mark it so the user will really dispose it when he'll call Dispose()
@@ -1925,10 +1937,10 @@ namespace SqlNado
                 {
                     var o = new
                     {
-                        Sql = pool.Value.Sql,
-                        CreationDate = entry.CreationDate,
+                        pool.Value.Sql,
+                        entry.CreationDate,
                         Duration = entry.LastUsageDate - entry.CreationDate,
-                        Usage = entry.Usage,
+                        entry.Usage,
                     };
                     list.Add(o);
                 }
@@ -3804,7 +3816,7 @@ namespace SqlNado
                 if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object value))
                 {
                     string type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
-                    throw new SqlNadoException("0023: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
+                    throw new SqlNadoException("0028: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
                 }
 
                 DefaultValue = value;
@@ -4948,7 +4960,7 @@ namespace SqlNado
         private class QueryProvider : IQueryProvider
         {
             private SQLiteQuery<T> _query;
-            private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerable), BindingFlags.Public | BindingFlags.Instance);
+            private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance);
 
             public QueryProvider(SQLiteQuery<T> query)
             {
@@ -4968,17 +4980,48 @@ namespace SqlNado
                     throw new ArgumentNullException(nameof(expression));
 
                 string sql = _query.GetQueryText(expression);
+                sql = NormalizeSelect(sql);
                 var elementType = Conversions.GetEnumeratedType(typeof(TResult));
                 if (elementType == null)
                 {
                     if (typeof(TResult) != typeof(string) && typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
                         return (TResult)_query.Database.Load(typeof(object), sql);
 
-                    throw new ArgumentException(null, nameof(expression));
+                    return (TResult)(_query.Database.Load(typeof(TResult), sql).FirstOrDefault());
                 }
 
                 var ee = _executeEnumerable.MakeGenericMethod(elementType);
-                return (TResult)ee.Invoke(this, new object[] { expression });
+                return (TResult)ee.Invoke(this, new object[] { sql });
+            }
+
+            // poor man tentative to fix queries without Where() specified
+            private static string NormalizeSelect(string sql)
+            {
+                if (sql != null && sql.Length > 2)
+                {
+                    const string token = "SELECT ";
+                    if (!sql.StartsWith(token))
+                    {
+                        // escaped table name have a ", let's use that information
+                        if (sql.Length > token.Length && sql[0] == '"')
+                        {
+                            int pos = sql.IndexOf('"', 1);
+                            if (pos > 1)
+                                return token + "* FROM (" + sql.Substring(0, pos + 1) + ")" + sql.Substring(pos + 1);
+                        }
+
+                        return token + "* FROM " + sql;
+                    }
+                }
+                return sql;
+            }
+
+            private IEnumerable<TResult> ExecuteEnumerableWithText<TResult>(string sql)
+            {
+                foreach (var item in _query.Database.Load<TResult>(sql))
+                {
+                    yield return item;
+                }
             }
 
             public IEnumerable<TResult> ExecuteEnumerable<TResult>(Expression expression)
@@ -4987,6 +5030,7 @@ namespace SqlNado
                     throw new ArgumentNullException(nameof(expression));
 
                 string sql = _query.GetQueryText(expression);
+                sql = NormalizeSelect(sql);
                 foreach (var item in _query.Database.Load<TResult>(sql))
                 {
                     yield return item;
@@ -5017,6 +5061,8 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public TextWriter Writer { get; }
         public SQLiteBindOptions BindOptions { get => _bindOptions ?? Database.BindOptions; set => _bindOptions = value; }
+        public int? Skip { get; private set; }
+        public int? Take { get; private set; }
 
         private static string BuildNotSupported(string text) => "0023: " + text + " is not handled by the Expression Translator.";
 
@@ -5027,6 +5073,24 @@ namespace SqlNado
 
             expression = PartialEvaluator.Eval(expression);
             Visit(expression);
+            if (Skip.HasValue || Take.HasValue)
+            {
+                Writer.Write(" LIMIT ");
+                if (Take.HasValue)
+                {
+                    Writer.Write(Take.Value);
+                }
+                else
+                {
+                    Writer.Write("-1");
+                }
+
+                if (Skip.HasValue)
+                {
+                    Writer.Write(" OFFSET ");
+                    Writer.Write(Skip.Value);
+                }
+            }
         }
 
         protected virtual string SubTranslate(Expression expression)
@@ -5086,6 +5150,22 @@ namespace SqlNado
                         {
                             Writer.Write(" DESC");
                         }
+                        return callExpression;
+
+                    case nameof(Queryable.First):
+                    case nameof(Queryable.FirstOrDefault):
+                        Visit(callExpression.Arguments[0]);
+                        Take = 1;
+                        return callExpression;
+
+                    case nameof(Queryable.Take):
+                        Visit(callExpression.Arguments[0]);
+                        Take = (int)((ConstantExpression)callExpression.Arguments[1]).Value;
+                        return callExpression;
+
+                    case nameof(Queryable.Skip):
+                        Visit(callExpression.Arguments[0]);
+                        Skip = (int)((ConstantExpression)callExpression.Arguments[1]).Value;
                         return callExpression;
                 }
             }
@@ -5553,6 +5633,7 @@ namespace SqlNado
 
                 private Expression Evaluate(Expression expression)
                 {
+                    bool modified = false;
                     var type = expression.Type;
                     if (expression.NodeType == ExpressionType.Convert)
                     {
@@ -5560,6 +5641,7 @@ namespace SqlNado
                         if (GetNonNullableType(u.Operand.Type) == GetNonNullableType(type))
                         {
                             expression = ((UnaryExpression)expression).Operand;
+                            modified = true;
                         }
                     }
 
@@ -5578,11 +5660,29 @@ namespace SqlNado
                     if (type.IsValueType)
                     {
                         expression = Expression.Convert(expression, typeof(object));
+                        modified = true;
+                    }
+
+                    // avoid stack overflow (infinite recursion)
+                    if (!modified && expression is MethodCallExpression mce)
+                    {
+                        var parameters = mce.Method.GetParameters();
+                        if (parameters.Length == 0 && mce.Method.ReturnType == type)
+                            return expression;
+
+                        // like Queryable extensions methods (First, FirstOrDefault, etc.)
+                        if (parameters.Length == 1 && mce.Method.IsStatic)
+                        {
+                            var iqt = typeof(IQueryable<>).MakeGenericType(type);
+                            if (iqt == parameters[0].ParameterType)
+                                return expression;
+                        }
                     }
 
                     var lambda = Expression.Lambda<Func<object>>(expression);
                     Func<object> fn = lambda.Compile();
-                    return PostEval(Expression.Constant(fn(), type));
+                    var constant = Expression.Constant(fn(), type);
+                    return PostEval(constant);
                 }
 
                 private static object GetValue(MemberInfo member, object instance)
@@ -9029,6 +9129,30 @@ namespace SqlNado.Utilities
                 return blob.Size;
             }
         }
+    }
+}
+
+namespace SqlNado.Utilities
+{
+    public abstract class SQLiteTrackObject : SQLiteBaseObject
+    {
+        protected SQLiteTrackObject(SQLiteDatabase database)
+            : base(database)
+        {
+            CreationDateUtc = DateTime.UtcNow;
+        }
+
+        [SQLiteColumn(InsertOnly = true, AutomaticType = SQLiteAutomaticColumnType.DateTimeNowUtc)]
+        public DateTime CreationDateUtc { get => DictionaryObjectGetPropertyValue<DateTime>(); set => DictionaryObjectSetPropertyValue(value); }
+
+        [SQLiteColumn(InsertOnly = true, AutomaticType = SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName)]
+        public string CreationUserName { get => DictionaryObjectGetPropertyValue<string>(); set => DictionaryObjectSetPropertyValue(value); }
+
+        [SQLiteColumn(AutomaticType = SQLiteAutomaticColumnType.DateTimeNowUtc)]
+        public DateTime LastWriteDateUtc { get => DictionaryObjectGetPropertyValue<DateTime>(); set => DictionaryObjectSetPropertyValue(value); }
+
+        [SQLiteColumn(AutomaticType = SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName)]
+        public string LastWriteUserName { get => DictionaryObjectGetPropertyValue<string>(); set => DictionaryObjectSetPropertyValue(value); }
     }
 }
 
