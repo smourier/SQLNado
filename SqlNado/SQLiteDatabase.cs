@@ -1999,7 +1999,10 @@ namespace SqlNado
         protected virtual void Dispose(bool disposing)
         {
             _enableStatementsCache = false;
-            ClearStatementsCache();
+            if (disposing)
+            {
+                ClearStatementsCache();
+            }
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {
