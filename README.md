@@ -13,7 +13,7 @@ SQLNado supports all of SQLite features when using SQL commands, and also suppor
 * SQLite  collation support, including the possibility to add custom collations using .NET code
 
 ## Requirements
-The only requirement is netstandard 2.0 (100% nuget free!). Note that it's only been validated on the Windows 32 and 64-bit platform, and it requires the standard SQLite native dlls.
+The only requirement is netstandard 2.0 or .NET Framework 4.6. It's 100% nuget free!. Note that it's only been validated on the Windows 32 and 64-bit platform, and it requires the standard SQLite native dlls.
 
 ## Installation
 We recommend to rename sqlite.dll for 32 *and* 64-bit to sqlite.x86.dll and sqlite.x64.dll. Once you've done that, you can copy both files aside your running executable (or *bin* directory for a web site). SQLNado source code expects that and this way your program will be able to run as 32-bit or as 64-bit without having to change the native sqlite.dll. You won't have to build two setups either. You can get native sqlite.dll from sqlite.org site or you can get them from here already renamed: https://github.com/smourier/SQLNado/tree/master/SqlNado
