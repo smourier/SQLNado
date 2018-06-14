@@ -26,17 +26,18 @@ namespace SqlNado.Utilities
         [SQLiteColumn(Ignore = true)]
         public new SQLiteDatabase Database => base.Database;
 
-        public new IEnumerable<T> LoadByForeignKey<T>() => base.LoadByForeignKey<T>();
-        public new IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options) => base.LoadByForeignKey<T>(options);
+        public new IEnumerable<T> LoadByForeignKey<T>() => LoadByForeignKey<T>(null);
+        public virtual new IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options) => base.LoadByForeignKey<T>(options);
 
-        public void CommitChanges() => DictionaryObjectCommitChanges();
-        public void RollbackChanges() => DictionaryObjectRollbackChanges();
-        public void RollbackChanges(DictionaryObjectPropertySetOptions options) => DictionaryObjectRollbackChanges(options);
+        public virtual void CommitChanges() => DictionaryObjectCommitChanges();
 
-        public T GetPropertyValue<T>([CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue<T>(name);
-        public T GetPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue(defaultValue, name);
+        public void RollbackChanges() => RollbackChanges(DictionaryObjectPropertySetOptions.None);
+        public virtual void RollbackChanges(DictionaryObjectPropertySetOptions options) => DictionaryObjectRollbackChanges(options);
 
-        public bool SetPropertyValue(object value, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, name);
-        public bool SetPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, options, name);
+        public T GetPropertyValue<T>([CallerMemberName] string name = null) => GetPropertyValue(default(T), name);
+        public virtual T GetPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue(defaultValue, name);
+
+        public bool SetPropertyValue(object value, [CallerMemberName] string name = null) => SetPropertyValue(value, DictionaryObjectPropertySetOptions.None, name);
+        public virtual bool SetPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, options, name);
     }
 }

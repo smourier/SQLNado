@@ -16,10 +16,10 @@ namespace SqlNado.Utilities
         SQLiteDatabase ISQLiteObject.Database { get; set; }
         protected SQLiteDatabase Database => ((ISQLiteObject)this).Database;
 
-        public bool Save() => Database.Save(this);
+        public bool Save() => Save(null);
         public virtual bool Save(SQLiteSaveOptions options) => Database.Save(this, options);
 
-        public bool Delete() => Database.Delete(this);
+        public bool Delete() => Delete(null);
         public virtual bool Delete(SQLiteDeleteOptions options) => Database.Delete(this, options);
 
         protected IEnumerable<T> LoadByForeignKey<T>() => LoadByForeignKey<T>(null);
