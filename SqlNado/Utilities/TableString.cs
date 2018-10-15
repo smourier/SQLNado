@@ -3,6 +3,7 @@ using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -731,6 +732,15 @@ namespace SqlNado.Utilities
                     for (int i = 0; i < array.Length; i++)
                     {
                         AddColumn(new ArrayItemTableStringColumn(this, i));
+                    }
+                    return;
+                }
+
+                if (first is DataRow row)
+                {
+                    foreach (DataColumn column in row.Table.Columns)
+                    {
+                        AddColumn(new DataColumnTableStringColumn(this, column));
                     }
                     return;
                 }
@@ -1467,6 +1477,17 @@ namespace SqlNado.Utilities
         }
 
         public MethodInfo Method { get; }
+    }
+
+    public class DataColumnTableStringColumn : TableStringColumn
+    {
+        public DataColumnTableStringColumn(TableString table, DataColumn dataColumn)
+            : base(table, dataColumn?.ColumnName, (c, r) => ((DataRow)r)[((DataColumnTableStringColumn)c).DataColumn])
+        {
+            DataColumn = dataColumn;
+        }
+
+        public DataColumn DataColumn { get; }
     }
 
     public class PropertyInfoTableStringColumn : TableStringColumn
