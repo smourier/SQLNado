@@ -745,6 +745,18 @@ namespace SqlNado.Utilities
                     return;
                 }
 
+                if (first is ICustomTypeDescriptor desc)
+                {
+                    foreach (PropertyDescriptor property in desc.GetProperties())
+                    {
+                        if (!property.IsBrowsable)
+                            continue;
+
+                        AddColumn(new PropertyDescriptorTableStringColumn(this, property));
+                    }
+                    return;
+                }
+
                 if (IsKeyValuePairEnumerable(first.GetType(), out Type keyType, out Type valueType, out Type enumerableType))
                 {
                     var enumerable = (IEnumerable)Cast(enumerableType, first);
@@ -1353,13 +1365,13 @@ namespace SqlNado.Utilities
             if (AddValueTypeColumn)
             {
                 var typeColumn = CreateColumn("Type", (c, r) =>
-                 {
-                     object value = ((Tuple<object, object>)r).Item2;
-                     if (value == null)
-                         return null;
+                {
+                    object value = ((Tuple<object, object>)r).Item2;
+                    if (value == null)
+                        return null;
 
-                     return value.GetType().FullName;
-                 });
+                    return value.GetType().FullName;
+                });
 
                 AddColumn(typeColumn);
             }
@@ -1488,6 +1500,29 @@ namespace SqlNado.Utilities
         }
 
         public DataColumn DataColumn { get; }
+    }
+
+    public class PropertyDescriptorTableStringColumn : TableStringColumn
+    {
+        public PropertyDescriptorTableStringColumn(TableString table, PropertyDescriptor property)
+            : base(table, property?.Name, (c, r) => ((PropertyDescriptorTableStringColumn)c).GetValue(r))
+        {
+            Property = property;
+        }
+
+        public PropertyDescriptor Property { get; }
+
+        private object GetValue(object component)
+        {
+            try
+            {
+                return Property.GetValue(component);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 
     public class PropertyInfoTableStringColumn : TableStringColumn
