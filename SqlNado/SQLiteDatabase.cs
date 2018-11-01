@@ -1565,6 +1565,9 @@ namespace SqlNado
                 if (searchRsp)
                     yield return Path.Combine(rsp, name);
 
+                // look in windows/azure
+                yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "winsqlite3.dll");
+
                 name = "sqlite.dll";
                 yield return Path.Combine(bd, name); // last resort, hoping the bitness's right, we do not recommend it
                 if (searchRsp)

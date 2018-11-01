@@ -27,6 +27,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections;
 using System.ComponentModel;
+using System.Data;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -2315,6 +2316,9 @@ namespace SqlNado
                 yield return Path.Combine(bd, name);
                 if (searchRsp)
                     yield return Path.Combine(rsp, name);
+
+                // look in windows/azure
+                yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "winsqlite3.dll");
 
                 name = "sqlite.dll";
                 yield return Path.Combine(bd, name); // last resort, hoping the bitness's right, we do not recommend it
@@ -9971,6 +9975,27 @@ namespace SqlNado.Utilities
                     return;
                 }
 
+                if (first is DataRow row)
+                {
+                    foreach (DataColumn column in row.Table.Columns)
+                    {
+                        AddColumn(new DataColumnTableStringColumn(this, column));
+                    }
+                    return;
+                }
+
+                if (first is ICustomTypeDescriptor desc)
+                {
+                    foreach (PropertyDescriptor property in desc.GetProperties())
+                    {
+                        if (!property.IsBrowsable)
+                            continue;
+
+                        AddColumn(new PropertyDescriptorTableStringColumn(this, property));
+                    }
+                    return;
+                }
+
                 if (IsKeyValuePairEnumerable(first.GetType(), out Type keyType, out Type valueType, out Type enumerableType))
                 {
                     var enumerable = (IEnumerable)Cast(enumerableType, first);
@@ -10579,13 +10604,13 @@ namespace SqlNado.Utilities
             if (AddValueTypeColumn)
             {
                 var typeColumn = CreateColumn("Type", (c, r) =>
-                 {
-                     object value = ((Tuple<object, object>)r).Item2;
-                     if (value == null)
-                         return null;
+                {
+                    object value = ((Tuple<object, object>)r).Item2;
+                    if (value == null)
+                        return null;
 
-                     return value.GetType().FullName;
-                 });
+                    return value.GetType().FullName;
+                });
 
                 AddColumn(typeColumn);
             }
@@ -10703,6 +10728,40 @@ namespace SqlNado.Utilities
         }
 
         public MethodInfo Method { get; }
+    }
+
+    public class DataColumnTableStringColumn : TableStringColumn
+    {
+        public DataColumnTableStringColumn(TableString table, DataColumn dataColumn)
+            : base(table, dataColumn?.ColumnName, (c, r) => ((DataRow)r)[((DataColumnTableStringColumn)c).DataColumn])
+        {
+            DataColumn = dataColumn;
+        }
+
+        public DataColumn DataColumn { get; }
+    }
+
+    public class PropertyDescriptorTableStringColumn : TableStringColumn
+    {
+        public PropertyDescriptorTableStringColumn(TableString table, PropertyDescriptor property)
+            : base(table, property?.Name, (c, r) => ((PropertyDescriptorTableStringColumn)c).GetValue(r))
+        {
+            Property = property;
+        }
+
+        public PropertyDescriptor Property { get; }
+
+        private object GetValue(object component)
+        {
+            try
+            {
+                return Property.GetValue(component);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 
     public class PropertyInfoTableStringColumn : TableStringColumn
