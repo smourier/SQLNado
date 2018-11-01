@@ -34,14 +34,12 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
-            using (var db = new SQLiteDatabase(":memory:"))
+            using (var db = new SQLiteDatabase("memory"))
             {
-                db.SynchronizeSchema<SimpleUser>();
-                //if (db.TableExists<SimpleUser>())
-                //{
-                db.LoadAll<SimpleUser>(new SQLiteLoadOptions(db) { TestTableExists = false }).ToTableString(Console.Out);
-                //}
+                var gl = new GeoIPLocation();
+                db.Save(gl);
 
+                var tb = db.GetTable<GeoIPLocation>();
             }
         }
 
@@ -245,6 +243,25 @@ namespace SqlNado.Temp
         HasDrivingLicense = 0x1,
         HasTruckDrivingLicense = 0x2,
         IsAdmin = 0x4,
+    }
+
+    public class GeoIPLocation
+    {
+        [SQLiteColumn(IsPrimaryKey = true)]
+        public long GeoNameId { get; set; }
+        public string Locale { get; set; }
+        public string ContinentCode { get; set; }
+        public string ContinentName { get; set; }
+        public string CountryIsoCode { get; set; }
+        public string CountryName { get; set; }
+        public string Subdivision1IsoCode { get; set; }
+        public string Subdivision1IsoName { get; set; }
+        public string Subdivision2IsoCode { get; set; }
+        public string Subdivision2IsoName { get; set; }
+        public string CityName { get; set; }
+        public string MetroCode { get; set; }
+        public string TimeZone { get; set; }
+        public int AccuracyRadius { get; set; }
     }
 
     public class TestQuery : SQLiteBaseObject

@@ -8,8 +8,8 @@ namespace SqlNado
 {
     public class SQLiteObjectTable
     {
-        private List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
-        private List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
+        private readonly List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
+        private readonly List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
         private static Random _random = new Random(Environment.TickCount);
         internal const string TempTablePrefix = "__temp";
 

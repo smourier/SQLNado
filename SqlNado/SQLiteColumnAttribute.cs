@@ -18,7 +18,7 @@ namespace SqlNado
         internal bool? _isDefaultValueIntrinsic;
         internal bool? _autoIncrements;
         internal int? _sortOrder;
-        private List<SQLiteIndexAttribute> _indices = new List<SQLiteIndexAttribute>();
+        private readonly List<SQLiteIndexAttribute> _indices = new List<SQLiteIndexAttribute>();
 
         public virtual string Name { get; set; }
         public virtual string DataType { get; set; }

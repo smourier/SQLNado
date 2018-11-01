@@ -23,16 +23,21 @@ namespace SqlNado
         private IntPtr _handle;
         private bool _enableStatementsCache;
         private volatile bool _querySupportFunctionsAdded = false;
-        private ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
-        private ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
-        private ConcurrentDictionary<string, ScalarFunctionSink> _functionSinks = new ConcurrentDictionary<string, ScalarFunctionSink>(StringComparer.OrdinalIgnoreCase);
-        private ConcurrentDictionary<string, CollationSink> _collationSinks = new ConcurrentDictionary<string, CollationSink>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
+        private readonly ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
+        private readonly ConcurrentDictionary<string, ScalarFunctionSink> _functionSinks = new ConcurrentDictionary<string, ScalarFunctionSink>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, CollationSink> _collationSinks = new ConcurrentDictionary<string, CollationSink>(StringComparer.OrdinalIgnoreCase);
 
         // note the pool is case-sensitive. it may not be always optimized, but it's safer
         private ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>();
-        private collationNeeded _collationNeeded;
+        private readonly collationNeeded _collationNeeded;
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
+
+        static SQLiteDatabase()
+        {
+            UseWindowsRuntime = true;
+        }
 
         public SQLiteDatabase(string filePath)
             : this(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
@@ -58,6 +63,8 @@ namespace SqlNado
         }
 
         public static string NativeDllPath { get; private set; }
+        public static bool IsUsingWindowsRuntime { get; private set; }
+        public static bool UseWindowsRuntime { get; set; } = true;
 
         public static bool IsThreadSafe
         {
@@ -1566,7 +1573,8 @@ namespace SqlNado
                     yield return Path.Combine(rsp, name);
 
                 // look in windows/azure
-                yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "winsqlite3.dll");
+                if (UseWindowsRuntime)
+                    yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "winsqlite3.dll");
 
                 name = "sqlite.dll";
                 yield return Path.Combine(bd, name); // last resort, hoping the bitness's right, we do not recommend it
@@ -1606,6 +1614,13 @@ namespace SqlNado
                 throw new SqlNadoException("0002: Cannot determine native sqlite dll path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
 
             NativeDllPath = path;
+            IsUsingWindowsRuntime = Path.GetFileName(path).EqualsIgnoreCase("winsqlite3.dll");
+
+#if !WINSQLITE
+            if (IsUsingWindowsRuntime && IntPtr.Size == 4)
+                throw new SqlNadoException("0029: SQLNado compilation is invalid. The process is running as 32-bit, using the Windows/Azure 'winsqlite3.dll' but without the WINSQLITE define. Contact the developer.");
+#endif
+
             _module = LoadLibrary(path);
             if (_module == IntPtr.Zero)
                 throw new SqlNadoException("0003: Cannot load native sqlite dll from path '" + path + "'. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.", new Win32Exception(Marshal.GetLastWin32Error()));
@@ -1692,123 +1707,183 @@ namespace SqlNado
         [DllImport("kernel32.dll")]
         internal static extern long GetTickCount64();
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate IntPtr sqlite3_errmsg16(IntPtr db);
         private static sqlite3_errmsg16 _sqlite3_errmsg16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate SQLiteErrorCode sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
         private static sqlite3_open_v2 _sqlite3_open_v2;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate SQLiteErrorCode sqlite3_close(IntPtr db);
         private static sqlite3_close _sqlite3_close;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_finalize(IntPtr statement);
         internal static sqlite3_finalize _sqlite3_finalize;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_column_count(IntPtr statement);
         internal static sqlite3_column_count _sqlite3_column_count;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_bind_parameter_count(IntPtr statement);
         internal static sqlite3_bind_parameter_count _sqlite3_bind_parameter_count;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_bind_parameter_index(IntPtr statement, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string name);
         internal static sqlite3_bind_parameter_index _sqlite3_bind_parameter_index;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_clear_bindings(IntPtr statement);
         internal static sqlite3_clear_bindings _sqlite3_clear_bindings;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_step(IntPtr statement);
         internal static sqlite3_step _sqlite3_step;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_reset(IntPtr statement);
         internal static sqlite3_reset _sqlite3_reset;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
         internal static sqlite3_column_type _sqlite3_column_type;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate IntPtr sqlite3_column_name16(IntPtr statement, int index);
         internal static sqlite3_column_name16 _sqlite3_column_name16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate IntPtr sqlite3_column_blob(IntPtr statement, int index);
         internal static sqlite3_column_blob _sqlite3_column_blob;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_column_bytes(IntPtr statement, int index);
         internal static sqlite3_column_bytes _sqlite3_column_bytes;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate double sqlite3_column_double(IntPtr statement, int index);
         internal static sqlite3_column_double _sqlite3_column_double;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_column_int(IntPtr statement, int index);
         internal static sqlite3_column_int _sqlite3_column_int;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate long sqlite3_column_int64(IntPtr statement, int index);
         internal static sqlite3_column_int64 _sqlite3_column_int64;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate IntPtr sqlite3_column_text16(IntPtr statement, int index);
         internal static sqlite3_column_text16 _sqlite3_column_text16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_prepare16_v2(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string sql, int numBytes, out IntPtr statement, IntPtr tail);
         internal static sqlite3_prepare16_v2 _sqlite3_prepare16_v2;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate int sqlite3_total_changes(IntPtr db);
         private static sqlite3_total_changes _sqlite3_total_changes;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate int sqlite3_changes(IntPtr db);
         private static sqlite3_changes _sqlite3_changes;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate long sqlite3_last_insert_rowid(IntPtr db);
         private static sqlite3_last_insert_rowid _sqlite3_last_insert_rowid;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_bind_text16(IntPtr statement, int index, [MarshalAs(UnmanagedType.LPWStr)] string text, int count, IntPtr xDel);
         internal static sqlite3_bind_text16 _sqlite3_bind_text16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_bind_null(IntPtr statement, int index);
         internal static sqlite3_bind_null _sqlite3_bind_null;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);
         internal static sqlite3_bind_blob _sqlite3_bind_blob;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
         internal static sqlite3_bind_zeroblob _sqlite3_bind_zeroblob;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_bind_double(IntPtr statement, int index, double value);
         internal static sqlite3_bind_double _sqlite3_bind_double;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_bind_int64(IntPtr statement, int index, long value);
         internal static sqlite3_bind_int64 _sqlite3_bind_int64;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
         internal static sqlite3_bind_int _sqlite3_bind_int;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_blob_open(IntPtr db,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string database,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string table,
@@ -1816,118 +1891,176 @@ namespace SqlNado
             long rowId, int flags, out IntPtr blob);
         internal static sqlite3_blob_open _sqlite3_blob_open;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_blob_bytes(IntPtr blob);
         internal static sqlite3_blob_bytes _sqlite3_blob_bytes;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_blob_close(IntPtr blob);
         internal static sqlite3_blob_close _sqlite3_blob_close;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_blob_reopen(IntPtr blob, long rowId);
         internal static sqlite3_blob_reopen _sqlite3_blob_reopen;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
         internal static sqlite3_blob_read _sqlite3_blob_read;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
         internal static sqlite3_blob_write _sqlite3_blob_write;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate int xCompare(IntPtr arg,
             int lenA, IntPtr strA,
             int lenB, IntPtr strB);
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate SQLiteErrorCode sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, xCompare comparer);
         private static sqlite3_create_collation16 _sqlite3_create_collation16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate void collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, [MarshalAs(UnmanagedType.LPWStr)] string strB);
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate SQLiteErrorCode sqlite3_collation_needed16(IntPtr db, IntPtr arg, collationNeeded callback);
         private static sqlite3_collation_needed16 _sqlite3_collation_needed16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
         internal static sqlite3_table_column_metadata _sqlite3_table_column_metadata;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate void xFunc(IntPtr context, int argsCount, [In, Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] IntPtr[] args);
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate void xFinal(IntPtr context);
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         private delegate SQLiteErrorCode sqlite3_create_function16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name,
             int argsCount, SQLiteTextEncoding encoding, IntPtr app, xFunc func, xFunc step, xFinal final);
         private static sqlite3_create_function16 _sqlite3_create_function16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate IntPtr sqlite3_value_blob(IntPtr value);
         internal static sqlite3_value_blob _sqlite3_value_blob;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate double sqlite3_value_double(IntPtr value);
         internal static sqlite3_value_double _sqlite3_value_double;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_value_int(IntPtr value);
         internal static sqlite3_value_int _sqlite3_value_int;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate long sqlite3_value_int64(IntPtr value);
         internal static sqlite3_value_int64 _sqlite3_value_int64;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate IntPtr sqlite3_value_text16(IntPtr value);
         internal static sqlite3_value_text16 _sqlite3_value_text16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_value_bytes16(IntPtr value);
         internal static sqlite3_value_bytes16 _sqlite3_value_bytes16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate SQLiteColumnType sqlite3_value_type(IntPtr value);
         internal static sqlite3_value_type _sqlite3_value_type;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
         internal static sqlite3_result_blob _sqlite3_result_blob;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_double(IntPtr ctx, double value);
         internal static sqlite3_result_double _sqlite3_result_double;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_error16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len);
         internal static sqlite3_result_error16 _sqlite3_result_error16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
         internal static sqlite3_result_error_code _sqlite3_result_error_code;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_int(IntPtr ctx, int value);
         internal static sqlite3_result_int _sqlite3_result_int;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_int64(IntPtr ctx, long value);
         internal static sqlite3_result_int64 _sqlite3_result_int64;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_null(IntPtr ctx);
         internal static sqlite3_result_null _sqlite3_result_null;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_text16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len, IntPtr xDel);
         internal static sqlite3_result_text16 _sqlite3_result_text16;
 
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate void sqlite3_result_zeroblob(IntPtr ctx, int size);
         internal static sqlite3_result_zeroblob _sqlite3_result_zeroblob;
 
@@ -1943,7 +2076,9 @@ namespace SqlNado
         }
 
         // https://sqlite.org/c3ref/threadsafe.html
+#if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
         internal delegate int sqlite3_threadsafe();
         internal static sqlite3_threadsafe _sqlite3_threadsafe;
 
