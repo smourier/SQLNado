@@ -26,12 +26,14 @@ namespace SqlNado
 
         protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
         protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
-        protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name);
+        protected SQLiteObjectTable CreateObjectTable(string name) => CreateObjectTable(name, null);
+        protected virtual SQLiteObjectTable CreateObjectTable(string name, SQLiteBuildTableOptions options) => new SQLiteObjectTable(Database, name);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
             Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
 
-        public virtual SQLiteObjectTable Build()
+        public SQLiteObjectTable Build() => Build(null);
+        public virtual SQLiteObjectTable Build(SQLiteBuildTableOptions options)
         {
             string name = Type.Name;
             var typeAtt = Type.GetCustomAttribute<SQLiteTableAttribute>();
@@ -43,7 +45,7 @@ namespace SqlNado
                 }
             }
 
-            var table = CreateObjectTable(name);
+            var table = CreateObjectTable(name, options);
             if (typeAtt != null)
             {
                 table.DisableRowId = typeAtt.WithoutRowId;

@@ -555,6 +555,22 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    public class SQLiteBuildTableOptions
+    {
+        public SQLiteBuildTableOptions(SQLiteDatabase database)
+        {
+            if (database == null)
+                throw new ArgumentNullException(nameof(database));
+
+            Database = database;
+        }
+
+        public SQLiteDatabase Database { get; }
+    }
+}
+
+namespace SqlNado
+{
     public class SQLiteCollationNeededEventArgs : EventArgs
     {
         // format of culture collation is c_<lcid>_<options> (options is CompareOptions)
@@ -1742,23 +1758,26 @@ namespace SqlNado
         }
 
         public SQLiteObjectTable GetObjectTable<T>() => GetObjectTable(typeof(T));
-        public virtual SQLiteObjectTable GetObjectTable(Type type)
+        public SQLiteObjectTable GetObjectTable<T>(SQLiteBuildTableOptions options) => GetObjectTable(typeof(T), options);
+        public SQLiteObjectTable GetObjectTable(Type type) => GetObjectTable(type, null);
+        public virtual SQLiteObjectTable GetObjectTable(Type type, SQLiteBuildTableOptions options)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
             if (!_objectTables.TryGetValue(type, out SQLiteObjectTable table))
             {
-                table = BuildObjectTable(type);
+                table = BuildObjectTable(type, options);
                 table = _objectTables.AddOrUpdate(type, table, (k, o) => o);
             }
             return table;
         }
 
-        protected virtual SQLiteObjectTable BuildObjectTable(Type type)
+        protected SQLiteObjectTable BuildObjectTable(Type type) => BuildObjectTable(type, null);
+        protected virtual SQLiteObjectTable BuildObjectTable(Type type, SQLiteBuildTableOptions options)
         {
             var builder = CreateObjectTableBuilder(type);
-            return builder.Build();
+            return builder.Build(options);
         }
 
         public override string ToString() => FilePath;
@@ -1772,6 +1791,7 @@ namespace SqlNado
         public virtual SQLiteSaveOptions CreateSaveOptions() => new SQLiteSaveOptions(this);
         public virtual SQLiteBindOptions CreateBindOptions() => new SQLiteBindOptions(this);
         public virtual SQLiteDeleteOptions CreateDeleteOptions() => new SQLiteDeleteOptions(this);
+        public virtual SQLiteBuildTableOptions CreateBuildTableOptions() => new SQLiteBuildTableOptions(this);
         public virtual SQLiteBindContext CreateBindContext() => new SQLiteBindContext(this);
 
         public virtual int GetBlobSize(string tableName, string columnName, long rowId)
@@ -4720,12 +4740,14 @@ namespace SqlNado
 
         protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
         protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
-        protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name);
+        protected SQLiteObjectTable CreateObjectTable(string name) => CreateObjectTable(name, null);
+        protected virtual SQLiteObjectTable CreateObjectTable(string name, SQLiteBuildTableOptions options) => new SQLiteObjectTable(Database, name);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
             Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
 
-        public virtual SQLiteObjectTable Build()
+        public SQLiteObjectTable Build() => Build(null);
+        public virtual SQLiteObjectTable Build(SQLiteBuildTableOptions options)
         {
             string name = Type.Name;
             var typeAtt = Type.GetCustomAttribute<SQLiteTableAttribute>();
@@ -4737,7 +4759,7 @@ namespace SqlNado
                 }
             }
 
-            var table = CreateObjectTable(name);
+            var table = CreateObjectTable(name, options);
             if (typeAtt != null)
             {
                 table.DisableRowId = typeAtt.WithoutRowId;

@@ -990,23 +990,26 @@ namespace SqlNado
         }
 
         public SQLiteObjectTable GetObjectTable<T>() => GetObjectTable(typeof(T));
-        public virtual SQLiteObjectTable GetObjectTable(Type type)
+        public SQLiteObjectTable GetObjectTable<T>(SQLiteBuildTableOptions options) => GetObjectTable(typeof(T), options);
+        public SQLiteObjectTable GetObjectTable(Type type) => GetObjectTable(type, null);
+        public virtual SQLiteObjectTable GetObjectTable(Type type, SQLiteBuildTableOptions options)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
             if (!_objectTables.TryGetValue(type, out SQLiteObjectTable table))
             {
-                table = BuildObjectTable(type);
+                table = BuildObjectTable(type, options);
                 table = _objectTables.AddOrUpdate(type, table, (k, o) => o);
             }
             return table;
         }
 
-        protected virtual SQLiteObjectTable BuildObjectTable(Type type)
+        protected SQLiteObjectTable BuildObjectTable(Type type) => BuildObjectTable(type, null);
+        protected virtual SQLiteObjectTable BuildObjectTable(Type type, SQLiteBuildTableOptions options)
         {
             var builder = CreateObjectTableBuilder(type);
-            return builder.Build();
+            return builder.Build(options);
         }
 
         public override string ToString() => FilePath;
@@ -1020,6 +1023,7 @@ namespace SqlNado
         public virtual SQLiteSaveOptions CreateSaveOptions() => new SQLiteSaveOptions(this);
         public virtual SQLiteBindOptions CreateBindOptions() => new SQLiteBindOptions(this);
         public virtual SQLiteDeleteOptions CreateDeleteOptions() => new SQLiteDeleteOptions(this);
+        public virtual SQLiteBuildTableOptions CreateBuildTableOptions() => new SQLiteBuildTableOptions(this);
         public virtual SQLiteBindContext CreateBindContext() => new SQLiteBindContext(this);
 
         public virtual int GetBlobSize(string tableName, string columnName, long rowId)
