@@ -1670,6 +1670,7 @@ namespace SqlNado
             _sqlite3_value_int = LoadProc<sqlite3_value_int>();
             _sqlite3_value_int64 = LoadProc<sqlite3_value_int64>();
             _sqlite3_value_text16 = LoadProc<sqlite3_value_text16>();
+            _sqlite3_value_bytes = LoadProc<sqlite3_value_bytes>();
             _sqlite3_value_bytes16 = LoadProc<sqlite3_value_bytes16>();
             _sqlite3_value_type = LoadProc<sqlite3_value_type>();
             _sqlite3_result_blob = LoadProc<sqlite3_result_blob>();
@@ -2003,6 +2004,12 @@ namespace SqlNado
 #endif
         internal delegate int sqlite3_value_bytes16(IntPtr value);
         internal static sqlite3_value_bytes16 _sqlite3_value_bytes16;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate int sqlite3_value_bytes(IntPtr value);
+        internal static sqlite3_value_bytes _sqlite3_value_bytes;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

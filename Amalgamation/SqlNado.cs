@@ -2422,6 +2422,7 @@ namespace SqlNado
             _sqlite3_value_int = LoadProc<sqlite3_value_int>();
             _sqlite3_value_int64 = LoadProc<sqlite3_value_int64>();
             _sqlite3_value_text16 = LoadProc<sqlite3_value_text16>();
+            _sqlite3_value_bytes = LoadProc<sqlite3_value_bytes>();
             _sqlite3_value_bytes16 = LoadProc<sqlite3_value_bytes16>();
             _sqlite3_value_type = LoadProc<sqlite3_value_type>();
             _sqlite3_result_blob = LoadProc<sqlite3_result_blob>();
@@ -2755,6 +2756,12 @@ namespace SqlNado
 #endif
         internal delegate int sqlite3_value_bytes16(IntPtr value);
         internal static sqlite3_value_bytes16 _sqlite3_value_bytes16;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate int sqlite3_value_bytes(IntPtr value);
+        internal static sqlite3_value_bytes _sqlite3_value_bytes;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -6867,52 +6874,78 @@ namespace SqlNado
 {
     public sealed class SQLiteValue
     {
-        private IntPtr _handle;
-
         internal SQLiteValue(IntPtr handle)
         {
-            _handle = handle;
-        }
-
-        public double DoubleValue => SQLiteDatabase._sqlite3_value_double(_handle);
-        public int Int32Value => SQLiteDatabase._sqlite3_value_int(_handle);
-        public long Int64Value => SQLiteDatabase._sqlite3_value_int64(_handle);
-        public SQLiteColumnType Type => SQLiteDatabase._sqlite3_value_type(_handle);
-        public int Size => SQLiteDatabase._sqlite3_value_bytes16(_handle);
-
-        public string StringValue
-        {
-            get
+            // These routines must be called from the same thread as the SQL function that supplied the sqlite3_value* parameters.
+            Type = SQLiteDatabase._sqlite3_value_type(handle);
+            IntPtr ptr;
+            switch (Type)
             {
-                if (Type == SQLiteColumnType.NULL)
-                    return null;
+                case SQLiteColumnType.NULL:
+                    break;
 
-                var ptr = SQLiteDatabase._sqlite3_value_text16(_handle);
-                if (ptr == IntPtr.Zero)
-                    return null;
+                case SQLiteColumnType.INTEGER:
+                    Int64Value = SQLiteDatabase._sqlite3_value_int64(handle);
+                    Int32Value = SQLiteDatabase._sqlite3_value_int(handle);
+                    break;
 
-                return Marshal.PtrToStringUni(ptr, Size / 2);
+                case SQLiteColumnType.REAL:
+                    DoubleValue = SQLiteDatabase._sqlite3_value_double(handle);
+                    break;
+
+                case SQLiteColumnType.BLOB:
+                    Size = SQLiteDatabase._sqlite3_value_bytes(handle);
+                    if (Size >= 0)
+                    {
+                        BlobValue = new byte[Size];
+                        ptr = SQLiteDatabase._sqlite3_value_blob(handle);
+                        if (ptr != IntPtr.Zero)
+                        {
+                            Marshal.Copy(ptr, BlobValue, 0, BlobValue.Length);
+                        }
+                    }
+                    break;
+
+                default:
+                    Size = SQLiteDatabase._sqlite3_value_bytes16(handle);
+                    ptr = SQLiteDatabase._sqlite3_value_text16(handle);
+                    if (ptr != IntPtr.Zero)
+                    {
+                        StringValue = Marshal.PtrToStringUni(ptr, Size / 2);
+                    }
+                    break;
             }
         }
 
-        public byte[] BlobValue
-        {
-            get
-            {
-                if (Type == SQLiteColumnType.NULL)
-                    return null;
+        public double DoubleValue { get; }
+        public int Int32Value { get; }
+        public long Int64Value { get; }
+        public SQLiteColumnType Type { get; }
+        public int Size { get; }
+        public int SizeOfText { get; }
+        public string StringValue { get; }
+        public byte[] BlobValue { get; }
 
-                var bytes = new byte[Size];
-                if (bytes.Length > 0)
-                {
-                    var ptr = SQLiteDatabase._sqlite3_value_blob(_handle);
-                    Marshal.Copy(ptr, bytes, 0, bytes.Length);
-                }
-                return bytes;
+        public override string ToString()
+        {
+            switch (Type)
+            {
+                case SQLiteColumnType.BLOB:
+                    return "0x" + Conversions.ToHexa(BlobValue);
+
+                case SQLiteColumnType.REAL:
+                    return DoubleValue.ToString();
+
+                case SQLiteColumnType.INTEGER:
+                    return Int64Value.ToString();
+
+                case SQLiteColumnType.NULL:
+                    return "<NULL>";
+
+                default:
+                    return StringValue;
             }
         }
-
-        public override string ToString() => StringValue;
     }
 }
 
