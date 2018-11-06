@@ -12,6 +12,7 @@ namespace SqlNado
 
             Database = database;
             Index = -1;
+            UseTransactionForSchemaSynchronization = true;
         }
 
         public SQLiteDatabase Database { get; }
@@ -21,6 +22,7 @@ namespace SqlNado
         public virtual bool ObjectEventsDisabled { get; set; }
         public virtual SQLiteConflictResolution ConflictResolution { get; set; }
         public virtual bool UseTransaction { get; set; }
+        public virtual bool UseTransactionForSchemaSynchronization { get; set; }
         public virtual bool UseSavePoint { get; set; }
         public virtual Func<SQLiteObjectColumn, object, object> GetValueForBindFunc { get; set; }
         public virtual string SavePointName { get; protected internal set; }

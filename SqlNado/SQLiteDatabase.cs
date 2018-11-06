@@ -325,21 +325,35 @@ namespace SqlNado
             return table;
         }
 
-        public void DeleteTable<T>() => DeleteTable(typeof(T));
-        public virtual void DeleteTable(Type type) => DeleteTable(GetObjectTable(type).Name);
-        public virtual void DeleteTable(string name)
+        public void DeleteTable<T>(bool throwOnError = true) => DeleteTable(typeof(T), throwOnError);
+        public virtual void DeleteTable(Type type, bool throwOnError = true) => DeleteTable(GetObjectTable(type).Name, throwOnError);
+        public virtual void DeleteTable(string name, bool throwOnError = true)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+            if (throwOnError)
+            {
+                ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+            }
+            else
+            {
+                try
+                {
+                    ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+                }
+                catch (Exception e)
+                {
+                    Log(TraceLevel.Warning, "Error trying to delete TABLE '" + name + "': " + e);
+                }
+            }
         }
 
-        public virtual void DeleteTempTables()
+        public virtual void DeleteTempTables(bool throwOnError = true)
         {
             foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable.TempTablePrefix)).ToArray())
             {
-                table.Delete();
+                table.Delete(throwOnError);
             }
         }
 

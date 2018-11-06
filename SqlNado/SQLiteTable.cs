@@ -136,7 +136,7 @@ namespace SqlNado
         public SQLiteBlob OpenBlob(string columnName, long rowId) => Database.OpenBlob(Name, columnName, rowId);
         public SQLiteBlob OpenBlob(string columnName, long rowId, SQLiteBlobOpenMode mode) => Database.OpenBlob(Name, columnName, rowId, mode);
 
-        public void Delete() => Database.DeleteTable(Name);
+        public void Delete(bool throwOnError = true) => Database.DeleteTable(Name, throwOnError);
 
         public SQLiteColumn GetColumn(string name)
         {

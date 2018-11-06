@@ -1093,21 +1093,35 @@ namespace SqlNado
             return table;
         }
 
-        public void DeleteTable<T>() => DeleteTable(typeof(T));
-        public virtual void DeleteTable(Type type) => DeleteTable(GetObjectTable(type).Name);
-        public virtual void DeleteTable(string name)
+        public void DeleteTable<T>(bool throwOnError = true) => DeleteTable(typeof(T), throwOnError);
+        public virtual void DeleteTable(Type type, bool throwOnError = true) => DeleteTable(GetObjectTable(type).Name, throwOnError);
+        public virtual void DeleteTable(string name, bool throwOnError = true)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+            if (throwOnError)
+            {
+                ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+            }
+            else
+            {
+                try
+                {
+                    ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+                }
+                catch (Exception e)
+                {
+                    Log(TraceLevel.Warning, "Error trying to delete TABLE '" + name + "': " + e);
+                }
+            }
         }
 
-        public virtual void DeleteTempTables()
+        public virtual void DeleteTempTables(bool throwOnError = true)
         {
             foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable.TempTablePrefix)).ToArray())
             {
-                table.Delete();
+                table.Delete(throwOnError);
             }
         }
 
@@ -4658,11 +4672,9 @@ namespace SqlNado
                     continue;
                 }
 
+                deleted.Remove(existingColumn);
                 if (column.IsSynchronized(existingColumn))
-                {
-                    deleted.Remove(existingColumn);
                     continue;
-                }
 
                 changed.Add(column);
             }
@@ -4679,15 +4691,29 @@ namespace SqlNado
                 sql = GetCreateSql(tempTableName);
                 count += Database.ExecuteNonQuery(sql);
                 bool dropped = false;
+                bool renamed = false;
                 try
                 {
-                    sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Select(c => c.EscapedName)) + " FROM " + EscapedName;
+                    if (options.UseTransactionForSchemaSynchronization)
+                    {
+                        Database.BeginTransaction();
+                    }
+
+                    // https://www.sqlite.org/lang_insert.html
+                    sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Select(c => c.EscapedName)) + " FROM " + EscapedName + " WHERE true";
                     count += Database.ExecuteNonQuery(sql);
+
+                    if (options.UseTransactionForSchemaSynchronization)
+                    {
+                        Database.Commit();
+                    }
+
                     sql = "DROP TABLE " + EscapedName;
-                    dropped = true;
                     count += Database.ExecuteNonQuery(sql);
+                    dropped = true;
                     sql = "ALTER TABLE " + tempTableName + " RENAME TO " + EscapedName;
                     count += Database.ExecuteNonQuery(sql);
+                    renamed = true;
 
                     if (options.SynchronizeIndices)
                     {
@@ -4698,8 +4724,12 @@ namespace SqlNado
                 {
                     if (!dropped)
                     {
-                        Database.DeleteTable(tempTableName);
+                        // we prefer to swallow a possible exception here
+                        Database.DeleteTable(tempTableName, false);
                     }
+                    else if (!renamed)
+                        throw new SqlNadoException("0030: Cannot synchronize schema for '" + Name + "' table. Table has been dropped but a copy of this table named '" + tempTableName + "' still exists.", e);
+
                     throw new SqlNadoException("0012: Cannot synchronize schema for '" + Name + "' table.", e);
                 }
                 return count;
@@ -6162,6 +6192,7 @@ namespace SqlNado
 
             Database = database;
             Index = -1;
+            UseTransactionForSchemaSynchronization = true;
         }
 
         public SQLiteDatabase Database { get; }
@@ -6171,6 +6202,7 @@ namespace SqlNado
         public virtual bool ObjectEventsDisabled { get; set; }
         public virtual SQLiteConflictResolution ConflictResolution { get; set; }
         public virtual bool UseTransaction { get; set; }
+        public virtual bool UseTransactionForSchemaSynchronization { get; set; }
         public virtual bool UseSavePoint { get; set; }
         public virtual Func<SQLiteObjectColumn, object, object> GetValueForBindFunc { get; set; }
         public virtual string SavePointName { get; protected internal set; }
@@ -6803,7 +6835,7 @@ namespace SqlNado
         public SQLiteBlob OpenBlob(string columnName, long rowId) => Database.OpenBlob(Name, columnName, rowId);
         public SQLiteBlob OpenBlob(string columnName, long rowId, SQLiteBlobOpenMode mode) => Database.OpenBlob(Name, columnName, rowId, mode);
 
-        public void Delete() => Database.DeleteTable(Name);
+        public void Delete(bool throwOnError = true) => Database.DeleteTable(Name, throwOnError);
 
         public SQLiteColumn GetColumn(string name)
         {
