@@ -9411,7 +9411,10 @@ namespace SqlNado.Utilities
             if (db != null)
             {
                 db.Dispose();
-                Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                if (DeleteOnDispose)
+                {
+                    Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                }
             }
         }
 
