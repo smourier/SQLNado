@@ -56,9 +56,7 @@ namespace SqlNado
                 table.Schema = typeAtt.Schema.Nullify();
             }
 
-            var attributes = EnumerateColumnAttributes().ToList();
-            attributes.Sort();
-
+            var attributes = EnumerateSortedColumnAttributes().ToList();
             var statementParameter = Expression.Parameter(typeof(SQLiteStatement), "statement");
             var optionsParameter = Expression.Parameter(typeof(SQLiteLoadOptions), "options");
             var instanceParameter = Expression.Parameter(typeof(object), "instance");
@@ -201,6 +199,21 @@ namespace SqlNado
                 if (att != null)
                     yield return att;
             }
+        }
+
+        protected virtual IReadOnlyList<SQLiteColumnAttribute> EnumerateSortedColumnAttributes()
+        {
+            var list = new List<SQLiteColumnAttribute>();
+            foreach (var att in EnumerateColumnAttributes())
+            {
+                if (list.Any(a => a.Name.EqualsIgnoreCase(att.Name)))
+                    continue;
+
+                list.Add(att);
+            }
+
+            list.Sort();
+            return list;
         }
 
         // see http://www.sqlite.org/datatype3.html

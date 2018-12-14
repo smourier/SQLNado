@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Globalization;
+using System.IO;
+using System.Threading;
 
 namespace SqlNado.Utilities
 {
     public static class Extensions
     {
+        public const int DefaultWrapSharingViolationsRetryCount = 10;
+        public const int DefaultWrapSharingViolationsWaitTime = 100;
+
         public static SQLiteObjectTable GetTable(this ISQLiteObject so)
         {
             if (so == null)
@@ -37,6 +42,54 @@ namespace SqlNado.Utilities
                 throw new ArgumentException(null, nameof(options));
 
             return new CultureStringComparer(compareInfo, options);
+        }
+
+        public delegate bool WrapSharingViolationsExceptionsCallback(IOException exception, int retryCount, int maxRetryCount, int waitTime);
+
+        public static void WrapSharingViolations(Action action) => WrapSharingViolations(action, DefaultWrapSharingViolationsRetryCount, DefaultWrapSharingViolationsWaitTime);
+        public static void WrapSharingViolations(Action action, int maxRetryCount, int waitTime) => WrapSharingViolations(action, null, maxRetryCount, waitTime);
+        public static void WrapSharingViolations(Action action, WrapSharingViolationsExceptionsCallback exceptionsCallback, int maxRetryCount, int waitTime)
+        {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
+
+            for (int i = 0; i < maxRetryCount; i++)
+            {
+                try
+                {
+                    action();
+                    return;
+                }
+                catch (IOException ioe)
+                {
+                    if (IsSharingViolation(ioe) && i < (maxRetryCount - 1))
+                    {
+                        bool wait = true;
+                        if (exceptionsCallback != null)
+                        {
+                            wait = exceptionsCallback(ioe, i, maxRetryCount, waitTime);
+                        }
+
+                        if (wait)
+                        {
+                            Thread.Sleep(waitTime);
+                        }
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
+
+        public static bool IsSharingViolation(IOException exception)
+        {
+            if (exception == null)
+                throw new ArgumentNullException(nameof(exception));
+
+            const int ERROR_SHARING_VIOLATION = unchecked((int)0x80070020);
+            return exception.HResult == ERROR_SHARING_VIOLATION;
         }
 
         private class CultureStringComparer : StringComparer

@@ -11,7 +11,7 @@ namespace SqlNado
         private readonly List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
         private readonly List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
         private static Random _random = new Random(Environment.TickCount);
-        internal const string TempTablePrefix = "__temp";
+        internal const string _tempTablePrefix = "__temp";
 
         public SQLiteObjectTable(SQLiteDatabase database, string name)
         {
@@ -621,7 +621,7 @@ namespace SqlNado
                 // SQLite does not support ALTER or DROP column.
                 // Note this may fail depending on column unicity, constraint violation, etc.
                 // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
-                string tempTableName = TempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
+                string tempTableName = _tempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
                 sql = GetCreateSql(tempTableName);
                 count += Database.ExecuteNonQuery(sql);
                 bool dropped = false;

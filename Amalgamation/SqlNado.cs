@@ -852,8 +852,11 @@ namespace SqlNado
         public bool EnforceForeignKeys { get => ExecuteScalar<bool>("PRAGMA foreign_keys"); set => ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); }
         public int BusyTimeout { get => ExecuteScalar<int>("PRAGMA busy_timeout"); set => ExecuteNonQuery("PRAGMA busy_timeout=" + value); }
         public int CacheSize { get => ExecuteScalar<int>("PRAGMA cache_size"); set => ExecuteNonQuery("PRAGMA cache_size=" + value); }
+        public int PageSize { get => ExecuteScalar<int>("PRAGMA page_size"); set => ExecuteNonQuery("PRAGMA page_size=" + value); }
         public SQLiteSynchronousMode SynchronousMode { get => ExecuteScalar<SQLiteSynchronousMode>("PRAGMA synchronous"); set => ExecuteNonQuery("PRAGMA synchronous=" + value); }
         public SQLiteJournalMode JournalMode { get => ExecuteScalar<SQLiteJournalMode>("PRAGMA journal_mode"); set => ExecuteNonQuery("PRAGMA journal_mode=" + value); }
+        public SQLiteLockingMode LockingMode { get => ExecuteScalar<SQLiteLockingMode>("PRAGMA locking_mode"); set => ExecuteNonQuery("PRAGMA locking_mode=" + value); }
+        public SQLiteTempStore TempStore { get => ExecuteScalar<SQLiteTempStore>("PRAGMA temp_store"); set => ExecuteNonQuery("PRAGMA temp_store=" + value); }
         public int DataVersion => ExecuteScalar<int>("PRAGMA data_version");
         public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
         public IEnumerable<string> Collations => LoadObjects("PRAGMA collation_list").Select(row => (string)row[1]);
@@ -1119,7 +1122,7 @@ namespace SqlNado
 
         public virtual void DeleteTempTables(bool throwOnError = true)
         {
-            foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable.TempTablePrefix)).ToArray())
+            foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable._tempTablePrefix)).ToArray())
             {
                 table.Delete(throwOnError);
             }
@@ -3656,6 +3659,15 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    public enum SQLiteLockingMode
+    {
+        Normal,
+        Exclusive
+    }
+}
+
+namespace SqlNado
+{
     public enum SQLiteObjectAction
     {
         Loading,
@@ -4077,7 +4089,7 @@ namespace SqlNado
         private readonly List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
         private readonly List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
         private static Random _random = new Random(Environment.TickCount);
-        internal const string TempTablePrefix = "__temp";
+        internal const string _tempTablePrefix = "__temp";
 
         public SQLiteObjectTable(SQLiteDatabase database, string name)
         {
@@ -4687,7 +4699,7 @@ namespace SqlNado
                 // SQLite does not support ALTER or DROP column.
                 // Note this may fail depending on column unicity, constraint violation, etc.
                 // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
-                string tempTableName = TempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
+                string tempTableName = _tempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
                 sql = GetCreateSql(tempTableName);
                 count += Database.ExecuteNonQuery(sql);
                 bool dropped = false;
@@ -4802,9 +4814,7 @@ namespace SqlNado
                 table.Schema = typeAtt.Schema.Nullify();
             }
 
-            var attributes = EnumerateColumnAttributes().ToList();
-            attributes.Sort();
-
+            var attributes = EnumerateSortedColumnAttributes().ToList();
             var statementParameter = Expression.Parameter(typeof(SQLiteStatement), "statement");
             var optionsParameter = Expression.Parameter(typeof(SQLiteLoadOptions), "options");
             var instanceParameter = Expression.Parameter(typeof(object), "instance");
@@ -4947,6 +4957,21 @@ namespace SqlNado
                 if (att != null)
                     yield return att;
             }
+        }
+
+        protected virtual IReadOnlyList<SQLiteColumnAttribute> EnumerateSortedColumnAttributes()
+        {
+            var list = new List<SQLiteColumnAttribute>();
+            foreach (var att in EnumerateColumnAttributes())
+            {
+                if (list.Any(a => a.Name.EqualsIgnoreCase(att.Name)))
+                    continue;
+
+                list.Add(att);
+            }
+
+            list.Sort();
+            return list;
         }
 
         // see http://www.sqlite.org/datatype3.html
@@ -6928,6 +6953,16 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    public enum SQLiteTempStore
+    {
+        Default,
+        File,
+        Memory
+    }
+}
+
+namespace SqlNado
+{
     public sealed class SQLiteValue
     {
         internal SQLiteValue(IntPtr handle)
@@ -8872,6 +8907,9 @@ namespace SqlNado.Utilities
 {
     public static class Extensions
     {
+        public const int DefaultWrapSharingViolationsRetryCount = 10;
+        public const int DefaultWrapSharingViolationsWaitTime = 100;
+
         public static SQLiteObjectTable GetTable(this ISQLiteObject so)
         {
             if (so == null)
@@ -8904,6 +8942,54 @@ namespace SqlNado.Utilities
                 throw new ArgumentException(null, nameof(options));
 
             return new CultureStringComparer(compareInfo, options);
+        }
+
+        public delegate bool WrapSharingViolationsExceptionsCallback(IOException exception, int retryCount, int maxRetryCount, int waitTime);
+
+        public static void WrapSharingViolations(Action action) => WrapSharingViolations(action, DefaultWrapSharingViolationsRetryCount, DefaultWrapSharingViolationsWaitTime);
+        public static void WrapSharingViolations(Action action, int maxRetryCount, int waitTime) => WrapSharingViolations(action, null, maxRetryCount, waitTime);
+        public static void WrapSharingViolations(Action action, WrapSharingViolationsExceptionsCallback exceptionsCallback, int maxRetryCount, int waitTime)
+        {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
+
+            for (int i = 0; i < maxRetryCount; i++)
+            {
+                try
+                {
+                    action();
+                    return;
+                }
+                catch (IOException ioe)
+                {
+                    if (IsSharingViolation(ioe) && i < (maxRetryCount - 1))
+                    {
+                        bool wait = true;
+                        if (exceptionsCallback != null)
+                        {
+                            wait = exceptionsCallback(ioe, i, maxRetryCount, waitTime);
+                        }
+
+                        if (wait)
+                        {
+                            Thread.Sleep(waitTime);
+                        }
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
+
+        public static bool IsSharingViolation(IOException exception)
+        {
+            if (exception == null)
+                throw new ArgumentNullException(nameof(exception));
+
+            const int ERROR_SHARING_VIOLATION = unchecked((int)0x80070020);
+            return exception.HResult == ERROR_SHARING_VIOLATION;
         }
 
         private class CultureStringComparer : StringComparer
@@ -9225,6 +9311,456 @@ namespace SqlNado.Utilities
                     LineHandled(db);
                 }
                 while (true);
+            }
+        }
+    }
+}
+
+namespace SqlNado.Utilities
+{
+    public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
+    {
+        private SQLiteDatabase _database;
+        private readonly SQLiteLoadOptions _loadKeysOptions;
+        private readonly SQLiteLoadOptions _loadTypedValuesOptions;
+        private readonly SQLiteLoadOptions _loadValuesOptions;
+
+        public PersistentDictionary(string filePath = null, SQLiteOpenOptions options = SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
+        {
+            IsTypedValue = typeof(Tv) == typeof(object);
+            DeleteOnDispose = filePath == null;
+
+            filePath = filePath ?? CreateTempFilePath();
+
+            _database = new SQLiteDatabase(filePath, options);
+            _database.EnableStatementsCache = true;
+            _database.JournalMode = SQLiteJournalMode.Off;
+            _database.SynchronousMode = SQLiteSynchronousMode.Off;
+            _database.LockingMode = SQLiteLockingMode.Exclusive;
+
+            _loadKeysOptions = new SQLiteLoadOptions(_database);
+            _loadKeysOptions.GetInstanceFunc = (t, s, o) => s.GetColumnString(0);
+
+            _loadTypedValuesOptions = new SQLiteLoadOptions(_database);
+            _loadTypedValuesOptions.GetInstanceFunc = (t, s, o) => new Tuple<string, string>(s.GetColumnString(0), s.GetColumnString(1));
+
+            _loadValuesOptions = new SQLiteLoadOptions(_database);
+            _loadValuesOptions.GetInstanceFunc = (t, s, o) => s.GetColumnValue(0);
+
+            if (IsTypedValue)
+            {
+                _database.SynchronizeSchema<TypedEntry>();
+            }
+            else
+            {
+                _database.SynchronizeSchema<Entry>();
+            }
+        }
+
+        public SQLiteDatabase Database => _database;
+        public bool DeleteOnDispose { get; set; }
+        private bool IsTypedValue { get; }
+
+        protected SQLiteDatabase CheckDisposed()
+        {
+            var db = _database;
+            if (db == null)
+                throw new ObjectDisposedException(nameof(Database));
+
+            return db;
+        }
+
+        public virtual bool IsReadOnly => CheckDisposed().OpenOptions.HasFlag(SQLiteOpenOptions.SQLITE_OPEN_READONLY);
+        public virtual int Count => IsTypedValue ? CheckDisposed().Count<TypedEntry>() : CheckDisposed().Count<Entry>();
+        public virtual ICollection<Tk> Keys
+        {
+            get
+            {
+                string tableName = IsTypedValue ? nameof(TypedEntry) : nameof(Entry);
+                var db = CheckDisposed();
+                var keys = CheckDisposed().Load<Tk>("SELECT " + nameof(Entry.Key) + " FROM " + tableName, _loadKeysOptions).ToArray();
+                return keys;
+            }
+        }
+
+        public virtual ICollection<Tv> Values
+        {
+            get
+            {
+                if (IsTypedValue)
+                {
+                    var list = new List<Tv>();
+                    foreach (var tuple in CheckDisposed().Load<Tuple<string, string>>("SELECT " + nameof(TypedEntry.Value) + ", " + nameof(TypedEntry.TypeName) + " FROM " + nameof(TypedEntry), _loadTypedValuesOptions))
+                    {
+                        var value = ConvertToValue(tuple.Item1, tuple.Item2);
+                        list.Add((Tv)value);
+                    }
+                    return list;
+                }
+
+                var values = CheckDisposed().Load<Tv>("SELECT " + nameof(Entry.Value) + " FROM " + nameof(Entry), _loadValuesOptions).ToArray();
+                return values;
+            }
+        }
+
+        public override string ToString() => _database?.FilePath;
+
+        public virtual void Dispose()
+        {
+            var db = Interlocked.Exchange(ref _database, null);
+            if (db != null)
+            {
+                db.Dispose();
+                Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+            }
+        }
+
+        public virtual void Clear()
+        {
+            if (IsTypedValue)
+            {
+                CheckDisposed().DeleteAll<TypedEntry>();
+                return;
+            }
+            CheckDisposed().DeleteAll<Entry>();
+        }
+
+        public virtual bool ContainsKey(Tk key) => TryGetValue(key, out var value);
+
+        // note today we just support replace mode.
+        // if the key alreay exists, no error will be throw and the value will be replaced.
+        public virtual void Add(Tk key, Tv value)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            var db = CheckDisposed();
+            var options = db.CreateSaveOptions();
+            options.SynchronizeSchema = false;
+            if (IsTypedValue)
+            {
+                var svalue = ConvertToString(value, out var typeName);
+                db.Save(new TypedEntry(key, svalue, typeName), options);
+            }
+            else
+            {
+                db.Save(new Entry { Key = key, Value = value }, options);
+            }
+        }
+
+        public virtual bool Remove(Tk key)
+        {
+            if (key == null)
+                return false;
+
+            return CheckDisposed().Delete(new Entry { Key = key });
+        }
+
+        public virtual bool TryGetValue(Tk key, out Tv value)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            if (IsTypedValue)
+            {
+                var typed = CheckDisposed().LoadByPrimaryKey<TypedEntry>(key);
+                if (typed != null)
+                {
+                    value = (Tv)ConvertToValue(typed.Value, typed.TypeName);
+                    return true;
+                }
+            }
+            else
+            {
+                var entry = CheckDisposed().LoadByPrimaryKey<Entry>(key);
+                if (entry != null)
+                {
+                    value = entry.Value;
+                    return true;
+                }
+            }
+
+            value = default(Tv);
+            return false;
+        }
+
+        public virtual Tv this[Tk key]
+        {
+            get
+            {
+                if (key == null)
+                    throw new ArgumentNullException(nameof(key));
+
+                TryGetValue(key, out var value);
+                return value;
+            }
+            set
+            {
+                if (key == null)
+                    throw new ArgumentNullException(nameof(key));
+
+                Add(key, value);
+            }
+        }
+
+        public virtual IEnumerator<KeyValuePair<Tk, Tv>> GetEnumerator()
+        {
+            if (IsTypedValue)
+                return new TypedEntryEnumerator(this);
+
+            return new EntryEnumerator(this);
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        bool ICollection<KeyValuePair<Tk, Tv>>.Remove(KeyValuePair<Tk, Tv> item) => Remove(item.Key);
+        void ICollection<KeyValuePair<Tk, Tv>>.Add(KeyValuePair<Tk, Tv> item) => Add(item.Key, item.Value);
+        bool ICollection<KeyValuePair<Tk, Tv>>.Contains(KeyValuePair<Tk, Tv> item) => ContainsKey(item.Key);
+
+        public virtual void CopyTo(KeyValuePair<Tk, Tv>[] array, int arrayIndex)
+        {
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
+
+            int i = 0;
+            if (IsTypedValue)
+            {
+                foreach (var entry in CheckDisposed().LoadAll<TypedEntry>())
+                {
+                    if ((arrayIndex + i) >= array.Length)
+                        return;
+
+                    var value = (Tv)ConvertToValue(entry.Value, entry.TypeName);
+                    array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key, value);
+                    i++;
+                }
+                return;
+            }
+
+            foreach (var entry in CheckDisposed().LoadAll<Entry>())
+            {
+                if ((arrayIndex + i) >= array.Length)
+                    return;
+
+                array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key, entry.Value);
+                i++;
+            }
+        }
+
+        public virtual string ConvertToString(object input, out string typeName)
+        {
+            if (input == null || Convert.IsDBNull(input))
+            {
+                typeName = null;
+                return null;
+            }
+
+            var type = input.GetType();
+            if (type.IsEnum)
+            {
+                typeName = type.AssemblyQualifiedName;
+                return Conversions.EnumToUInt64(input).ToString();
+            }
+
+            var tc = Type.GetTypeCode(type);
+            switch (tc)
+            {
+                case TypeCode.Empty:
+                    typeName = null;
+                    return null;
+
+                case TypeCode.String:
+                    typeName = null;
+                    return (string)input;
+
+                case TypeCode.Object:
+                    if (type == typeof(byte[]))
+                    {
+                        typeName = ((int)TypeCodeEx.ByteArray).ToString();
+                        return Conversions.ToHexa((byte[])input);
+                    }
+
+                    if (type == typeof(Guid))
+                    {
+                        typeName = ((int)TypeCodeEx.Guid).ToString();
+                        return ((Guid)input).ToString("N");
+                    }
+
+                    if (type == typeof(TimeSpan))
+                    {
+                        typeName = ((int)TypeCodeEx.TimeSpan).ToString();
+                        return ((TimeSpan)input).ToString();
+                    }
+
+                    if (type == typeof(DateTimeOffset))
+                    {
+                        typeName = ((int)TypeCodeEx.DateTimeOffset).ToString();
+                        return ((DateTimeOffset)input).ToString(CultureInfo.InvariantCulture);
+                    }
+
+                    // hardcode some others?
+
+                    typeName = type.AssemblyQualifiedName;
+                    return Conversions.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
+
+                default:
+                    typeName = ((int)tc).ToString();
+                    return Conversions.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
+            }
+        }
+
+        public virtual object ConvertToValue(string input, string typeName)
+        {
+            if (typeName == null)
+                return input;
+
+            if (!int.TryParse(typeName, out var i))
+            {
+                var type = Type.GetType(typeName, true);
+                if (type.IsEnum)
+                    return Conversions.ToEnum(input, type);
+
+                return Conversions.ChangeType(input, type, null, CultureInfo.InvariantCulture);
+            }
+
+            switch (i)
+            {
+                case (int)TypeCode.Boolean:
+                    return bool.Parse(input);
+
+                case (int)TypeCode.Byte:
+                    return byte.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.Char:
+                    return char.Parse(input);
+
+                case (int)TypeCode.DateTime:
+                    return DateTime.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.Decimal:
+                    return decimal.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.Double:
+                    return double.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.Int16:
+                    return short.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.Int32:
+                    return int.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.Int64:
+                    return long.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.SByte:
+                    return sbyte.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.Single:
+                    return float.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.UInt16:
+                    return ushort.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.UInt32:
+                    return uint.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCode.UInt64:
+                    return ulong.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCodeEx.ByteArray:
+                    return Conversions.ToBytes(input);
+
+                case (int)TypeCodeEx.DateTimeOffset:
+                    return DateTimeOffset.Parse(input, CultureInfo.InvariantCulture);
+
+                case (int)TypeCodeEx.Guid:
+                    return Guid.Parse(input);
+
+                case (int)TypeCodeEx.TimeSpan:
+                    return TimeSpan.Parse(input, CultureInfo.InvariantCulture);
+
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
+        private static string CreateTempFilePath() => Path.Combine(Path.GetTempPath(), "__pd" + Guid.NewGuid().ToString("N")) + ".db";
+
+        private class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
+        {
+            private IEnumerator<TypedEntry> _enumerator;
+            private PersistentDictionary<Tk, Tv> _dic;
+
+            public TypedEntryEnumerator(PersistentDictionary<Tk, Tv> dic)
+            {
+                _dic = dic;
+                _enumerator = _dic.CheckDisposed().LoadAll<TypedEntry>().GetEnumerator();
+            }
+
+            public KeyValuePair<Tk, Tv> Current
+            {
+                get
+                {
+                    var value = _dic.ConvertToValue(_enumerator.Current.Value, _enumerator.Current.TypeName);
+                    return new KeyValuePair<Tk, Tv>(_enumerator.Current.Key, (Tv)value);
+                }
+            }
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose() => Interlocked.Exchange(ref _enumerator, null)?.Dispose();
+            public bool MoveNext() => _enumerator.MoveNext();
+            public void Reset() => _enumerator.Reset();
+        }
+
+        private class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
+        {
+            private IEnumerator<Entry> _enumerator;
+            private PersistentDictionary<Tk, Tv> _dic;
+
+            public EntryEnumerator(PersistentDictionary<Tk, Tv> dic)
+            {
+                _dic = dic;
+                _enumerator = _dic.CheckDisposed().LoadAll<Entry>().GetEnumerator();
+            }
+
+            public KeyValuePair<Tk, Tv> Current => new KeyValuePair<Tk, Tv>(_enumerator.Current.Key, _enumerator.Current.Value);
+            object IEnumerator.Current => Current;
+
+            public void Dispose() => Interlocked.Exchange(ref _enumerator, null)?.Dispose();
+            public bool MoveNext() => _enumerator.MoveNext();
+            public void Reset() => _enumerator.Reset();
+        }
+
+        private class Entry
+        {
+            [SQLiteColumn(IsPrimaryKey = true)]
+            public Tk Key { get; set; }
+            public Tv Value { get; set; }
+        }
+
+        private enum TypeCodeEx
+        {
+            // NOTE: TypeCode has values up to 18
+            Guid = 20,
+            TimeSpan,
+            DateTimeOffset,
+            ByteArray
+        }
+
+        private class TypedEntry : Entry
+        {
+            public new string Value { get; set; }
+            public string TypeName { get; set; }
+
+            public TypedEntry()
+            {
+            }
+
+            public TypedEntry(Tk key, string value, string typeName)
+            {
+                Key = key;
+                Value = value;
+                TypeName = typeName;
             }
         }
     }

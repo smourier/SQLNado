@@ -34,12 +34,73 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
-            using (var db = new SQLiteDatabase("memory"))
+            using (var dic = new PersistentDictionary<string, object>())
             {
-                var gl = new GeoIPLocation();
-                db.Save(gl);
+                int max = 10;
+                for (int i = 0; i < max; i++)
+                {
+                    dic[i.ToString()] = i;
+                }
+                Console.WriteLine(dic.Count);
+                Console.WriteLine(dic.Keys.Count);
+                Console.WriteLine(dic.Values.Count);
 
-                var tb = db.GetTable<GeoIPLocation>();
+                foreach (var k in dic.Values)
+                {
+                    Console.WriteLine(k);
+                }
+
+                foreach (var kv in dic)
+                {
+                    Console.WriteLine(kv.Key + "=" + kv.Value + " (" + (kv.Value != null ? kv.Value.GetType().Name : "<null>") + ")");
+                }
+
+                var rnd = new Random(Environment.TickCount);
+
+                for (int i = 0; i < max; i++)
+                {
+                    dic[i.ToString()] = rnd.Next(2) != 0;
+                }
+
+                foreach (var kv in dic)
+                {
+                    Console.WriteLine(kv.Key + "=" + kv.Value + " (" + (kv.Value != null ? kv.Value.GetType().Name : "<null>") + ")");
+                }
+            }
+
+            using (var dic = new PersistentDictionary<string, string>())
+            {
+                int max = 10;
+                for (byte i = 0; i < max; i++)
+                {
+                    dic[Guid.NewGuid().ToString()] = i.ToString();
+                }
+
+                Console.WriteLine(dic.Count);
+                Console.WriteLine(dic.Keys.Count);
+                Console.WriteLine(dic.Values.Count);
+
+                foreach (var k in dic.Values)
+                {
+                    Console.WriteLine(k);
+                }
+
+                foreach (var kv in dic)
+                {
+                    Console.WriteLine(kv.Key + "=" + kv.Value + " (" + (kv.Value != null ? kv.Value.GetType().Name : "<null>") + ")");
+                }
+
+                var rnd = new Random(Environment.TickCount);
+
+                for (byte i = 0; i < max; i++)
+                {
+                    dic[Guid.NewGuid().ToString()] = (rnd.Next(2) != 0).ToString();
+                }
+
+                foreach (var kv in dic)
+                {
+                    Console.WriteLine(kv.Key + "=" + kv.Value + " (" + (kv.Value != null ? kv.Value.GetType().Name : "<null>") + ")");
+                }
             }
         }
 
