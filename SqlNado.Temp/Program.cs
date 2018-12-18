@@ -36,6 +36,8 @@ namespace SqlNado.Temp
         {
             using (var dic = new PersistentDictionary<string, object>())
             {
+                dic.Database.CacheFlush();
+                return;
                 int max = 10;
                 for (int i = 0; i < max; i++)
                 {
