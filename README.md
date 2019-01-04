@@ -14,16 +14,15 @@ SQLNado supports all of SQLite features when using SQL commands, and also suppor
 * Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file.
 
 ## Requirements
-The only requirement is netstandard 2.0 or .NET Framework 4.6. It's 100% nuget free!. Note that it's only been validated on the Windows 32 and 64-bit platform. It requires the standard SQLite native dlls.
-Note that Windows and Azure web apps now ship a 'winsqlite3.dll' in %windir%\System32 (for 32-bit and 64-bit programs) so you don't even have to copy the sqlite.dll somewhere.
+The only requirement is netstandard 2.0 or .NET Framework 4.6. It's 100% dependency free! Well, of course it requires an SQLite native dlls corresponding to the bitness (x86 vs x64) of the executing app. Note that it's only been validated on the Windows 32 and 64-bit platforms.
 
 ## Installation
-If you're running on a recent Windows 10 or Windows Server 2016, there is a good chance that there's already a winsqlite3.dll present in \Windows\System32. If this is the case, you won't need to install any native dll!
-Note this works fine on Azure Web Apps, you don't need to add anything to be able to work with SQLite if you use SQLNado.
+If you're running on a recent Windows 10 or Windows Server 2016, there is a good chance that there's already a winsqlite3.dll present in \Windows\System32. If this is the case, you won't need to install any native dll, whatever the bitness (x86 vs x64) of your app is!
+Note this is true on Azure Web Apps, you don't need to add anything to be able to work with SQLite if you use SQLNado.
 
 Otherwise, you can use the sqlite dll files from https://www.sqlite.org/download.html. We recommend to rename the original sqlite.dll for 32 *and* 64-bit to sqlite.x86.dll and sqlite.x64.dll respectively.
 Or you can get them from here already renamed: https://github.com/smourier/SQLNado/tree/master/SqlNado.
-Once you have these iles, you can copy them aside your running executable (or *bin* directory for a web site).
+Once you have these files, you can copy them aside your running executable (or *bin* directory for a web site).
 
 SQLNado source code expects that and this way your program will be able to run as 32-bit or as 64-bit without having to change the native sqlite.dll. You won't have to build two setups either. 
 
