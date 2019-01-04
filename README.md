@@ -18,15 +18,24 @@ The only requirement is netstandard 2.0 or .NET Framework 4.6. It's 100% nuget f
 Note that Windows and Azure web apps now ship a 'winsqlite3.dll' in %windir%\System32 (for 32-bit and 64-bit programs) so you don't even have to copy the sqlite.dll somewhere.
 
 ## Installation
-We recommend to rename sqlite.dll for 32 *and* 64-bit to sqlite.x86.dll and sqlite.x64.dll. Once you've done that, you can copy both files aside your running executable (or *bin* directory for a web site). SQLNado source code expects that and this way your program will be able to run as 32-bit or as 64-bit without having to change the native sqlite.dll. You won't have to build two setups either. You can get native sqlite.dll from sqlite.org site or you can get them from here already renamed: https://github.com/smourier/SQLNado/tree/master/SqlNado
+If you're running on a recent Windows 10 or Windows Server 2016, there is a good chance that there's already a winsqlite3.dll present in \Windows\System32. If this is the case, you won't need to install any native dll!
+Note this works fine on Azure Web Apps, you don't need to add anything to be able to work with SQLite if you use SQLNado.
 
-If you don't like all this, you can just copy the corresponding standard sqlite.dll aside your running executable also, but make sure you use the proper 32 or 64-bit version.
+Otherwise, you can use the sqlite dll files from https://www.sqlite.org/download.html. We recommend to rename the original sqlite.dll for 32 *and* 64-bit to sqlite.x86.dll and sqlite.x64.dll respectively.
+Or you can get them from here already renamed: https://github.com/smourier/SQLNado/tree/master/SqlNado.
+Once you have these iles, you can copy them aside your running executable (or *bin* directory for a web site).
 
-## Amalgamation (or "So, where is the Nuget, Dude?")
-SQLNado is currently not provided as a Nuget (this may change someday if required).
-What we do instead is provide it as a single, 100% independent, C# file located here https://github.com/smourier/SQLNado/tree/master/Amalgamation
+SQLNado source code expects that and this way your program will be able to run as 32-bit or as 64-bit without having to change the native sqlite.dll. You won't have to build two setups either. 
+
+If you don't like all this and want to keep the original SQLite dll untouched, you can just copy the corresponding standard sqlite.dll aside your running executable also, but make sure you use the proper 32 or 64-bit version.
+
+## Amalgamation
+Although SQLNado can be used as a Nuget, we also provide it as a single, 100% independent, C# file located here https://github.com/smourier/SQLNado/tree/master/Amalgamation
 
 The amalgamation contains everything an application needs to embed SQLNado. Combining all the code for SQLNado into one big file makes it easier to deploy — there is just one file to keep track of (yeah, I borrowed that phrase from SQLite's site https://www.sqlite.org/amalgamation.html page because it's cool)
+
+## Nuget
+Due to popular request, SQLNado is now also provided as a Nuget. You can download here from https://www.nuget.org/packages/SqlNado/
 
 ## Get Started
 Here is a simple Console App that should get you started:

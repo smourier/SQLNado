@@ -1068,7 +1068,8 @@ namespace SqlNado
         public void LogInfo(object value, [CallerMemberName] string methodName = null) => Log(TraceLevel.Info, value, methodName);
         public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null) => Logger?.Log(level, value, methodName);
 
-        public void Vacuum() => ExecuteNonQuery("VACUUM");
+        public virtual void Vacuum() => ExecuteNonQuery("VACUUM");
+        public virtual void CacheFlush() => CheckError(_sqlite3_db_cacheflush(CheckDisposed()));
 
         public bool CheckIntegrity() => CheckIntegrity(100).FirstOrDefault().EqualsIgnoreCase("ok");
         public IEnumerable<string> CheckIntegrity(int maximumErrors) => LoadObjects("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string)o[0]);
@@ -2452,6 +2453,7 @@ namespace SqlNado
             _sqlite3_blob_write = LoadProc<sqlite3_blob_write>();
             _sqlite3_collation_needed16 = LoadProc<sqlite3_collation_needed16>();
             _sqlite3_create_collation16 = LoadProc<sqlite3_create_collation16>();
+            _sqlite3_db_cacheflush = LoadProc<sqlite3_db_cacheflush>();
             _sqlite3_table_column_metadata = LoadProc<sqlite3_table_column_metadata>();
             _sqlite3_create_function16 = LoadProc<sqlite3_create_function16>();
             _sqlite3_value_blob = LoadProc<sqlite3_value_blob>();
@@ -2710,6 +2712,12 @@ namespace SqlNado
 #endif
         internal delegate SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
         internal static sqlite3_blob_write _sqlite3_blob_write;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        private delegate SQLiteErrorCode sqlite3_db_cacheflush(IntPtr db);
+        private static sqlite3_db_cacheflush _sqlite3_db_cacheflush;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

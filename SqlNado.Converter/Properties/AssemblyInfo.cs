@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyProduct("SqlNado")]
-[assembly: AssemblyCopyright("Copyright © 2016-2018 Simon Mourier. All rights reserved.")]
+[assembly: AssemblyCopyright("Copyright © 2016-2019 Simon Mourier. All rights reserved.")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
 [assembly: Guid("bc168850-7857-4e42-acfe-789c6e3d373c")]
