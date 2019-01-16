@@ -76,13 +76,16 @@ public class Customer
 When you run it, you should see this on the console.
 ![Console Output](/Doc/Images/TableString1.png?raw=true)
 
+These nice table outputs are created automatically by the [TableString](/SqlNado/Utilities/TableString.cs) utility that's part of SQLNado (but the file can be copied in any other C# project as it's self-sufficient).
+
+`TableString` computes tables from any `IEnumerable` instance. It works also for any object, like the Customer table schema example, but for object that are not IEnumerable there's not extension method, you have to use TableString or TableStringExtensions). What's cool is it computes columns widths so can fit within the console bounds. When working with tables from a database, it's *very* useful.
+
 ## FTS custom tokenizer support
 SQLNado offers the possibility to use a custom FTS3 tokenizer to SQLite FTS engine. This allows you to code a stop word tokenizer for example. Here is a sample code:
 
 ```csharp
 using (var db = new SQLiteDatabase(":memory:"))
 {
-    db.Logger = new ConsoleLogger();
     // we must enable custom tokenizers
     db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, 1);
     var tok = new StopWordTokenizer(db);
@@ -168,7 +171,5 @@ public class StopWordTokenizer : SQLiteTokenizer
     }
 }
 ```    
-
-These nice table outputs are created automatically by the [TableString](/SqlNado/Utilities/TableString.cs) utility that's part of SQLNado (but the file can be copied in any other C# project as it's self-sufficient).
-
-`TableString` computes tables from any `IEnumerable` instance. It works also for any object, like the Customer table schema example, but for object that are not IEnumerable there's not extension method, you have to use TableString or TableStringExtensions). What's cool is it computes columns widths so can fit within the console bounds. When working with tables from a database, it's *very* useful.
+When you run it, you should see this on the console.
+![Console Output](/Doc/Images/Fts.png?raw=true)
