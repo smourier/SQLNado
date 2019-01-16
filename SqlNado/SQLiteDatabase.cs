@@ -528,7 +528,7 @@ namespace SqlNado
 #if DEBUG
                     Database.CheckError(_destroyFn(_tokenizer), true);
 #else
-                    Database.CheckError(_destroy(_tokenizer), false);
+                    Database.CheckError(_destroyFn(_tokenizer), false);
 #endif
                 }
 
