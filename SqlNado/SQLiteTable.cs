@@ -9,21 +9,79 @@ namespace SqlNado
     [SQLiteTable(Name = "sqlite_master")]
     public sealed class SQLiteTable
     {
+        private string _sql;
+
         internal SQLiteTable(SQLiteDatabase database)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
 
             Database = database;
+            TokenizedSql = new string[0];
         }
 
         [Browsable(false)] // remove from tablestring dumps
         public SQLiteDatabase Database { get; }
         public string Name { get; internal set; }
         public int RootPage { get; internal set; }
-        public string Sql { get; internal set; }
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public bool IsVirtual => Module != null;
+        public bool IsFts => SQLiteObjectTable.IsFtsModule(Module);
+        public string Module { get; private set; }
+        public string[] ModuleArguments { get; private set; }
+        public string[] TokenizedSql { get; private set; }
+
+        public string Sql
+        {
+            get => _sql;
+            internal set
+            {
+                if (_sql == value)
+                    return;
+
+                _sql = value;
+                if (string.IsNullOrWhiteSpace(Sql))
+                {
+                    TokenizedSql = new string[0];
+                    Module = null;
+                    ModuleArguments = null;
+                }
+                else
+                {
+                    var split = Sql.Split(' ', '\t', '\r', '\n');
+                    TokenizedSql = split.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                    for (int i = 0; i < TokenizedSql.Length; i++)
+                    {
+                        if (TokenizedSql[i].EqualsIgnoreCase("using") && (i + 1) < TokenizedSql.Length)
+                        {
+                            var usng = TokenizedSql[i + 1];
+                            int pos = usng.IndexOf('(');
+                            if (pos < 0)
+                            {
+                                Module = usng;
+                                ModuleArguments = null;
+                            }
+                            else
+                            {
+                                Module = usng.Substring(0, pos);
+                                int end = usng.LastIndexOf(')');
+                                string args;
+                                if (end < 0)
+                                {
+                                    args = usng.Substring(pos + 1);
+                                }
+                                else
+                                {
+                                    args = usng.Substring(pos + 1, end - pos - 1);
+                                }
+                                ModuleArguments = Conversions.SplitToList<string>(args, ',').ToArray();
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         public bool HasAutoRowId
         {
@@ -82,6 +140,46 @@ namespace SqlNado
                 }
                 return list;
             }
+        }
+
+        public IReadOnlyList<SQLiteColumn> HiddenColumns
+        {
+            get
+            {
+                List<SQLiteColumn> list;
+                if (!string.IsNullOrWhiteSpace(Name))
+                {
+                    var options = Database.CreateLoadOptions();
+                    options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
+                    var all = Database.Load<SQLiteColumn>("PRAGMA table_xinfo(" + EscapedName + ")", options).ToList();
+                    var pkColumns = all.Where(CanBeRowId).ToArray();
+                    if (pkColumns.Length == 1)
+                    {
+                        pkColumns[0].IsRowId = true;
+                    }
+
+                    foreach (var column in Columns)
+                    {
+                        var existing = all.FirstOrDefault(c => c.Name == column.Name);
+                        if (existing != null)
+                        {
+                            all.Remove(existing);
+                        }
+                    }
+                    return all;
+                }
+                else
+                {
+                    list = new List<SQLiteColumn>();
+                }
+                return list;
+            }
+        }
+
+        private class ColumnNameComparer : IEqualityComparer<SQLiteColumn>
+        {
+            public int GetHashCode(SQLiteColumn obj) => obj.GetHashCode();
+            public bool Equals(SQLiteColumn x, SQLiteColumn y) => x?.Name.EqualsIgnoreCase(y?.Name) == true;
         }
 
         public SQLiteTableIndex AutoPrimaryKey => Indices.FirstOrDefault(i => i.Origin.EqualsIgnoreCase("pk"));

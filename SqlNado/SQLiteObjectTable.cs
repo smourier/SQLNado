@@ -28,6 +28,8 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public string Name { get; }
         public string Schema { get; set; } // unused in SqlNado's SQLite
+        public string Module { get; set; }
+        public string[] ModuleArguments { get; set; }
         public virtual IReadOnlyList<SQLiteObjectColumn> Columns => _columns;
         public virtual IEnumerable<SQLiteObjectColumn> PrimaryKeyColumns => _columns.Where(c => c.IsPrimaryKey);
         public virtual IReadOnlyList<SQLiteObjectIndex> Indices => _indices;
@@ -36,7 +38,10 @@ namespace SqlNado
         public bool HasPrimaryKey => _columns.Any(c => c.IsPrimaryKey);
         public bool Exists => Database.TableExists(Name);
         public bool HasRowId => Columns.Any(c => c.IsRowId);
+        public bool IsVirtual => Module != null;
         public SQLiteTable Table => Database.GetTable(Name);
+        public virtual bool IsFts => IsFtsModule(Module);
+        public static bool IsFtsModule(string module) => module.EqualsIgnoreCase("fts3") || module.EqualsIgnoreCase("fts4") || module.EqualsIgnoreCase("fts5");
 
         [Browsable(false)]
         public virtual Action<SQLiteStatement, SQLiteLoadOptions, object> LoadAction { get; set; }
@@ -70,24 +75,44 @@ namespace SqlNado
 
         public virtual string GetCreateSql(string tableName)
         {
-            string sql = "CREATE TABLE " + SQLiteStatement.EscapeName(tableName) + " (";
-            sql += string.Join(",", Columns.Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
-
-            if (PrimaryKeyColumns.Count() > 1)
+            string sql = "CREATE ";
+            if (IsVirtual)
             {
-                string pk = string.Join(",", PrimaryKeyColumns.Select(c => c.EscapedName));
-                if (!string.IsNullOrWhiteSpace(pk))
-                {
-                    sql += ",PRIMARY KEY (" + pk + ")";
-                }
+                sql += "VIRTUAL ";
             }
 
-            sql += ")";
+            sql += "TABLE " + SQLiteStatement.EscapeName(tableName);
+
+            if (!IsVirtual)
+            {
+                sql += " (";
+                sql += string.Join(",", Columns.Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
+
+                if (PrimaryKeyColumns.Count() > 1)
+                {
+                    string pk = string.Join(",", PrimaryKeyColumns.Select(c => c.EscapedName));
+                    if (!string.IsNullOrWhiteSpace(pk))
+                    {
+                        sql += ",PRIMARY KEY (" + pk + ")";
+                    }
+                }
+
+                sql += ")";
+            }
 
             if (DisableRowId)
             {
                 // https://sqlite.org/withoutrowid.html
                 sql += " WITHOUT ROWID";
+            }
+
+            if (IsVirtual)
+            {
+                sql += " USING " + Module;
+                if (ModuleArguments != null && ModuleArguments.Length > 0)
+                {
+                    sql += "(" + string.Join(",", ModuleArguments) + ")";
+                }
             }
             return sql;
         }
@@ -573,7 +598,7 @@ namespace SqlNado
                 SQLiteOnErrorAction onError(SQLiteError e)
                 {
                     if (e.Code == SQLiteErrorCode.SQLITE_ERROR)
-                        return SQLiteOnErrorAction.Break;
+                        return SQLiteOnErrorAction.Unhandled;
 
                     // this can happen in multi-threaded scenarios
                     // kinda hacky but is there a smarter way? can SQLite be localized?
@@ -584,13 +609,24 @@ namespace SqlNado
                     return SQLiteOnErrorAction.Unhandled;
                 }
 
-                var c = Database.ExecuteNonQuery(sql, onError);
-                if (options.SynchronizeIndices)
+                using (var statement = Database.PrepareStatement(sql, onError))
                 {
-                    SynchronizeIndices(options);
+                    int c = 0;
+                    if (statement.PrepareError == SQLiteErrorCode.SQLITE_OK)
+                    {
+                        c = statement.StepOne(null);
+                    }
+
+                    if (options.SynchronizeIndices)
+                    {
+                        SynchronizeIndices(options);
+                    }
+                    return c;
                 }
-                return c;
             }
+
+            if (existing.IsFts) // can't alter vtable
+                return 0;
 
             var deleted = existing.Columns.ToList();
             var existingColumns = deleted.Select(c => c.EscapedName).ToArray();
@@ -607,7 +643,7 @@ namespace SqlNado
                 }
 
                 deleted.Remove(existingColumn);
-                if (column.IsSynchronized(existingColumn))
+                if (column.IsSynchronized(existingColumn, SQLiteObjectColumnSynchronizationOptions.None))
                     continue;
 
                 changed.Add(column);

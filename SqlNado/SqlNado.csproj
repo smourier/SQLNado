@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>1.0.1</Version>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <Version>1.2.0</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Simon Mourier</Authors>
     <Copyright>Copyright (c) 2017-2019 Simon Mourier. All rights reserved.</Copyright>
@@ -23,7 +23,12 @@ SQLNado supports all of SQLite features when using SQL commands, and also suppor
 * SQLite custom functions can be written in .NET
 * SQLite incremental BLOB I/O is exposed as a .NET Stream to avoid high memory consumption
 * SQLite collation support, including the possibility to add custom collations using .NET code
+* SQLite Full Text Search engine (FTS3/4) support, including the possibility to add custom FTS3 tokenizers using .NET code
 * Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file (supported on azure web apps).</Description>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

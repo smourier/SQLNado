@@ -34,6 +34,40 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
+            string name = "test.db";
+            if (File.Exists(name))
+            {
+                File.Delete(name);
+            }
+
+            using (var db = new SQLiteDatabase(name))
+            {
+                db.EnableStatementsCache = true;
+                using (var tok = db.GetTokenizer("unicode61", "remove_diacritics=0", "tokenchars=.=", "separators=X"))
+                {
+                    Console.WriteLine(string.Join(Environment.NewLine, tok.Tokenize("hello friends")));
+                    //GC.Collect(1000, GCCollectionMode.Forced, true);
+                }
+
+                var sp = new StopWordTokenizer(db);
+                Console.WriteLine(db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, 1));
+                db.SetTokenizer(sp);
+
+                db.ExecuteNonQuery("CREATE VIRTUAL TABLE tok1 USING fts3tokenize('" + sp.Name + "');");
+
+                for (int i = 0; i < 10; i++)
+                {
+                    var tokens = db.LoadRows(@"SELECT token, start, end, position FROM tok1 WHERE input=?;",
+                        "This is a test sentence.");
+                    Console.Write(tokens.ToArray().Length);
+                    //GC.Collect(1000, GCCollectionMode.Forced, true);
+                }
+                //Console.WriteLine(string.Join(Environment.NewLine, tokens.Select(t => t["token"])));
+            }
+        }
+
+        static void SafeMain3(string[] args)
+        {
             using (var dic = new PersistentDictionary<string, object>())
             {
                 dic.Database.CacheFlush();
@@ -544,5 +578,238 @@ namespace SqlNado.Temp
         {
             return true;
         }
+    }
+
+    public class StopWordTokenizer : SQLiteTokenizer
+    {
+        private readonly SQLiteTokenizer _unicode;
+        private int _disposed;
+        private readonly static HashSet<string> _words;
+
+        static StopWordTokenizer()
+        {
+            _words = new HashSet<string>();
+            using (var sr = new StringReader(_stopWords))
+            {
+                do
+                {
+                    var word = sr.ReadLine();
+                    if (word == null)
+                        break;
+
+                    _words.Add(word);
+                }
+                while (true);
+            }
+        }
+
+        public StopWordTokenizer(SQLiteDatabase database, params string[] arguments)
+            : base(database, "unicode_stopwords")
+        {
+            _unicode = database.GetUnicodeTokenizer(arguments);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            var disposed = Interlocked.Exchange(ref _disposed, 1);
+            if (disposed != 0)
+                return;
+
+            if (disposing)
+            {
+                _unicode.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
+        public override IEnumerable<SQLiteToken> Tokenize(string input)
+        {
+            foreach (var token in _unicode.Tokenize(input))
+            {
+                // test native mangling stuff...
+                GC.Collect(1000, GCCollectionMode.Forced, true);
+                if (!_words.Contains(token.Text))
+                {
+                    yield return token;
+                }
+            }
+        }
+
+        // from https://raw.githubusercontent.com/mongodb/mongo/master/src/mongo/db/fts/stop_words_english.txt
+        private const string _stopWords = @"a
+about
+above
+after
+again
+against
+all
+am
+an
+and
+any
+are
+aren't
+as
+at
+be
+because
+been
+before
+being
+below
+between
+both
+but
+by
+can't
+cannot
+could
+couldn't
+did
+didn't
+do
+does
+doesn't
+doing
+don't
+down
+during
+each
+few
+for
+from
+further
+had
+hadn't
+has
+hasn't
+have
+haven't
+having
+he
+he'd
+he'll
+he's
+her
+here
+here's
+hers
+herself
+him
+himself
+his
+how
+how's
+i
+i'd
+i'll
+i'm
+i've
+if
+in
+into
+is
+isn't
+it
+it's
+its
+itself
+let's
+me
+more
+most
+mustn't
+my
+myself
+no
+nor
+not
+of
+off
+on
+once
+only
+or
+other
+ought
+our
+ours
+ourselves
+out
+over
+own
+same
+shan't
+she
+she'd
+she'll
+she's
+should
+shouldn't
+so
+some
+such
+than
+that
+that's
+the
+their
+theirs
+them
+themselves
+then
+there
+there's
+these
+they
+they'd
+they'll
+they're
+they've
+this
+those
+through
+to
+too
+under
+until
+up
+very
+was
+wasn't
+we
+we'd
+we'll
+we're
+we've
+were
+weren't
+what
+what's
+when
+when's
+where
+where's
+which
+while
+who
+who's
+whom
+why
+why's
+with
+won't
+would
+wouldn't
+you
+you'd
+you'll
+you're
+you've
+your
+yours
+yourself
+yourselves";
     }
 }

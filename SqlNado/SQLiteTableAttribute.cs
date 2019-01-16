@@ -7,6 +7,8 @@ namespace SqlNado
     {
         public virtual string Name { get; set; }
         public virtual string Schema { get; set; } // unused in SqlNado's SQLite
+        public virtual string Module { get; set; } // virtual table
+        public virtual string ModuleArguments { get; set; } // virtual table
 
         // note every WITHOUT ROWID table must have a PRIMARY KEY
         public virtual bool WithoutRowId { get; set; }

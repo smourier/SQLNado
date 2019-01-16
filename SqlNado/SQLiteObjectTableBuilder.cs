@@ -54,6 +54,15 @@ namespace SqlNado
             if (typeAtt != null)
             {
                 table.Schema = typeAtt.Schema.Nullify();
+                table.Module = typeAtt.Module.Nullify();
+                if (typeAtt.Module != null)
+                {
+                    var args = Conversions.SplitToList<string>(typeAtt.ModuleArguments, ',');
+                    if (args != null && args.Count > 0)
+                    {
+                        table.ModuleArguments = args.ToArray();
+                    }
+                }
             }
 
             var attributes = EnumerateSortedColumnAttributes().ToList();

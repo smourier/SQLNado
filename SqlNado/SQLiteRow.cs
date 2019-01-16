@@ -29,26 +29,24 @@ namespace SqlNado
         public object[] Values { get; }
         public int Count => Names.Length;
 
+        public object this[string name]
+        {
+            get
+            {
+                if (name == null)
+                    throw new ArgumentNullException(nameof(name));
+
+                ((IDictionary<string, object>)this).TryGetValue(name, out object value);
+                return value;
+            }
+        }
+
         ICollection<string> IDictionary<string, object>.Keys => Names;
         ICollection<object> IDictionary<string, object>.Values => Values;
         bool ICollection<KeyValuePair<string, object>>.IsReadOnly => true;
 
         bool IDictionary<string, object>.ContainsKey(string key) => Names.Any(n => n.EqualsIgnoreCase(key));
-
-        object IDictionary<string, object>.this[string key]
-        {
-            get
-            {
-                if (key == null)
-                    throw new ArgumentNullException(nameof(key));
-
-                if (((IDictionary<string, object>)this).TryGetValue(key, out object value))
-                    return value;
-
-                throw new KeyNotFoundException();
-            }
-            set => throw new NotSupportedException();
-        }
+        object IDictionary<string, object>.this[string key] { get => this[key]; set => throw new NotSupportedException(); }
 
         bool ICollection<KeyValuePair<string, object>>.Contains(KeyValuePair<string, object> item)
         {
@@ -88,20 +86,38 @@ namespace SqlNado
             }
         }
 
-        bool IDictionary<string, object>.TryGetValue(string key, out object value)
+        public T GetValue<T>(string name, T defaultValue)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
+            if (!TryGetValue(name, out T value))
+                return defaultValue;
+
+            return value;
+        }
+
+        public bool TryGetValue<T>(string name, out T value)
+        {
+            if (!TryGetValue(name, out object obj))
+            {
+                value = default(T);
+                return false;
+            }
+
+            return Conversions.TryChangeType(obj, out value);
+        }
+
+        public bool TryGetValue(string name, out object value)
+        {
+            if (name == null)
+                throw new ArgumentNullException(nameof(name));
 
             for (int i = 0; i < Count; i++)
             {
-                if (key.EqualsIgnoreCase(Names[i]))
+                if (name.EqualsIgnoreCase(Names[i]))
                 {
                     value = Values[i];
                     return true;
                 }
             }
-
             value = null;
             return false;
         }

@@ -11,6 +11,7 @@ SQLNado supports all of SQLite features when using SQL commands, and also suppor
 * SQLite custom functions can be written in .NET
 * SQLite incremental BLOB I/O is exposed as a .NET Stream to avoid high memory consumption
 * SQLite  collation support, including the possibility to add custom collations using .NET code
+* SQLite Full Text Search engine (FTS3/4) support, including the possibility to add custom FTS3 tokenizers using .NET code
 * Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file.
 
 ## Requirements
@@ -75,6 +76,99 @@ public class Customer
 ```    
 When you run it, you should see this on the console.
 ![Console Output](/Doc/Images/TableString1.png?raw=true)
+
+## FTS custom tokenizer support
+SQLNado offers the possibility to use a custom FTS3 tokenizer to SQLite FTS engine. This allows you to code a stop word tokenizer for example. Here is a sample code:
+
+```csharp
+using (var db = new SQLiteDatabase(":memory:"))
+{
+    db.Logger = new ConsoleLogger();
+    // we must enable custom tokenizers
+    db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, 1);
+    var tok = new StopWordTokenizer(db);
+    db.SetTokenizer(tok);
+
+    // insert data as in SQLite exemple
+    db.Save(new Mail { docid = 1, Subject = "software feedback", Body = "found it too slow" });
+    db.Save(new Mail { docid = 2, Subject = "software feedback", Body = "no feedback" });
+    db.Save(new Mail { docid = 3, Subject = "slow lunch order", Body = "was a software problem" });
+
+    // check result
+    db.LoadAll<Mail>().ToTableString(Console.Out);
+
+    // this shall report the same as in SQLite example
+    db.Load<Mail>("WHERE Subject MATCH 'software'").ToTableString(Console.Out);
+    db.Load<Mail>("WHERE body MATCH 'feedback'").ToTableString(Console.Out);
+    db.Load<Mail>("WHERE mail MATCH 'software'").ToTableString(Console.Out);
+    db.Load<Mail>("WHERE mail MATCH 'slow'").ToTableString(Console.Out);
+
+    // this should display nothing as 'no' is a stop word
+    db.Load<Mail>("WHERE mail MATCH 'no'").ToTableString(Console.Out);
+}
+
+[SQLiteTable(Module = "fts3", ModuleArguments = nameof(Subject) + ", " + nameof(Body) + ", tokenize=" + StopWordTokenizer.TokenizerName)]
+public class Mail
+{
+    public long docid { get; set; }
+    public string Subject { get; set; }
+    public string Body { get; set; }
+
+    public override string ToString() => Subject + ":" + Body;
+}
+
+public class StopWordTokenizer : SQLiteTokenizer
+{
+    public const string TokenizerName = "unicode_stopwords";
+
+    private static readonly HashSet<string> _words;
+    private readonly SQLiteTokenizer _unicode;
+    private int _disposed;
+
+    static StopWordTokenizer()
+    {
+        // define some stop words here
+        _words = new HashSet<string> {
+            "a",
+            "it",
+            "no",
+            "too",
+            "was",
+            };
+    }
+
+    public StopWordTokenizer(SQLiteDatabase database, params string[] arguments)
+        : base(database, TokenizerName)
+    {
+        // we reuse SQLite's unicode61 tokenize
+        _unicode = database.GetUnicodeTokenizer(arguments);
+    }
+
+    public override IEnumerable<SQLiteToken> Tokenize(string input)
+    {
+        foreach (var token in _unicode.Tokenize(input))
+        {
+            if (!_words.Contains(token.Text))
+                yield return token;
+        }
+    }
+
+    // we need this because SQLite's unicode61 tokenizer aggregates unmanaged resources
+    protected override void Dispose(bool disposing)
+    {
+        var disposed = Interlocked.Exchange(ref _disposed, 1);
+        if (disposed != 0)
+            return;
+
+        if (disposing)
+        {
+            _unicode.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+}
+```    
 
 These nice table outputs are created automatically by the [TableString](/SqlNado/Utilities/TableString.cs) utility that's part of SQLNado (but the file can be copied in any other C# project as it's self-sufficient).
 

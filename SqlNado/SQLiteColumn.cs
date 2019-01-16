@@ -54,6 +54,17 @@ namespace SqlNado
         public string Collation { get; private set; }
         [SQLiteColumn(Ignore = true)]
         public bool AutoIncrements { get; private set; }
+        [SQLiteColumn(Ignore = true)]
+        public SQLiteColumnAffinity Affinity
+        {
+            get
+            {
+                if (Table.IsFts && !SQLiteObjectColumn.IsFtsIdName(Name))
+                    return SQLiteColumnAffinity.TEXT;
+
+                return SQLiteObjectColumn.GetAffinity(Type);
+            }
+        }
 
         public override string ToString() => Name;
 

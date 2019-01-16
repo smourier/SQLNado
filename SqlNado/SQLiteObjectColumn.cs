@@ -68,6 +68,24 @@ namespace SqlNado
         public bool IsRowId { get; internal set; }
         internal bool CanBeRowId => IsPrimaryKey && DataType.EqualsIgnoreCase(SQLiteColumnType.INTEGER.ToString());
 
+        public virtual SQLiteColumnAffinity Affinity
+        {
+            get
+            {
+                if (Table.IsFts && !IsFtsIdName(Name))
+                    return SQLiteColumnAffinity.TEXT;
+
+                return GetAffinity(DataType);
+            }
+        }
+
+        // https://www.sqlite.org/rowidtable.html
+        public static bool IsRowIdName(string name) => name.EqualsIgnoreCase("rowid") ||
+                name.EqualsIgnoreCase("oid") ||
+                name.EqualsIgnoreCase("_oid_");
+
+        public static bool IsFtsIdName(string name) => name.EqualsIgnoreCase("docid") || IsRowIdName(name);
+
         public static bool AreCollationsEqual(string collation1, string collation2)
         {
             if (collation1 == collation2)
@@ -82,7 +100,29 @@ namespace SqlNado
             return false;
         }
 
-        public virtual bool IsSynchronized(SQLiteColumn column)
+        public static SQLiteColumnAffinity GetAffinity(string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName) ||
+                typeName.IndexOf("blob", StringComparison.OrdinalIgnoreCase) >= 0)
+                return SQLiteColumnAffinity.BLOB;
+
+            if (typeName.IndexOf("int", StringComparison.OrdinalIgnoreCase) >= 0)
+                return SQLiteColumnAffinity.INTEGER;
+
+            if (typeName.IndexOf("char", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                typeName.IndexOf("clob", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                typeName.IndexOf("text", StringComparison.OrdinalIgnoreCase) >= 0)
+                return SQLiteColumnAffinity.TEXT;
+
+            if (typeName.IndexOf("real", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                typeName.IndexOf("floa", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                typeName.IndexOf("doub", StringComparison.OrdinalIgnoreCase) >= 0)
+                return SQLiteColumnAffinity.REAL;
+
+            return SQLiteColumnAffinity.NUMERIC;
+        }
+
+        public virtual bool IsSynchronized(SQLiteColumn column, SQLiteObjectColumnSynchronizationOptions options)
         {
             if (column == null)
                 throw new ArgumentNullException(nameof(column));
@@ -121,8 +161,16 @@ namespace SqlNado
             if (AutoIncrements != column.AutoIncrements)
                 return false;
 
-            if (!DataType.EqualsIgnoreCase(column.Type))
-                return false;
+            if (options.HasFlag(SQLiteObjectColumnSynchronizationOptions.CheckDataType))
+            {
+                if (!DataType.EqualsIgnoreCase(column.Type))
+                    return false;
+            }
+            else
+            {
+                if (Affinity != column.Affinity)
+                    return false;
+            }
 
             return true;
         }

@@ -14,7 +14,7 @@ namespace SqlNado
         private IntPtr _handle;
         internal bool _realDispose = true;
         internal int _locked;
-        private static readonly byte[] ZeroBytes = new byte[0];
+        private static readonly byte[] _zeroBytes = new byte[0];
         private Dictionary<string, int> _columnsIndices;
         private string[] _columnsNames;
 
@@ -32,15 +32,15 @@ namespace SqlNado
 
             if (prepareErrorHandler != null)
             {
-                var code = SQLiteDatabase._sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero);
-                if (code != SQLiteErrorCode.SQLITE_OK)
+                PrepareError = SQLiteDatabase._sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero);
+                if (PrepareError != SQLiteErrorCode.SQLITE_OK)
                 {
-                    var error = new SQLiteError(this, -1, code);
+                    var error = new SQLiteError(this, -1, PrepareError);
                     var action = prepareErrorHandler(error);
                     if (action == SQLiteOnErrorAction.Break || action == SQLiteOnErrorAction.Continue)
                         return;
 
-                    database.CheckError(code, sql, true);
+                    database.CheckError(PrepareError, sql, true);
                 }
             }
             else
@@ -54,6 +54,7 @@ namespace SqlNado
         [Browsable(false)]
         public IntPtr Handle => _handle;
         public string Sql { get; }
+        public SQLiteErrorCode PrepareError { get; }
 
         public string[] ColumnsNames
         {
@@ -169,7 +170,7 @@ namespace SqlNado
                 else
                 {
                     Database.Log(TraceLevel.Verbose, "Index " + index + " as empty Byte[] from ISQLiteBlobObject");
-                    code = BindParameter(index, ZeroBytes);
+                    code = BindParameter(index, _zeroBytes);
                 }
             }
             else if (bindValue is SQLiteZeroBlob zb)
