@@ -14,8 +14,11 @@ namespace SqlNado.Utilities
 {
     public class TableString
     {
-        private const int ColumnBorderWidth = 1;
-        private const int AbsoluteMinimumColumnWidth = 1;
+        private static readonly Lazy<bool> _isRunningInKudu = new Lazy<bool>(() => Environment.GetEnvironmentVariables().Cast<DictionaryEntry>().Any(e => ((string)e.Key).IndexOf("kudu", StringComparison.OrdinalIgnoreCase) >= 0), true);
+        public static bool IsRunningInKudu => _isRunningInKudu.Value;
+
+        private const int _columnBorderWidth = 1;
+        private const int _absoluteMinimumColumnWidth = 1;
         private static Lazy<bool> _isConsoleValid = new Lazy<bool>(GetConsoleValidity, true);
         private static int _defaultMaximumWidth = ConsoleWindowWidth;
         private List<TableStringColumn> _columns = new List<TableStringColumn>();
@@ -39,7 +42,7 @@ namespace SqlNado.Utilities
             CanReduceCellPadding = true;
             IndentTabString = " ";
             TabString = "    ";
-            UseBuiltinStyle(TableStringStyle.BoxDrawingSingle);
+            UseBuiltinStyle(IsRunningInKudu ? TableStringStyle.Ascii : TableStringStyle.BoxDrawingSingle);
             CellPadding = new TableStringPadding(1, 0);
             MaximumWidth = GlobalMaximumWidth;
             MaximumRowHeight = 50;
@@ -66,12 +69,12 @@ namespace SqlNado.Utilities
             _columns.Add(column);
         }
 
-        public int Indent { get => _indent; set => _indent = Math.Max(0, Math.Min(value, MaximumWidth - (MinimumColumnWidth + 2 * ColumnBorderWidth))); }
+        public int Indent { get => _indent; set => _indent = Math.Max(0, Math.Min(value, MaximumWidth - (MinimumColumnWidth + 2 * _columnBorderWidth))); }
         public string IndentTabString { get; set; }
         public string TabString { get; set; }
-        public int MaximumWidth { get => _maximumWidth; set => _maximumWidth = Math.Max(value, AbsoluteMinimumColumnWidth + 2 * ColumnBorderWidth); }
+        public int MaximumWidth { get => _maximumWidth; set => _maximumWidth = Math.Max(value, _absoluteMinimumColumnWidth + 2 * _columnBorderWidth); }
         public int MaximumRowHeight { get => _maximumRowHeight; set => _maximumRowHeight = Math.Max(value, 1); }
-        public int MinimumColumnWidth { get => _minimumColumnWidth; set => _minimumColumnWidth = Math.Max(value, AbsoluteMinimumColumnWidth); }
+        public int MinimumColumnWidth { get => _minimumColumnWidth; set => _minimumColumnWidth = Math.Max(value, _absoluteMinimumColumnWidth); }
         public int MaximumByteArrayDisplayCount { get => _maximumByteArrayDisplayCount; set => _maximumByteArrayDisplayCount = Math.Max(value, 0); }
         public virtual IReadOnlyList<TableStringColumn> Columns => _columns;
         public virtual bool ThrowOnPropertyGetError { get; set; }
@@ -104,7 +107,7 @@ namespace SqlNado.Utilities
         public virtual ConsoleColor? DefaultForegroundColor { get => _defaultForegroundColor ?? GlobalForegroundColor; set => _defaultForegroundColor = value; }
         public virtual ConsoleColor? DefaultBackgroundColor { get => _defaultBackgroundColor ?? GlobalBackgroundColor; set => _defaultBackgroundColor = value; }
 
-        public static int GlobalMaximumWidth { get => _defaultMaximumWidth; set => _defaultMaximumWidth = Math.Max(value, AbsoluteMinimumColumnWidth); }
+        public static int GlobalMaximumWidth { get => _defaultMaximumWidth; set => _defaultMaximumWidth = Math.Max(value, _absoluteMinimumColumnWidth); }
         public static int ConsoleMaximumNumberOfColumns => new TableString { MaximumWidth = ConsoleWindowWidth }.MaximumNumberOfColumnsWithoutPadding;
         public static ConsoleColor? GlobalHeaderForegroundColor { get; set; }
         public static ConsoleColor? GlobalHeaderBackgroundColor { get; set; }
@@ -580,7 +583,7 @@ namespace SqlNado.Utilities
                     Columns[i].WidthWithoutPadding = Columns[i].WidthWithPadding - hp;
                 }
 
-                int borderWidth = ColumnBorderWidth + desiredPaddedColumnWidths.Length * ColumnBorderWidth;
+                int borderWidth = _columnBorderWidth + desiredPaddedColumnWidths.Length * _columnBorderWidth;
                 int maxWidth = MaximumWidth - Indent - borderWidth;
 
                 // this is a small trick. When we may be outputing to the console with another textwriter, 
