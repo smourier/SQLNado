@@ -872,6 +872,7 @@ namespace SqlNado
 
         [Browsable(false)]
         public IntPtr Handle => _handle;
+        public bool IsDisposed => _handle == IntPtr.Zero;
         public string FilePath { get; }
         public SQLiteOpenOptions OpenOptions { get; }
         public IReadOnlyDictionary<Type, SQLiteBindType> BindTypes => _bindTypes;
@@ -1900,7 +1901,12 @@ namespace SqlNado
             }
 
             var pk = instanceTable.GetPrimaryKey(instance);
-            string sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName + " WHERE " + fkCol.EscapedName + "=?";
+            string sql = "SELECT ";
+            if (options.RemoveDuplicates)
+            {
+                sql += "DISTINCT ";
+            }
+            sql += table.BuildColumnsStatement() + " FROM " + table.EscapedName + " WHERE " + fkCol.EscapedName + "=?";
 
             bool setProp = options.SetForeignKeyPropertyValue && fkCol.SetValueAction != null;
             foreach (var obj in Load<T>(sql, options, pk))
@@ -1949,7 +1955,13 @@ namespace SqlNado
             sql = sql.Nullify();
             if (sql == null || sql.StartsWith("WHERE", StringComparison.OrdinalIgnoreCase))
             {
-                string newsql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
+                string newsql = "SELECT ";
+                if (options?.RemoveDuplicates == true)
+                {
+                    newsql += "DISTINCT ";
+                }
+
+                newsql += table.BuildColumnsStatement() + " FROM " + table.EscapedName;
                 if (sql != null)
                 {
                     if (sql.Length > 0 && sql[0] != ' ')
@@ -2070,7 +2082,13 @@ namespace SqlNado
                 }
             }
 
-            string sql = "SELECT * FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
+            string sql = "SELECT";
+            if (options?.RemoveDuplicates == true)
+            {
+                sql += "DISTINCT ";
+            }
+
+            sql += "* FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
             var obj = Load(objectType, sql, options, keys).FirstOrDefault();
             if (obj == null && (options?.CreateIfNotLoaded).GetValueOrDefault())
             {
@@ -2120,7 +2138,13 @@ namespace SqlNado
 
             if (sql == null)
             {
-                sql = "SELECT " + table.BuildColumnsStatement() + " FROM " + table.EscapedName;
+                sql = "SELECT ";
+                if (options?.RemoveDuplicates == true)
+                {
+                    sql += "DISTINCT ";
+                }
+
+                sql += table.BuildColumnsStatement() + " FROM " + table.EscapedName;
             }
 
             options = options ?? CreateLoadOptions();
@@ -2695,10 +2719,10 @@ namespace SqlNado
             ExecuteNonQuery(sql);
         }
 
-        protected internal IntPtr CheckDisposed()
+        protected internal IntPtr CheckDisposed(bool throwOnError = true)
         {
             var handle = _handle;
-            if (handle == IntPtr.Zero)
+            if (handle == IntPtr.Zero && throwOnError)
                 throw new ObjectDisposedException(nameof(Handle));
 
             return handle;
@@ -4107,6 +4131,7 @@ namespace SqlNado
         public virtual bool CreateIfNotLoaded { get; set; }
         public virtual bool DontConvertPrimaryKey { get; set; }
         public virtual int MaximumRows { get; set; }
+        public virtual bool RemoveDuplicates { get; set; }
         public virtual bool TestTableExists { get; set; }
         public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
         public virtual Func<SQLiteError, SQLiteOnErrorAction> ErrorHandler { get; set; }
@@ -4121,6 +4146,8 @@ namespace SqlNado
             sb.AppendLine("ObjectEventsDisabled=" + ObjectEventsDisabled);
             sb.AppendLine("ObjectChangeEventsDisabled=" + ObjectChangeEventsDisabled);
             sb.AppendLine("MaximumRows=" + MaximumRows);
+            sb.AppendLine("RemoveDuplicates=" + RemoveDuplicates);
+            sb.AppendLine("TestTableExists=" + TestTableExists);
             return sb.ToString();
         }
     }
