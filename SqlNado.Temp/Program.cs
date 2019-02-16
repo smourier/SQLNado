@@ -42,6 +42,9 @@ namespace SqlNado.Temp
 
             using (var db = new SQLiteDatabase(name))
             {
+                Console.WriteLine(db.GetLimit(SQLiteLimit.SQLITE_LIMIT_FUNCTION_ARG));
+                Console.WriteLine(db.SetLimit(SQLiteLimit.SQLITE_LIMIT_FUNCTION_ARG, 122));
+                return;
                 db.EnableStatementsCache = true;
                 using (var tok = db.GetTokenizer("unicode61", "remove_diacritics=0", "tokenchars=.=", "separators=X"))
                 {

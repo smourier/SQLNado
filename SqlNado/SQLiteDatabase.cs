@@ -1960,6 +1960,11 @@ namespace SqlNado
             return ex;
         }
 
+        public int SetLimit(SQLiteLimit id, int newValue) => SetLimit((int)id, newValue);
+        public virtual int SetLimit(int id, int newValue) => _sqlite3_limit(CheckDisposed(), id, newValue);
+        public int GetLimit(SQLiteLimit id) => GetLimit((int)id);
+        public virtual int GetLimit(int id) => _sqlite3_limit(CheckDisposed(), id, -1);
+
         public static string GetErrorMessage(IntPtr db)
         {
             if (db == IntPtr.Zero)
@@ -2060,6 +2065,7 @@ namespace SqlNado
             _sqlite3_open_v2 = LoadProc<sqlite3_open_v2>();
             _sqlite3_close = LoadProc<sqlite3_close>();
             _sqlite3_errmsg16 = LoadProc<sqlite3_errmsg16>();
+            _sqlite3_limit = LoadProc<sqlite3_limit>();
             _sqlite3_finalize = LoadProc<sqlite3_finalize>();
             _sqlite3_column_count = LoadProc<sqlite3_column_count>();
             _sqlite3_bind_parameter_count = LoadProc<sqlite3_bind_parameter_count>();
@@ -2149,6 +2155,12 @@ namespace SqlNado
 #endif
         private delegate IntPtr sqlite3_errmsg16(IntPtr db);
         private static sqlite3_errmsg16 _sqlite3_errmsg16;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        private delegate int sqlite3_limit(IntPtr db, int id, int newVal);
+        private static sqlite3_limit _sqlite3_limit;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
