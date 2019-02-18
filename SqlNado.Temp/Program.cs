@@ -53,7 +53,7 @@ namespace SqlNado.Temp
                 }
 
                 var sp = new StopWordTokenizer(db);
-                Console.WriteLine(db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, 1));
+                Console.WriteLine(db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1));
                 db.SetTokenizer(sp);
 
                 db.ExecuteNonQuery("CREATE VIRTUAL TABLE tok1 USING fts3tokenize('" + sp.Name + "');");

@@ -787,6 +787,41 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    public enum SQLiteConfiguration
+    {
+        SQLITE_CONFIG_SINGLETHREAD = 1,
+        SQLITE_CONFIG_MULTITHREAD = 2,
+        SQLITE_CONFIG_SERIALIZED = 3,
+        //SQLITE_CONFIG_MALLOC = 4,
+        //SQLITE_CONFIG_GETMALLOC = 5,
+        //SQLITE_CONFIG_SCRATCH = 6,
+        //SQLITE_CONFIG_PAGECACHE = 7,
+        //SQLITE_CONFIG_HEAP = 8,
+        SQLITE_CONFIG_MEMSTATUS = 9,
+        //SQLITE_CONFIG_MUTEX = 10,
+        //SQLITE_CONFIG_GETMUTEX = 11,
+        SQLITE_CONFIG_LOOKASIDE = 13,
+        //SQLITE_CONFIG_PCACHE = 14,
+        //SQLITE_CONFIG_GETPCACHE = 15,
+        //SQLITE_CONFIG_LOG = 16,
+        SQLITE_CONFIG_URI = 17,
+        //SQLITE_CONFIG_PCACHE2 = 18,
+        //SQLITE_CONFIG_GETPCACHE2 = 19,
+        SQLITE_CONFIG_COVERING_INDEX_SCAN = 20,
+        //SQLITE_CONFIG_SQLLOG = 21,
+        SQLITE_CONFIG_MMAP_SIZE = 22,
+        SQLITE_CONFIG_WIN32_HEAPSIZE = 23,
+        //SQLITE_CONFIG_PCACHE_HDRSZ = 24,
+        //SQLITE_CONFIG_PMASZ = 25,
+        SQLITE_CONFIG_STMTJRNL_SPILL = 26,
+        SQLITE_CONFIG_SMALL_MALLOC = 27,
+        SQLITE_CONFIG_SORTERREF_SIZE = 28,
+        SQLITE_CONFIG_MEMDB_MAXSIZE = 29
+    }
+}
+
+namespace SqlNado
+{
     public enum SQLiteConflictResolution
     {
         Abort,
@@ -861,12 +896,13 @@ namespace SqlNado
         public static bool IsUsingWindowsRuntime { get; private set; }
         public static bool UseWindowsRuntime { get; set; } = true;
 
-        public static bool IsThreadSafe
+        public static bool CanBeThreadSafe => DefaultThreadingMode != SQLiteThreadingMode.SingleThreaded;
+        public static SQLiteThreadingMode DefaultThreadingMode
         {
             get
             {
                 HookNativeProcs();
-                return _sqlite3_threadsafe() > 0;
+                return (SQLiteThreadingMode)_sqlite3_threadsafe();
             }
         }
 
@@ -878,6 +914,17 @@ namespace SqlNado
         public IReadOnlyDictionary<Type, SQLiteBindType> BindTypes => _bindTypes;
         public SQLiteBindOptions BindOptions { get; }
         public bool EnforceForeignKeys { get => ExecuteScalar<bool>("PRAGMA foreign_keys"); set => ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); }
+        public bool DeferForeignKeys { get => ExecuteScalar<bool>("PRAGMA defer_foreign_keys"); set => ExecuteNonQuery("PRAGMA defer_foreign_keys=" + (value ? 1 : 0)); }
+        public bool ForeignKeys { get => ExecuteScalar<bool>("PRAGMA foreign_keys"); set => ExecuteNonQuery("PRAGMA foreign_keys=" + (value ? 1 : 0)); }
+        public bool ReadUncommited { get => ExecuteScalar<bool>("PRAGMA read_uncommitted"); set => ExecuteNonQuery("PRAGMA read_uncommitted=" + (value ? 1 : 0)); }
+        public bool RecursiveTriggers { get => ExecuteScalar<bool>("PRAGMA recursive_triggers"); set => ExecuteNonQuery("PRAGMA recursive_triggers=" + (value ? 1 : 0)); }
+        public bool ReverseUnorderedSelects { get => ExecuteScalar<bool>("PRAGMA reverse_unordered_selects"); set => ExecuteNonQuery("PRAGMA reverse_unordered_selects=" + (value ? 1 : 0)); }
+        public bool AutomaticIndex { get => ExecuteScalar<bool>("PRAGMA automatic_index"); set => ExecuteNonQuery("PRAGMA automatic_index=" + (value ? 1 : 0)); }
+        public bool CellSizeCheck { get => ExecuteScalar<bool>("PRAGMA cell_size_check"); set => ExecuteNonQuery("PRAGMA cell_size_check=" + (value ? 1 : 0)); }
+        public bool CheckpointFullFSync { get => ExecuteScalar<bool>("PRAGMA checkpoint_fullfsync"); set => ExecuteNonQuery("PRAGMA checkpoint_fullfsync=" + (value ? 1 : 0)); }
+        public bool FullFSync { get => ExecuteScalar<bool>("PRAGMA fullfsync"); set => ExecuteNonQuery("PRAGMA fullfsync=" + (value ? 1 : 0)); }
+        public bool IgnoreCheckConstraints { get => ExecuteScalar<bool>("PRAGMA ignore_check_constraints"); set => ExecuteNonQuery("PRAGMA ignore_check_constraints=" + (value ? 1 : 0)); }
+        public bool QueryOnly { get => ExecuteScalar<bool>("PRAGMA query_only"); set => ExecuteNonQuery("PRAGMA query_only=" + (value ? 1 : 0)); }
         public int BusyTimeout { get => ExecuteScalar<int>("PRAGMA busy_timeout"); set => ExecuteNonQuery("PRAGMA busy_timeout=" + value); }
         public int CacheSize { get => ExecuteScalar<int>("PRAGMA cache_size"); set => ExecuteNonQuery("PRAGMA cache_size=" + value); }
         public int PageSize { get => ExecuteScalar<int>("PRAGMA page_size"); set => ExecuteNonQuery("PRAGMA page_size=" + value); }
@@ -1429,13 +1476,74 @@ namespace SqlNado
         public void LogInfo(object value, [CallerMemberName] string methodName = null) => Log(TraceLevel.Info, value, methodName);
         public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null) => Logger?.Log(level, value, methodName);
 
+        public virtual void ShrinkMemory() => ExecuteNonQuery("PRAGMA shrink_memory");
         public virtual void Vacuum() => ExecuteNonQuery("VACUUM");
         public virtual void CacheFlush() => CheckError(_sqlite3_db_cacheflush(CheckDisposed()));
 
         public bool CheckIntegrity() => CheckIntegrity(100).FirstOrDefault().EqualsIgnoreCase("ok");
         public IEnumerable<string> CheckIntegrity(int maximumErrors) => LoadObjects("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string)o[0]);
 
-        public virtual object Configure(SQLiteDatabaseConfiguration configuration, params object[] arguments)
+        public static void EnableSharedCache(bool enable, bool throwOnError = true)
+        {
+            HookNativeProcs();
+            StaticCheckError(_sqlite3_enable_shared_cache(enable ? 1 : 0), throwOnError);
+        }
+
+        public static void Configure(SQLiteConfiguration configuration, bool throwOnError = true, params object[] arguments)
+        {
+            HookNativeProcs();
+            switch (configuration)
+            {
+                case SQLiteConfiguration.SQLITE_CONFIG_SINGLETHREAD:
+                case SQLiteConfiguration.SQLITE_CONFIG_MULTITHREAD:
+                case SQLiteConfiguration.SQLITE_CONFIG_SERIALIZED:
+                    StaticCheckError(_sqlite3_config_0(configuration), throwOnError);
+                    break;
+
+                case SQLiteConfiguration.SQLITE_CONFIG_MEMSTATUS:
+                case SQLiteConfiguration.SQLITE_CONFIG_COVERING_INDEX_SCAN:
+                case SQLiteConfiguration.SQLITE_CONFIG_URI:
+                case SQLiteConfiguration.SQLITE_CONFIG_STMTJRNL_SPILL:
+                case SQLiteConfiguration.SQLITE_CONFIG_SORTERREF_SIZE:
+                case SQLiteConfiguration.SQLITE_CONFIG_WIN32_HEAPSIZE:
+                case SQLiteConfiguration.SQLITE_CONFIG_SMALL_MALLOC:
+                    if (arguments == null)
+                        throw new ArgumentNullException(nameof(arguments));
+
+                    Check1(arguments);
+                    StaticCheckError(_sqlite3_config_2(configuration, Conversions.ChangeType<int>(arguments[0])), throwOnError);
+                    break;
+
+                case SQLiteConfiguration.SQLITE_CONFIG_LOOKASIDE:
+                    if (arguments == null)
+                        throw new ArgumentNullException(nameof(arguments));
+
+                    Check2(arguments);
+                    StaticCheckError(_sqlite3_config_4(configuration, Conversions.ChangeType<int>(arguments[0]), Conversions.ChangeType<int>(arguments[1])), throwOnError);
+                    break;
+
+                case SQLiteConfiguration.SQLITE_CONFIG_MMAP_SIZE:
+                    if (arguments == null)
+                        throw new ArgumentNullException(nameof(arguments));
+
+                    Check2(arguments);
+                    StaticCheckError(_sqlite3_config_3(configuration, Conversions.ChangeType<long>(arguments[0]), Conversions.ChangeType<long>(arguments[1])), throwOnError);
+                    break;
+
+                case SQLiteConfiguration.SQLITE_CONFIG_MEMDB_MAXSIZE:
+                    if (arguments == null)
+                        throw new ArgumentNullException(nameof(arguments));
+
+                    Check1(arguments);
+                    StaticCheckError(_sqlite3_config_1(configuration, Conversions.ChangeType<long>(arguments[0])), throwOnError);
+                    break;
+
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
+        public virtual object Configure(SQLiteDatabaseConfiguration configuration, bool throwOnError = true, params object[] arguments)
         {
             if (arguments == null)
                 throw new ArgumentNullException(nameof(arguments));
@@ -1452,35 +1560,42 @@ namespace SqlNado
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_TRIGGER_EQP:
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_RESET_DATABASE:
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_DEFENSIVE:
-                    Check0();
-                    CheckError(_sqlite3_db_config_0(CheckDisposed(), configuration, Conversions.ChangeType<int>(arguments[0]), out result));
+                    Check1(arguments);
+                    CheckError(_sqlite3_db_config_0(CheckDisposed(), configuration, Conversions.ChangeType<int>(arguments[0]), out result), throwOnError);
                     return result;
 
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_LOOKASIDE:
-                    Check3();
-                    CheckError(_sqlite3_db_config_1(CheckDisposed(), configuration, Conversions.ChangeType<IntPtr>(arguments[0]), Conversions.ChangeType<int>(arguments[1]), Conversions.ChangeType<int>(arguments[2])));
+                    Check3(arguments);
+                    CheckError(_sqlite3_db_config_1(CheckDisposed(), configuration, Conversions.ChangeType<IntPtr>(arguments[0]), Conversions.ChangeType<int>(arguments[1]), Conversions.ChangeType<int>(arguments[2])), throwOnError);
                     return null;
 
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_MAINDBNAME:
-                    Check0();
-                    CheckError(_sqlite3_db_config_2(CheckDisposed(), configuration, Conversions.ChangeType<string>(arguments[0])));
+                    Check1(arguments);
+                    CheckError(_sqlite3_db_config_2(CheckDisposed(), configuration, Conversions.ChangeType<string>(arguments[0])), throwOnError);
                     return null;
 
                 default:
                     throw new NotSupportedException();
             }
 
-            void Check0()
-            {
-                if (arguments.Length != 1)
-                    throw new ArgumentException(null, nameof(arguments));
-            }
+        }
 
-            void Check3()
-            {
-                if (arguments.Length != 3)
-                    throw new ArgumentException(null, nameof(arguments));
-            }
+        static void Check1(object[] arguments)
+        {
+            if (arguments.Length != 1)
+                throw new ArgumentException(null, nameof(arguments));
+        }
+
+        static void Check2(object[] arguments)
+        {
+            if (arguments.Length != 2)
+                throw new ArgumentException(null, nameof(arguments));
+        }
+
+        static void Check3(object[] arguments)
+        {
+            if (arguments.Length != 3)
+                throw new ArgumentException(null, nameof(arguments));
         }
 
         public SQLiteTable GetTable<T>() => GetObjectTable<T>()?.Table;
@@ -1841,7 +1956,27 @@ namespace SqlNado
             }
         }
 
-        public virtual void BeginTransaction() => ExecuteNonQuery("BEGIN TRANSACTION");
+        public virtual void BeginTransaction(SQLiteTransactionType type = SQLiteTransactionType.Deferred)
+        {
+            switch (type)
+            {
+                case SQLiteTransactionType.Exclusive:
+                    ExecuteNonQuery("BEGIN EXCLUSIVE TRANSACTION");
+                    break;
+
+                case SQLiteTransactionType.Immediate:
+                    ExecuteNonQuery("BEGIN IMMEDIATE TRANSACTION");
+                    break;
+
+                case SQLiteTransactionType.Deferred:
+                    ExecuteNonQuery("BEGIN TRANSACTION");
+                    break;
+
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
         public virtual void Commit() => ExecuteNonQuery("COMMIT");
         public virtual void Rollback() => ExecuteNonQuery("ROLLBACK");
 
@@ -2728,6 +2863,18 @@ namespace SqlNado
             return handle;
         }
 
+        internal static SQLiteException StaticCheckError(SQLiteErrorCode code, bool throwOnError)
+        {
+            if (code == SQLiteErrorCode.SQLITE_OK)
+                return null;
+
+            var ex = new SQLiteException(code);
+            if (throwOnError)
+                throw ex;
+
+            return ex;
+        }
+
         protected internal SQLiteException CheckError(SQLiteErrorCode code, [CallerMemberName] string methodName = null) => CheckError(code, null, true, methodName);
         protected internal SQLiteException CheckError(SQLiteErrorCode code, bool throwOnError, [CallerMemberName] string methodName = null) => CheckError(code, null, throwOnError, methodName);
         protected internal SQLiteException CheckError(SQLiteErrorCode code, string sql, [CallerMemberName] string methodName = null) => CheckError(code, sql, true, methodName);
@@ -2753,6 +2900,11 @@ namespace SqlNado
 
             return ex;
         }
+
+        public int SetLimit(SQLiteLimit id, int newValue) => SetLimit((int)id, newValue);
+        public virtual int SetLimit(int id, int newValue) => _sqlite3_limit(CheckDisposed(), id, newValue);
+        public int GetLimit(SQLiteLimit id) => GetLimit((int)id);
+        public virtual int GetLimit(int id) => _sqlite3_limit(CheckDisposed(), id, -1);
 
         public static string GetErrorMessage(IntPtr db)
         {
@@ -2854,6 +3006,7 @@ namespace SqlNado
             _sqlite3_open_v2 = LoadProc<sqlite3_open_v2>();
             _sqlite3_close = LoadProc<sqlite3_close>();
             _sqlite3_errmsg16 = LoadProc<sqlite3_errmsg16>();
+            _sqlite3_limit = LoadProc<sqlite3_limit>();
             _sqlite3_finalize = LoadProc<sqlite3_finalize>();
             _sqlite3_column_count = LoadProc<sqlite3_column_count>();
             _sqlite3_bind_parameter_count = LoadProc<sqlite3_bind_parameter_count>();
@@ -2884,6 +3037,12 @@ namespace SqlNado
             _sqlite3_db_config_0 = LoadProc<sqlite3_db_config_0>("sqlite3_db_config");
             _sqlite3_db_config_1 = LoadProc<sqlite3_db_config_1>("sqlite3_db_config");
             _sqlite3_db_config_2 = LoadProc<sqlite3_db_config_2>("sqlite3_db_config");
+            _sqlite3_config_0 = LoadProc<sqlite3_config_0>("sqlite3_config");
+            _sqlite3_config_1 = LoadProc<sqlite3_config_1>("sqlite3_config");
+            _sqlite3_config_2 = LoadProc<sqlite3_config_2>("sqlite3_config");
+            _sqlite3_config_3 = LoadProc<sqlite3_config_3>("sqlite3_config");
+            _sqlite3_config_4 = LoadProc<sqlite3_config_4>("sqlite3_config");
+            _sqlite3_enable_shared_cache = LoadProc<sqlite3_enable_shared_cache>();
             _sqlite3_blob_bytes = LoadProc<sqlite3_blob_bytes>();
             _sqlite3_blob_close = LoadProc<sqlite3_blob_close>();
             _sqlite3_blob_open = LoadProc<sqlite3_blob_open>();
@@ -2943,6 +3102,12 @@ namespace SqlNado
 #endif
         private delegate IntPtr sqlite3_errmsg16(IntPtr db);
         private static sqlite3_errmsg16 _sqlite3_errmsg16;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        private delegate int sqlite3_limit(IntPtr db, int id, int newVal);
+        private static sqlite3_limit _sqlite3_limit;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -3324,6 +3489,42 @@ namespace SqlNado
 #endif
         internal delegate int sqlite3_threadsafe();
         internal static sqlite3_threadsafe _sqlite3_threadsafe;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate SQLiteErrorCode sqlite3_enable_shared_cache(int i);
+        internal static sqlite3_enable_shared_cache _sqlite3_enable_shared_cache;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
+        internal static sqlite3_config_0 _sqlite3_config_0;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
+        internal static sqlite3_config_1 _sqlite3_config_1;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
+        internal static sqlite3_config_2 _sqlite3_config_2;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
+        internal static sqlite3_config_3 _sqlite3_config_3;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
+        internal static sqlite3_config_4 _sqlite3_config_4;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -4086,6 +4287,25 @@ namespace SqlNado
         Memory,
         Wal,
         Off
+    }
+}
+
+namespace SqlNado
+{
+    public enum SQLiteLimit
+    {
+        SQLITE_LIMIT_LENGTH = 0,
+        SQLITE_LIMIT_SQL_LENGTH = 1,
+        SQLITE_LIMIT_COLUMN = 2,
+        SQLITE_LIMIT_EXPR_DEPTH = 3,
+        SQLITE_LIMIT_COMPOUND_SELECT = 4,
+        SQLITE_LIMIT_VDBE_OP = 5,
+        SQLITE_LIMIT_FUNCTION_ARG = 6,
+        SQLITE_LIMIT_ATTACHED = 7,
+        SQLITE_LIMIT_LIKE_PATTERN_LENGTH = 8,
+        SQLITE_LIMIT_VARIABLE_NUMBER = 9,
+        SQLITE_LIMIT_TRIGGER_DEPTH = 10,
+        SQLITE_LIMIT_WORKER_THREADS = 11
     }
 }
 
@@ -7679,6 +7899,17 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    // SQLITE_THREADSAFE value
+    public enum SQLiteThreadingMode
+    {
+        SingleThreaded = 0, // totally unsafe for multithread
+        Serialized = 1, // safe for multithread
+        MultiThreaded = 2 // safe for multithread, except for database and statement uses
+    }
+}
+
+namespace SqlNado
+{
     public class SQLiteToken
     {
         public SQLiteToken(string text, int startOffset, int endOffset, int position)
@@ -7789,6 +8020,16 @@ namespace SqlNado
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+    }
+}
+
+namespace SqlNado
+{
+    public enum SQLiteTransactionType
+    {
+        Deferred,
+        Immediate,
+        Exclusive
     }
 }
 

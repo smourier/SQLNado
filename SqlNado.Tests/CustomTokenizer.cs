@@ -22,7 +22,7 @@ namespace SqlNado.Tests
                 }
 
                 var sp = new StopWordTokenizer(db);
-                Assert.AreEqual(1, db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, 1));
+                Assert.AreEqual(1, db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1));
 
                 db.SetTokenizer(sp);
                 db.ExecuteNonQuery("CREATE VIRTUAL TABLE tok1 USING fts3tokenize('" + sp.Name + "');");
@@ -39,7 +39,7 @@ namespace SqlNado.Tests
         {
             using (var db = new SQLiteDatabase(":memory:"))
             {
-                db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, 1);
+                db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1);
                 var tok = new StopWordTokenizer(db);
                 db.SetTokenizer(tok);
 
