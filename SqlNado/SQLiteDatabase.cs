@@ -1283,6 +1283,21 @@ namespace SqlNado
             if (options.TestTableExists && !TableExists<T>())
                 yield break;
 
+            if (options.Limit > 0 || options.Offset > 0)
+            {
+                var limit = options.Limit;
+                if (limit <= 0)
+                {
+                    limit = -1;
+                }
+
+                sql += " LIMIT " + limit;
+                if (options.Offset > 0)
+                {
+                    sql += " OFFSET " + options.Offset;
+                }
+            }
+
             using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
                 int index = 0;

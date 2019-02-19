@@ -34,6 +34,24 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
+            using (var db = new SQLiteDatabase(":memory:"))
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    var c = new Customer();
+                    c.Name = "name" + i;
+                    db.Save(c);
+                }
+
+                var op = db.CreateLoadOptions();
+                //op.Offset = 8;
+                op.Limit = 5;
+                db.LoadAll<Customer>(op).ToTableString(Console.Out);
+            }
+        }
+
+        static void SafeMain1(string[] args)
+        {
             string name = "test.db";
             if (File.Exists(name))
             {
@@ -42,10 +60,6 @@ namespace SqlNado.Temp
 
             using (var db = new SQLiteDatabase(name))
             {
-                Console.WriteLine(db.GetLimit(SQLiteLimit.SQLITE_LIMIT_FUNCTION_ARG));
-                Console.WriteLine(db.SetLimit(SQLiteLimit.SQLITE_LIMIT_FUNCTION_ARG, 122));
-                return;
-                db.EnableStatementsCache = true;
                 using (var tok = db.GetTokenizer("unicode61", "remove_diacritics=0", "tokenchars=.=", "separators=X"))
                 {
                     Console.WriteLine(string.Join(Environment.NewLine, tok.Tokenize("hello friends")));
@@ -569,8 +583,8 @@ namespace SqlNado.Temp
         //[SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
         public DateTime CreationDate { get; set; }
 
-        [SQLiteColumn(Ignore = true)]
-        public object[] PrimaryKey => new object[] { Id };
+        //[SQLiteColumn(Ignore = true)]
+        //public object[] PrimaryKey => new object[] { Id };
 
         public bool OnLoadAction(SQLiteObjectAction action, SQLiteStatement statement, SQLiteLoadOptions options)
         {

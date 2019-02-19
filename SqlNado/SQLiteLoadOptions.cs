@@ -19,6 +19,8 @@ namespace SqlNado
         public virtual bool CreateIfNotLoaded { get; set; }
         public virtual bool DontConvertPrimaryKey { get; set; }
         public virtual int MaximumRows { get; set; }
+        public virtual int Limit { get; set; }
+        public virtual int Offset { get; set; }
         public virtual bool RemoveDuplicates { get; set; }
         public virtual bool TestTableExists { get; set; }
         public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
@@ -31,8 +33,10 @@ namespace SqlNado
             var sb = new StringBuilder();
             sb.AppendLine("CreateIfNotLoaded=" + CreateIfNotLoaded);
             sb.AppendLine("DontConvertPrimaryKey=" + DontConvertPrimaryKey);
+            sb.AppendLine("Limit=" + Limit);
             sb.AppendLine("ObjectEventsDisabled=" + ObjectEventsDisabled);
             sb.AppendLine("ObjectChangeEventsDisabled=" + ObjectChangeEventsDisabled);
+            sb.AppendLine("Offset=" + Offset);
             sb.AppendLine("MaximumRows=" + MaximumRows);
             sb.AppendLine("RemoveDuplicates=" + RemoveDuplicates);
             sb.AppendLine("TestTableExists=" + TestTableExists);
