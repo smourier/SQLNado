@@ -5380,7 +5380,7 @@ namespace SqlNado
                 }
             }
 
-            bool tryUpdate = HasPrimaryKey && pk.Count > 0 && updateArgs.Count > 0;
+            bool tryUpdate = !options.DontTryUpdate && HasPrimaryKey && pk.Count > 0 && updateArgs.Count > 0;
 
             string sql;
             int count = 0;
@@ -5425,8 +5425,8 @@ namespace SqlNado
                     // this can happen in multi-threaded scenarios, update didn't work, then someone inserted, and now insert does not work. try update again
                     if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT)
                     {
-                        tryUpdate = true;
-                        return SQLiteOnErrorAction.Break;
+                        if (tryUpdate)
+                            return SQLiteOnErrorAction.Break;
                     }
 
                     return SQLiteOnErrorAction.Unhandled;
@@ -7083,6 +7083,7 @@ namespace SqlNado
         public virtual bool UseTransaction { get; set; }
         public virtual bool UseTransactionForSchemaSynchronization { get; set; }
         public virtual bool UseSavePoint { get; set; }
+        public virtual bool DontTryUpdate { get; set; }
         public virtual Func<SQLiteObjectColumn, object, object> GetValueForBindFunc { get; set; }
         public virtual string SavePointName { get; protected internal set; }
         public virtual int Index { get; protected internal set; }
