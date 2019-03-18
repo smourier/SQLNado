@@ -928,6 +928,7 @@ namespace SqlNado
         public int BusyTimeout { get => ExecuteScalar<int>("PRAGMA busy_timeout"); set => ExecuteNonQuery("PRAGMA busy_timeout=" + value); }
         public int CacheSize { get => ExecuteScalar<int>("PRAGMA cache_size"); set => ExecuteNonQuery("PRAGMA cache_size=" + value); }
         public int PageSize { get => ExecuteScalar<int>("PRAGMA page_size"); set => ExecuteNonQuery("PRAGMA page_size=" + value); }
+        public long MemoryMapSize { get => ExecuteScalar<int>("PRAGMA mmap_size"); set => ExecuteNonQuery("PRAGMA mmap_size=" + value); }
         public SQLiteSynchronousMode SynchronousMode { get => ExecuteScalar<SQLiteSynchronousMode>("PRAGMA synchronous"); set => ExecuteNonQuery("PRAGMA synchronous=" + value); }
         public SQLiteJournalMode JournalMode { get => ExecuteScalar<SQLiteJournalMode>("PRAGMA journal_mode"); set => ExecuteNonQuery("PRAGMA journal_mode=" + value); }
         public SQLiteLockingMode LockingMode { get => ExecuteScalar<SQLiteLockingMode>("PRAGMA locking_mode"); set => ExecuteNonQuery("PRAGMA locking_mode=" + value); }
