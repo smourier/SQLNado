@@ -6,6 +6,6 @@ namespace SqlNado
     public enum SQLiteErrorOptions
     {
         None = 0x1,
-        AddSqlText = 0x2
+        AddSqlText = 0x2,
     }
 }

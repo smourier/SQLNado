@@ -12,7 +12,7 @@ namespace SqlNado
     public class SQLiteQuery<T> : IQueryable<T>, IEnumerable<T>, IOrderedQueryable<T>
     {
         private QueryProvider _provider;
-        private Expression _expression;
+        private readonly Expression _expression;
 
         public SQLiteQuery(SQLiteDatabase database)
         {
@@ -105,7 +105,7 @@ namespace SqlNado
                 if (sql != null && sql.Length > 2)
                 {
                     const string token = "SELECT ";
-                    if (!sql.StartsWith(token))
+                    if (!sql.StartsWith(token, StringComparison.OrdinalIgnoreCase))
                     {
                         // escaped table name have a ", let's use that information
                         if (sql.Length > token.Length && sql[0] == '"')

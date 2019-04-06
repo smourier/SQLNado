@@ -14,7 +14,7 @@ namespace SqlNado
         internal GCHandle _next;
         internal GCHandle _languageid;
 
-        public SQLiteTokenizer(SQLiteDatabase database, string name)
+        protected SQLiteTokenizer(SQLiteDatabase database, string name)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));

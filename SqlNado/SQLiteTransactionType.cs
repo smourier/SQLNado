@@ -4,6 +4,6 @@
     {
         Deferred,
         Immediate,
-        Exclusive
+        Exclusive,
     }
 }

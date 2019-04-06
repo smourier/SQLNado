@@ -88,13 +88,13 @@ namespace SqlNado
 
         public static bool AreCollationsEqual(string collation1, string collation2)
         {
-            if (collation1 == collation2)
+            if (collation1.EqualsIgnoreCase(collation2))
                 return true;
 
-            if (string.IsNullOrWhiteSpace(collation1) && collation2 == "BINARY")
+            if (string.IsNullOrWhiteSpace(collation1) && collation2.EqualsIgnoreCase("BINARY"))
                 return true;
 
-            if (string.IsNullOrWhiteSpace(collation2) && collation1 == "BINARY")
+            if (string.IsNullOrWhiteSpace(collation2) && collation1.EqualsIgnoreCase("BINARY"))
                 return true;
 
             return false;

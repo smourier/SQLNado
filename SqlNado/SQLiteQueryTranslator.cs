@@ -102,7 +102,7 @@ namespace SqlNado
                         Visit(callExpression.Arguments[0]);
                         Writer.Write(" ORDER BY ");
                         Visit(callExpression.Arguments[1]);
-                        if (callExpression.Method.Name == nameof(Queryable.OrderByDescending))
+                        if (string.Equals(callExpression.Method.Name, nameof(Queryable.OrderByDescending), StringComparison.Ordinal))
                         {
                             Writer.Write(" DESC");
                         }
@@ -113,7 +113,7 @@ namespace SqlNado
                         Visit(callExpression.Arguments[0]);
                         Writer.Write(", ");
                         Visit(callExpression.Arguments[1]);
-                        if (callExpression.Method.Name == nameof(Queryable.ThenByDescending))
+                        if (string.Equals(callExpression.Method.Name, nameof(Queryable.ThenByDescending), StringComparison.Ordinal))
                         {
                             Writer.Write(" DESC");
                         }
@@ -164,14 +164,14 @@ namespace SqlNado
                         if (IsQuoted(sub))
                         {
                             Writer.Write('\'');
-                            if (callExpression.Method.Name == nameof(string.EndsWith) ||
-                                callExpression.Method.Name == nameof(string.Contains))
+                            if (string.Equals(callExpression.Method.Name, nameof(string.EndsWith), StringComparison.Ordinal) ||
+                                string.Equals(callExpression.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
                             {
                                 Writer.Write('%');
                             }
                             Writer.Write(sub.Substring(1, sub.Length - 2));
-                            if (callExpression.Method.Name == nameof(string.StartsWith) ||
-                                callExpression.Method.Name == nameof(string.Contains))
+                            if (string.Equals(callExpression.Method.Name, nameof(string.StartsWith), StringComparison.Ordinal) ||
+                                string.Equals(callExpression.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
                             {
                                 Writer.Write('%');
                             }
@@ -316,7 +316,7 @@ namespace SqlNado
             }
 
             // kinda hack: generic ToString handling
-            if (callExpression.Method.Name == "ToString" &&
+            if (string.Equals(callExpression.Method.Name, nameof(ToString), StringComparison.Ordinal) &&
                 callExpression.Method.GetParameters().Length == 0)
             {
                 Visit(callExpression.Object);
@@ -326,7 +326,7 @@ namespace SqlNado
             throw new SqlNadoException(BuildNotSupported("The method '" + callExpression.Method.Name + "' of type '" + callExpression.Method.DeclaringType.FullName + "'"));
         }
 
-        private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'") && s.EndsWith("'");
+        private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'", StringComparison.Ordinal) && s.EndsWith("'", StringComparison.Ordinal);
 
         protected override Expression VisitUnary(UnaryExpression unaryExpression)
         {
@@ -537,7 +537,7 @@ namespace SqlNado
 
                 if (memberExpression.Member != null && memberExpression.Member.DeclaringType == typeof(string))
                 {
-                    if (memberExpression.Member.Name == nameof(string.Length))
+                    if (string.Equals(memberExpression.Member.Name, nameof(string.Length), StringComparison.Ordinal))
                     {
                         Writer.Write(" length(");
                         Visit(memberExpression.Expression);
@@ -569,7 +569,7 @@ namespace SqlNado
             private class SubtreeEvaluator : ExpressionVisitor
             {
                 private HashSet<Expression> _candidates;
-                private Func<ConstantExpression, Expression> _evalFunc;
+                private readonly Func<ConstantExpression, Expression> _evalFunc;
 
                 private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression> evalFunc)
                 {
@@ -673,7 +673,7 @@ namespace SqlNado
 
             private class Nominator : ExpressionVisitor
             {
-                private Func<Expression, bool> _fnCanBeEvaluated;
+                private readonly Func<Expression, bool> _fnCanBeEvaluated;
                 private HashSet<Expression> _candidates;
                 private bool _cannotBeEvaluated;
 

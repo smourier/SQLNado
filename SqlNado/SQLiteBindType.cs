@@ -108,17 +108,17 @@ namespace SqlNado
                         return new DateTimeOffset(dt).ToUnixTimeMilliseconds();
 
                     case SQLiteDateTimeFormat.Rfc1123:
-                        return dt.ToString("r");
+                        return dt.ToString("r", CultureInfo.InvariantCulture);
 
                     case SQLiteDateTimeFormat.RoundTrip:
-                        return dt.ToString("o");
+                        return dt.ToString("o", CultureInfo.InvariantCulture);
 
                     case SQLiteDateTimeFormat.Iso8601:
-                        return dt.ToString("s");
+                        return dt.ToString("s", CultureInfo.InvariantCulture);
 
                     //case SQLiteDateTimeFormat.SQLiteIso8601:
                     default:
-                        return dt.ToString(SQLiteIso8601DateTimeFormat);
+                        return dt.ToString(SQLiteIso8601DateTimeFormat, CultureInfo.InvariantCulture);
                 }
             }, typeof(DateTime), typeof(DateTimeOffset));
 

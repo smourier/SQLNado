@@ -138,7 +138,7 @@ namespace SqlNado
                     throw new ArgumentNullException(nameof(buffer));
 
                 if (count <= 0)
-                    throw new ArgumentException(nameof(count));
+                    throw new ArgumentException(null, nameof(count));
 
                 byte[] buf;
                 if (offset == 0)
@@ -192,7 +192,7 @@ namespace SqlNado
                     throw new ArgumentNullException(nameof(buffer));
 
                 if (count <= 0)
-                    throw new ArgumentException(nameof(count));
+                    throw new ArgumentException(null, nameof(count));
 
                 if (Blob.Size == 0) // special case we have often
                     throw new SqlNadoException("0019: Blob is empty. You must first resize the blob to the exact size.");

@@ -17,7 +17,7 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(database));
 
             Database = database;
-            TokenizedSql = new string[0];
+            TokenizedSql = Array.Empty<string>();
         }
 
         [Browsable(false)] // remove from tablestring dumps
@@ -37,13 +37,13 @@ namespace SqlNado
             get => _sql;
             internal set
             {
-                if (_sql == value)
+                if (string.Equals(_sql, value, StringComparison.Ordinal))
                     return;
 
                 _sql = value;
                 if (string.IsNullOrWhiteSpace(Sql))
                 {
-                    TokenizedSql = new string[0];
+                    TokenizedSql = Array.Empty<string>();
                     Module = null;
                     ModuleArguments = null;
                 }
@@ -160,7 +160,7 @@ namespace SqlNado
 
                     foreach (var column in Columns)
                     {
-                        var existing = all.FirstOrDefault(c => c.Name == column.Name);
+                        var existing = all.FirstOrDefault(c => string.Equals(c.Name, column.Name, StringComparison.Ordinal));
                         if (existing != null)
                         {
                             all.Remove(existing);

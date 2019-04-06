@@ -7,6 +7,6 @@
         Persist,
         Memory,
         Wal,
-        Off
+        Off,
     }
 }

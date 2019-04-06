@@ -48,7 +48,7 @@ namespace SqlNado
         public virtual bool DisableRowId { get; set; }
 
         public override string ToString() => Name;
-        public SQLiteObjectColumn GetColumn(string name) => _columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(name));
+        public SQLiteObjectColumn GetColumn(string name) => _columns.Find(c => c.Name.EqualsIgnoreCase(name));
 
         public virtual void AddIndex(SQLiteObjectIndex index)
         {
@@ -88,7 +88,7 @@ namespace SqlNado
                 sql += " (";
                 sql += string.Join(",", Columns.Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
 
-                if (PrimaryKeyColumns.Count() > 1)
+                if (PrimaryKeyColumns.Skip(1).Any())
                 {
                     string pk = string.Join(",", PrimaryKeyColumns.Select(c => c.EscapedName));
                     if (!string.IsNullOrWhiteSpace(pk))
@@ -635,7 +635,7 @@ namespace SqlNado
 
             foreach (var column in Columns)
             {
-                var existingColumn = deleted.FirstOrDefault(c => c.Name.EqualsIgnoreCase(column.Name));
+                var existingColumn = deleted.Find(c => c.Name.EqualsIgnoreCase(column.Name));
                 if (existingColumn == null)
                 {
                     added.Add(column);

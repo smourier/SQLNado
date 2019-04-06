@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using SqlNado.Utilities;
 
@@ -66,10 +67,10 @@ namespace SqlNado
                     return "0x" + Conversions.ToHexa(BlobValue);
 
                 case SQLiteColumnType.REAL:
-                    return DoubleValue.ToString();
+                    return DoubleValue.ToString(CultureInfo.CurrentCulture);
 
                 case SQLiteColumnType.INTEGER:
-                    return Int64Value.ToString();
+                    return Int64Value.ToString(CultureInfo.CurrentCulture);
 
                 case SQLiteColumnType.NULL:
                     return "<NULL>";

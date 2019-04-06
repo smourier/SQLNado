@@ -37,7 +37,7 @@ namespace SqlNado
                     }
                 }
 
-                if (int.TryParse(sid, out int lcid))
+                if (int.TryParse(sid, NumberStyles.Integer, CultureInfo.CurrentCulture, out int lcid))
                 {
                     CollationCulture = CultureInfo.GetCultureInfo(lcid); // don't handle exception on purpose, we want the user to be aware of that issue
                 }

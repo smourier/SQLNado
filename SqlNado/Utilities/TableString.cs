@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -1320,7 +1321,7 @@ namespace SqlNado.Utilities
                             continue;
 
                         // this one will cause unwanted array dumps
-                        if (array != null && property.Name == nameof(Array.SyncRoot))
+                        if (array != null && string.Equals(property.Name, nameof(Array.SyncRoot), StringComparison.Ordinal))
                             continue;
 
                         object value = GetValue(property, Object, ThrowOnPropertyGetError);
@@ -1461,7 +1462,7 @@ namespace SqlNado.Utilities
     public class ArrayItemTableStringColumn : TableStringColumn
     {
         public ArrayItemTableStringColumn(TableString table, int index)
-            : base(table, "#" + index.ToString(), (c, r) => ((Array)r).GetValue(((ArrayItemTableStringColumn)c).ArrayIndex))
+            : base(table, "#" + index.ToString(CultureInfo.CurrentCulture), (c, r) => ((Array)r).GetValue(((ArrayItemTableStringColumn)c).ArrayIndex))
         {
             ArrayIndex = index;
         }

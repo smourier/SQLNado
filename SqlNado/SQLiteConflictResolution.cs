@@ -7,6 +7,6 @@ namespace SqlNado
         Rollback,
         Fail,
         Ignore,
-        Replace
+        Replace,
     }
 }

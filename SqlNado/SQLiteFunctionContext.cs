@@ -6,7 +6,7 @@ namespace SqlNado
     // https://sqlite.org/c3ref/context.html
     public sealed class SQLiteFunctionContext
     {
-        private IntPtr _handle;
+        private readonly IntPtr _handle;
 
         internal SQLiteFunctionContext(SQLiteDatabase database, IntPtr handle, string functionName, int argc, IntPtr[] args)
         {

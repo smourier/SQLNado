@@ -8,6 +8,7 @@ using System.Threading;
 
 namespace SqlNado.Utilities
 {
+    // note: all conversions here are using invariant culture by design
     public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
     {
         private SQLiteDatabase _database;
@@ -251,7 +252,7 @@ namespace SqlNado.Utilities
             if (type.IsEnum)
             {
                 typeName = type.AssemblyQualifiedName;
-                return Conversions.EnumToUInt64(input).ToString();
+                return Conversions.EnumToUInt64(input).ToString(CultureInfo.InvariantCulture);
             }
 
             var tc = Type.GetTypeCode(type);
@@ -268,25 +269,25 @@ namespace SqlNado.Utilities
                 case TypeCode.Object:
                     if (type == typeof(byte[]))
                     {
-                        typeName = ((int)TypeCodeEx.ByteArray).ToString();
+                        typeName = ((int)TypeCodeEx.ByteArray).ToString(CultureInfo.InvariantCulture);
                         return Conversions.ToHexa((byte[])input);
                     }
 
                     if (type == typeof(Guid))
                     {
-                        typeName = ((int)TypeCodeEx.Guid).ToString();
+                        typeName = ((int)TypeCodeEx.Guid).ToString(CultureInfo.InvariantCulture);
                         return ((Guid)input).ToString("N");
                     }
 
                     if (type == typeof(TimeSpan))
                     {
-                        typeName = ((int)TypeCodeEx.TimeSpan).ToString();
+                        typeName = ((int)TypeCodeEx.TimeSpan).ToString(CultureInfo.InvariantCulture);
                         return ((TimeSpan)input).ToString();
                     }
 
                     if (type == typeof(DateTimeOffset))
                     {
-                        typeName = ((int)TypeCodeEx.DateTimeOffset).ToString();
+                        typeName = ((int)TypeCodeEx.DateTimeOffset).ToString(CultureInfo.InvariantCulture);
                         return ((DateTimeOffset)input).ToString(CultureInfo.InvariantCulture);
                     }
 
@@ -296,7 +297,7 @@ namespace SqlNado.Utilities
                     return Conversions.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
 
                 default:
-                    typeName = ((int)tc).ToString();
+                    typeName = ((int)tc).ToString(CultureInfo.InvariantCulture);
                     return Conversions.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
             }
         }
@@ -306,7 +307,7 @@ namespace SqlNado.Utilities
             if (typeName == null)
                 return input;
 
-            if (!int.TryParse(typeName, out var i))
+            if (!int.TryParse(typeName, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i))
             {
                 var type = Type.GetType(typeName, true);
                 if (type.IsEnum)
@@ -437,7 +438,7 @@ namespace SqlNado.Utilities
             Guid = 20,
             TimeSpan,
             DateTimeOffset,
-            ByteArray
+            ByteArray,
         }
 
         private class TypedEntry : Entry

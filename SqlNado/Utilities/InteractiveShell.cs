@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 
 namespace SqlNado.Utilities
@@ -189,7 +190,7 @@ namespace SqlNado.Utilities
                     if (split.Length >= 2 && (split[0].EqualsIgnoreCase("rows") || split[0].EqualsIgnoreCase("data")))
                     {
                         int maxRows = int.MaxValue;
-                        if (split.Length >= 3 && int.TryParse(split[2], out int i))
+                        if (split.Length >= 3 && int.TryParse(split[2], NumberStyles.Integer, CultureInfo.CurrentCulture, out int i))
                         {
                             maxRows = i;
                         }

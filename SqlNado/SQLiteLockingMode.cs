@@ -3,6 +3,6 @@
     public enum SQLiteLockingMode
     {
         Normal,
-        Exclusive
+        Exclusive,
     }
 }

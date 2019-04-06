@@ -48,7 +48,7 @@ namespace SqlNado
             if (pos < 0)
                 return -1;
 
-            if (int.TryParse(message.Substring(Prefix.Length, pos - Prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out int i))
+            if (int.TryParse(message.Substring(Prefix.Length, pos - Prefix.Length), NumberStyles.Integer, CultureInfo.InvariantCulture, out int i))
                 return i;
 
             return -1;

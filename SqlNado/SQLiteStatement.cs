@@ -14,7 +14,7 @@ namespace SqlNado
         private IntPtr _handle;
         internal bool _realDispose = true;
         internal int _locked;
-        private static readonly byte[] _zeroBytes = new byte[0];
+        private static readonly byte[] _zeroBytes = Array.Empty<byte>();
         private Dictionary<string, int> _columnsIndices;
         private string[] _columnsNames;
 

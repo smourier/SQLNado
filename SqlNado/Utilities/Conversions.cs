@@ -10,7 +10,7 @@ namespace SqlNado.Utilities
 {
     public static class Conversions
     {
-        private static char[] _enumSeparators = new char[] { ',', ';', '+', '|', ' ' };
+        private static readonly char[] _enumSeparators = new char[] { ',', ';', '+', '|', ' ' };
 
         public static Type GetEnumeratedType(Type collectionType)
         {
@@ -83,7 +83,7 @@ namespace SqlNado.Utilities
                 return null;
 
             if (text.Length == 0)
-                return new byte[0];
+                return Array.Empty<byte>();
 
             var list = new List<byte>();
             bool lo = false;
@@ -154,7 +154,7 @@ namespace SqlNado.Utilities
             var sb = new StringBuilder(count * 2);
             for (int i = offset; i < (offset + count); i++)
             {
-                sb.Append(bytes[i].ToString("X2"));
+                sb.AppendFormat(CultureInfo.InvariantCulture, "X2", bytes[i]);
             }
             return sb.ToString();
         }
@@ -235,15 +235,15 @@ namespace SqlNado.Utilities
             for (int i = 0; i < count; i += 16)
             {
                 sb.Append(prefix);
-                sb.AppendFormat("{0:X8}  ", i + offset);
+                sb.AppendFormat(CultureInfo.InvariantCulture, "{0:X8}  ", i + offset);
 
                 int j = 0;
                 for (j = 0; (j < 16) && ((i + j) < count); j++)
                 {
-                    sb.AppendFormat("{0:X2} ", bytes[i + j + offset]);
+                    sb.AppendFormat(CultureInfo.InvariantCulture, "{0:X2} ", bytes[i + j + offset]);
                 }
 
-                sb.Append(" ");
+                sb.Append(' ');
                 if (j < 16)
                 {
                     sb.Append(new string(' ', 3 * (16 - j)));
@@ -266,8 +266,8 @@ namespace SqlNado.Utilities
             return sb.ToString();
         }
 
-        public static List<T> SplitToList<T>(string text, params char[] separators) => SplitToList<T>(text, null, separators);
-        public static List<T> SplitToList<T>(string text, IFormatProvider provider, params char[] separators)
+        public static IList<T> SplitToList<T>(string text, params char[] separators) => SplitToList<T>(text, null, separators);
+        public static IList<T> SplitToList<T>(string text, IFormatProvider provider, params char[] separators)
         {
             var al = new List<T>();
             if (text == null || separators == null || separators.Length == 0)
@@ -1012,17 +1012,17 @@ namespace SqlNado.Utilities
                 case TypeCode.Int16:
                 case TypeCode.Int32:
                 case TypeCode.Int64:
-                    return (ulong)Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                    return (ulong)Convert.ToInt64(value, CultureInfo.CurrentCulture);
 
                 case TypeCode.Byte:
                 case TypeCode.UInt16:
                 case TypeCode.UInt32:
                 case TypeCode.UInt64:
-                    return Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+                    return Convert.ToUInt64(value, CultureInfo.CurrentCulture);
 
                 case TypeCode.String:
                 default:
-                    return ChangeType<ulong>(value, 0, CultureInfo.InvariantCulture);
+                    return ChangeType<ulong>(value, 0, CultureInfo.CurrentCulture);
             }
         }
 
@@ -1043,7 +1043,7 @@ namespace SqlNado.Utilities
                 if (input.Length > 0 && input[0] == '-')
                 {
                     var ul = (long)EnumToUInt64(valuei);
-                    if (ul.ToString().EqualsIgnoreCase(input))
+                    if (ul.ToString(CultureInfo.CurrentCulture).EqualsIgnoreCase(input))
                     {
                         value = valuei;
                         return true;
@@ -1052,7 +1052,7 @@ namespace SqlNado.Utilities
                 else
                 {
                     var ul = EnumToUInt64(valuei);
-                    if (ul.ToString().EqualsIgnoreCase(input))
+                    if (ul.ToString(CultureInfo.CurrentCulture).EqualsIgnoreCase(input))
                     {
                         value = valuei;
                         return true;
@@ -1166,7 +1166,7 @@ namespace SqlNado.Utilities
                 return false;
             }
 
-            var stringInput = string.Format(CultureInfo.InvariantCulture, "{0}", input);
+            var stringInput = string.Format(CultureInfo.CurrentCulture, "{0}", input);
             stringInput = stringInput.Nullify();
             if (stringInput == null)
             {
@@ -1176,9 +1176,9 @@ namespace SqlNado.Utilities
 
             if (stringInput.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
-                if (ulong.TryParse(stringInput.Substring(2), NumberStyles.HexNumber, null, out ulong ulx))
+                if (ulong.TryParse(stringInput.Substring(2), NumberStyles.HexNumber, CultureInfo.CurrentCulture, out ulong ulx))
                 {
-                    value = ToEnum(ulx.ToString(CultureInfo.InvariantCulture), type);
+                    value = ToEnum(ulx.ToString(CultureInfo.CurrentCulture), type);
                     return true;
                 }
             }
@@ -1224,11 +1224,11 @@ namespace SqlNado.Utilities
                     case TypeCode.Int32:
                     case TypeCode.Int64:
                     case TypeCode.SByte:
-                        tokenUl = (ulong)Convert.ToInt64(tokenValue, CultureInfo.InvariantCulture);
+                        tokenUl = (ulong)Convert.ToInt64(tokenValue, CultureInfo.CurrentCulture);
                         break;
 
                     default:
-                        tokenUl = Convert.ToUInt64(tokenValue, CultureInfo.InvariantCulture);
+                        tokenUl = Convert.ToUInt64(tokenValue, CultureInfo.CurrentCulture);
                         break;
                 }
 
@@ -1309,8 +1309,8 @@ namespace SqlNado.Utilities
             return ChangeType(str, defaultValue, provider);
         }
 
-        public static bool Compare<TKey, TValue>(this Dictionary<TKey, TValue> dic1, Dictionary<TKey, TValue> dic2) => Compare(dic1, dic2, null);
-        public static bool Compare<TKey, TValue>(this Dictionary<TKey, TValue> dic1, Dictionary<TKey, TValue> dic2, IEqualityComparer<TValue> comparer)
+        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2) => Compare(dic1, dic2, null);
+        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2, IEqualityComparer<TValue> comparer)
         {
             if (dic1 == null)
                 return dic2 == null;

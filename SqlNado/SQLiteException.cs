@@ -24,7 +24,7 @@ namespace SqlNado
             if (!string.IsNullOrEmpty(message))
             {
                 msg += " " + char.ToUpperInvariant(message[0]) + message.Substring(1);
-                if (!msg.EndsWith("."))
+                if (!msg.EndsWith(".", StringComparison.Ordinal))
                 {
                     msg += ".";
                 }

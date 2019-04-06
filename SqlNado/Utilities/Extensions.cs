@@ -108,8 +108,7 @@ namespace SqlNado.Utilities
 
             public override bool Equals(object obj)
             {
-                var comparer = obj as CultureStringComparer;
-                if (comparer == null)
+                if (!(obj is CultureStringComparer comparer))
                     return false;
 
                 if (_ignoreCase != comparer._ignoreCase)
@@ -127,11 +126,11 @@ namespace SqlNado.Utilities
                 return ~code;
             }
 
-            public override bool Equals(string x, string y) => (x == y || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0);
+            public override bool Equals(string x, string y) => (string.Equals(x, y, StringComparison.Ordinal) || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0);
 
             public override int Compare(string x, string y)
             {
-                if (x == y)
+                if (string.Equals(x, y, StringComparison.Ordinal))
                     return 0;
 
                 if (x == null)

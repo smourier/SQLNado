@@ -30,7 +30,7 @@ namespace SqlNado
         private readonly ConcurrentDictionary<string, SQLiteTokenizer> _tokenizers = new ConcurrentDictionary<string, SQLiteTokenizer>(StringComparer.OrdinalIgnoreCase);
 
         // note the pool is case-sensitive. it may not be always optimized, but it's safer
-        private ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>();
+        private ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>(StringComparer.Ordinal);
         private readonly collationNeeded _collationNeeded;
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
@@ -819,7 +819,7 @@ namespace SqlNado
 
         public virtual void DeleteTempTables(bool throwOnError = true)
         {
-            foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable._tempTablePrefix)).ToArray())
+            foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable._tempTablePrefix, StringComparison.Ordinal)).ToArray())
             {
                 table.Delete(throwOnError);
             }
@@ -2073,7 +2073,7 @@ namespace SqlNado
             string msg = GetErrorMessage(Handle); // don't check disposed here. maybe too late
             if (sql != null)
             {
-                if (msg == null || !msg.EndsWith("."))
+                if (msg == null || !msg.EndsWith(".", StringComparison.Ordinal))
                 {
                     msg += ".";
                 }
@@ -2205,7 +2205,7 @@ namespace SqlNado
             _sqlite3_column_name16 = LoadProc<sqlite3_column_name16>();
             _sqlite3_column_blob = LoadProc<sqlite3_column_blob>();
             _sqlite3_column_bytes = LoadProc<sqlite3_column_bytes>();
-            _sqlite3_column_double = LoadProc<sqlite3_column_double>(); ;
+            _sqlite3_column_double = LoadProc<sqlite3_column_double>();
             _sqlite3_column_int = LoadProc<sqlite3_column_int>();
             _sqlite3_column_int64 = LoadProc<sqlite3_column_int64>();
             _sqlite3_column_text16 = LoadProc<sqlite3_column_text16>();
@@ -2667,7 +2667,7 @@ namespace SqlNado
             SQLITE_UTF16 = 4,               /* Use native byte order */
             SQLITE_ANY = 5,                 /* Deprecated */
             SQLITE_UTF16_ALIGNED = 8,       /* sqlite3_create_collation only */
-            SQLITE_DETERMINISTIC = 0x800    // function will always return the same result given the same inputs within a single SQL statement
+            SQLITE_DETERMINISTIC = 0x800,    // function will always return the same result given the same inputs within a single SQL statement
         }
 
         // https://sqlite.org/c3ref/threadsafe.html

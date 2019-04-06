@@ -4,6 +4,6 @@
     {
         Unhandled,
         Break,
-        Continue
+        Continue,
     }
 }

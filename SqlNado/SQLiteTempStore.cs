@@ -4,6 +4,6 @@
     {
         Default,
         File,
-        Memory
+        Memory,
     }
 }

@@ -11,7 +11,7 @@ namespace SqlNado.Utilities
     // all properties and methods start with DictionaryObject and are protected so they won't interfere with super type
     public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChanged, INotifyPropertyChanging, IDataErrorInfo, INotifyDataErrorInfo
     {
-        private readonly ConcurrentDictionary<string, DictionaryObjectProperty> _properties = new ConcurrentDictionary<string, DictionaryObjectProperty>();
+        private readonly ConcurrentDictionary<string, DictionaryObjectProperty> _properties = new ConcurrentDictionary<string, DictionaryObjectProperty>(StringComparer.Ordinal);
 
         protected DictionaryObject()
         {

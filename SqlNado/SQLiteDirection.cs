@@ -3,6 +3,6 @@
     public enum SQLiteDirection
     {
         Ascending,
-        Descending
+        Descending,
     }
 }
