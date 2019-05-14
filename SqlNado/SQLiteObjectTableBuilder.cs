@@ -232,20 +232,20 @@ namespace SqlNado
                 type == typeof(short) || type == typeof(sbyte) || type == typeof(byte) ||
                 type == typeof(uint) || type == typeof(ushort) || type == typeof(ulong) ||
                 type.IsEnum || type == typeof(bool))
-                return SQLiteColumnType.INTEGER.ToString();
+                return nameof(SQLiteColumnType.INTEGER);
 
             if (type == typeof(float) || type == typeof(double))
-                return SQLiteColumnType.REAL.ToString();
+                return nameof(SQLiteColumnType.REAL);
 
             if (type == typeof(byte[]))
-                return SQLiteColumnType.BLOB.ToString();
+                return nameof(SQLiteColumnType.BLOB);
 
             if (type == typeof(decimal))
             {
                 if (Database.BindOptions.DecimalAsBlob)
-                    return SQLiteColumnType.BLOB.ToString();
+                    return nameof(SQLiteColumnType.BLOB);
 
-                return SQLiteColumnType.TEXT.ToString();
+                return nameof(SQLiteColumnType.TEXT);
             }
 
             if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
@@ -255,32 +255,32 @@ namespace SqlNado
                     Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.FileTimeUtc ||
                     Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.UnixTimeSeconds ||
                     Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.UnixTimeMilliseconds)
-                    return SQLiteColumnType.INTEGER.ToString();
+                    return nameof(SQLiteColumnType.INTEGER);
 
                 if (Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.OleAutomation ||
                     Database.BindOptions.DateTimeFormat == SQLiteDateTimeFormat.JulianDayNumbers)
-                    return SQLiteColumnType.INTEGER.ToString();
+                    return nameof(SQLiteColumnType.INTEGER);
 
-                return SQLiteColumnType.TEXT.ToString();
+                return nameof(SQLiteColumnType.TEXT);
             }
 
             if (type == typeof(Guid))
             {
                 if (Database.BindOptions.GuidAsBlob)
-                    return SQLiteColumnType.BLOB.ToString();
+                    return nameof(SQLiteColumnType.BLOB);
 
-                return SQLiteColumnType.TEXT.ToString();
+                return nameof(SQLiteColumnType.TEXT);
             }
 
             if (type == typeof(TimeSpan))
             {
                 if (Database.BindOptions.TimeSpanAsInt64)
-                    return SQLiteColumnType.INTEGER.ToString();
+                    return nameof(SQLiteColumnType.INTEGER);
 
-                return SQLiteColumnType.TEXT.ToString();
+                return nameof(SQLiteColumnType.TEXT);
             }
 
-            return SQLiteColumnType.TEXT.ToString();
+            return nameof(SQLiteColumnType.TEXT);
         }
 
         internal static bool IsComputedDefaultValue(string value) =>
@@ -335,7 +335,7 @@ namespace SqlNado
             {
                 if (typeof(ISQLiteBlobObject).IsAssignableFrom(att.ClrType))
                 {
-                    att.DataType = SQLiteColumnType.BLOB.ToString();
+                    att.DataType = nameof(SQLiteColumnType.BLOB);
                 }
                 else
                 {
@@ -344,7 +344,7 @@ namespace SqlNado
                         // https://www.sqlite.org/lang_createtable.html
                         if (IsComputedDefaultValue(df))
                         {
-                            att.DataType = SQLiteColumnType.TEXT.ToString();
+                            att.DataType = nameof(SQLiteColumnType.TEXT);
                             // we need to force this column type options
                             att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
                             att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
@@ -354,7 +354,15 @@ namespace SqlNado
 
                 if (string.IsNullOrWhiteSpace(att.DataType))
                 {
-                    att.DataType = GetDefaultDataType(att.ClrType);
+                    var nta = att.ClrType.GetNullableTypeArgument();
+                    if (nta != null)
+                    {
+                        att.DataType = GetDefaultDataType(nta);
+                    }
+                    else
+                    {
+                        att.DataType = GetDefaultDataType(att.ClrType);
+                    }
                 }
             }
 

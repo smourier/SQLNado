@@ -160,7 +160,7 @@ namespace SqlNado
 
                     foreach (var column in Columns)
                     {
-                        var existing = all.FirstOrDefault(c => string.Equals(c.Name, column.Name, StringComparison.Ordinal));
+                        var existing = all.Find(c => string.Equals(c.Name, column.Name, StringComparison.Ordinal));
                         if (existing != null)
                         {
                             all.Remove(existing);
@@ -216,7 +216,7 @@ namespace SqlNado
             if (!column.IsPrimaryKey)
                 return false;
 
-            if (!column.Type.EqualsIgnoreCase(SQLiteColumnType.INTEGER.ToString()))
+            if (!column.Type.EqualsIgnoreCase(nameof(SQLiteColumnType.INTEGER)))
                 return false;
 
             // https://sqlite.org/lang_createtable.html#rowid

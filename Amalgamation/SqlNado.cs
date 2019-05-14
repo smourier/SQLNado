@@ -278,17 +278,17 @@ namespace SqlNado
                         return new DateTimeOffset(dt).ToUnixTimeMilliseconds();
 
                     case SQLiteDateTimeFormat.Rfc1123:
-                        return dt.ToString("r");
+                        return dt.ToString("r", CultureInfo.InvariantCulture);
 
                     case SQLiteDateTimeFormat.RoundTrip:
-                        return dt.ToString("o");
+                        return dt.ToString("o", CultureInfo.InvariantCulture);
 
                     case SQLiteDateTimeFormat.Iso8601:
-                        return dt.ToString("s");
+                        return dt.ToString("s", CultureInfo.InvariantCulture);
 
                     //case SQLiteDateTimeFormat.SQLiteIso8601:
                     default:
-                        return dt.ToString(SQLiteIso8601DateTimeFormat);
+                        return dt.ToString(SQLiteIso8601DateTimeFormat, CultureInfo.InvariantCulture);
                 }
             }, typeof(DateTime), typeof(DateTimeOffset));
 
@@ -463,7 +463,7 @@ namespace SqlNado
                     throw new ArgumentNullException(nameof(buffer));
 
                 if (count <= 0)
-                    throw new ArgumentException(nameof(count));
+                    throw new ArgumentException(null, nameof(count));
 
                 byte[] buf;
                 if (offset == 0)
@@ -517,7 +517,7 @@ namespace SqlNado
                     throw new ArgumentNullException(nameof(buffer));
 
                 if (count <= 0)
-                    throw new ArgumentException(nameof(count));
+                    throw new ArgumentException(null, nameof(count));
 
                 if (Blob.Size == 0) // special case we have often
                     throw new SqlNadoException("0019: Blob is empty. You must first resize the blob to the exact size.");
@@ -604,7 +604,7 @@ namespace SqlNado
                     }
                 }
 
-                if (int.TryParse(sid, out int lcid))
+                if (int.TryParse(sid, NumberStyles.Integer, CultureInfo.CurrentCulture, out int lcid))
                 {
                     CollationCulture = CultureInfo.GetCultureInfo(lcid); // don't handle exception on purpose, we want the user to be aware of that issue
                 }
@@ -816,7 +816,7 @@ namespace SqlNado
         SQLITE_CONFIG_STMTJRNL_SPILL = 26,
         SQLITE_CONFIG_SMALL_MALLOC = 27,
         SQLITE_CONFIG_SORTERREF_SIZE = 28,
-        SQLITE_CONFIG_MEMDB_MAXSIZE = 29
+        SQLITE_CONFIG_MEMDB_MAXSIZE = 29,
     }
 }
 
@@ -828,7 +828,7 @@ namespace SqlNado
         Rollback,
         Fail,
         Ignore,
-        Replace
+        Replace,
     }
 }
 
@@ -859,7 +859,7 @@ namespace SqlNado
         private readonly ConcurrentDictionary<string, SQLiteTokenizer> _tokenizers = new ConcurrentDictionary<string, SQLiteTokenizer>(StringComparer.OrdinalIgnoreCase);
 
         // note the pool is case-sensitive. it may not be always optimized, but it's safer
-        private ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>();
+        private ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>(StringComparer.Ordinal);
         private readonly collationNeeded _collationNeeded;
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
@@ -1648,7 +1648,7 @@ namespace SqlNado
 
         public virtual void DeleteTempTables(bool throwOnError = true)
         {
-            foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable._tempTablePrefix)).ToArray())
+            foreach (var table in Tables.Where(t => t.Name.StartsWith(SQLiteObjectTable._tempTablePrefix, StringComparison.Ordinal)).ToArray())
             {
                 table.Delete(throwOnError);
             }
@@ -2902,7 +2902,7 @@ namespace SqlNado
             string msg = GetErrorMessage(Handle); // don't check disposed here. maybe too late
             if (sql != null)
             {
-                if (msg == null || !msg.EndsWith("."))
+                if (msg == null || !msg.EndsWith(".", StringComparison.Ordinal))
                 {
                     msg += ".";
                 }
@@ -3034,7 +3034,7 @@ namespace SqlNado
             _sqlite3_column_name16 = LoadProc<sqlite3_column_name16>();
             _sqlite3_column_blob = LoadProc<sqlite3_column_blob>();
             _sqlite3_column_bytes = LoadProc<sqlite3_column_bytes>();
-            _sqlite3_column_double = LoadProc<sqlite3_column_double>(); ;
+            _sqlite3_column_double = LoadProc<sqlite3_column_double>();
             _sqlite3_column_int = LoadProc<sqlite3_column_int>();
             _sqlite3_column_int64 = LoadProc<sqlite3_column_int64>();
             _sqlite3_column_text16 = LoadProc<sqlite3_column_text16>();
@@ -3496,7 +3496,7 @@ namespace SqlNado
             SQLITE_UTF16 = 4,               /* Use native byte order */
             SQLITE_ANY = 5,                 /* Deprecated */
             SQLITE_UTF16_ALIGNED = 8,       /* sqlite3_create_collation only */
-            SQLITE_DETERMINISTIC = 0x800    // function will always return the same result given the same inputs within a single SQL statement
+            SQLITE_DETERMINISTIC = 0x800,    // function will always return the same result given the same inputs within a single SQL statement
         }
 
         // https://sqlite.org/c3ref/threadsafe.html
@@ -3709,7 +3709,7 @@ namespace SqlNado
     public enum SQLiteDirection
     {
         Ascending,
-        Descending
+        Descending,
     }
 }
 
@@ -3833,7 +3833,7 @@ namespace SqlNado
     public enum SQLiteErrorOptions
     {
         None = 0x1,
-        AddSqlText = 0x2
+        AddSqlText = 0x2,
     }
 }
 
@@ -3860,7 +3860,7 @@ namespace SqlNado
             if (!string.IsNullOrEmpty(message))
             {
                 msg += " " + char.ToUpperInvariant(message[0]) + message.Substring(1);
-                if (!msg.EndsWith("."))
+                if (!msg.EndsWith(".", StringComparison.Ordinal))
                 {
                     msg += ".";
                 }
@@ -4059,7 +4059,7 @@ namespace SqlNado
     // https://sqlite.org/c3ref/context.html
     public sealed class SQLiteFunctionContext
     {
-        private IntPtr _handle;
+        private readonly IntPtr _handle;
 
         internal SQLiteFunctionContext(SQLiteDatabase database, IntPtr handle, string functionName, int argc, IntPtr[] args)
         {
@@ -4302,7 +4302,7 @@ namespace SqlNado
         Persist,
         Memory,
         Wal,
-        Off
+        Off,
     }
 }
 
@@ -4321,7 +4321,7 @@ namespace SqlNado
         SQLITE_LIMIT_LIKE_PATTERN_LENGTH = 8,
         SQLITE_LIMIT_VARIABLE_NUMBER = 9,
         SQLITE_LIMIT_TRIGGER_DEPTH = 10,
-        SQLITE_LIMIT_WORKER_THREADS = 11
+        SQLITE_LIMIT_WORKER_THREADS = 11,
     }
 }
 
@@ -4398,7 +4398,7 @@ namespace SqlNado
     public enum SQLiteLockingMode
     {
         Normal,
-        Exclusive
+        Exclusive,
     }
 }
 
@@ -4496,13 +4496,13 @@ namespace SqlNado
 
         public static bool AreCollationsEqual(string collation1, string collation2)
         {
-            if (collation1 == collation2)
+            if (collation1.EqualsIgnoreCase(collation2))
                 return true;
 
-            if (string.IsNullOrWhiteSpace(collation1) && collation2 == "BINARY")
+            if (string.IsNullOrWhiteSpace(collation1) && collation2.EqualsIgnoreCase("BINARY"))
                 return true;
 
-            if (string.IsNullOrWhiteSpace(collation2) && collation1 == "BINARY")
+            if (string.IsNullOrWhiteSpace(collation2) && collation1.EqualsIgnoreCase("BINARY"))
                 return true;
 
             return false;
@@ -4920,7 +4920,7 @@ namespace SqlNado
         public virtual bool DisableRowId { get; set; }
 
         public override string ToString() => Name;
-        public SQLiteObjectColumn GetColumn(string name) => _columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(name));
+        public SQLiteObjectColumn GetColumn(string name) => _columns.Find(c => c.Name.EqualsIgnoreCase(name));
 
         public virtual void AddIndex(SQLiteObjectIndex index)
         {
@@ -4960,7 +4960,7 @@ namespace SqlNado
                 sql += " (";
                 sql += string.Join(",", Columns.Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
 
-                if (PrimaryKeyColumns.Count() > 1)
+                if (PrimaryKeyColumns.Skip(1).Any())
                 {
                     string pk = string.Join(",", PrimaryKeyColumns.Select(c => c.EscapedName));
                     if (!string.IsNullOrWhiteSpace(pk))
@@ -5507,7 +5507,7 @@ namespace SqlNado
 
             foreach (var column in Columns)
             {
-                var existingColumn = deleted.FirstOrDefault(c => c.Name.EqualsIgnoreCase(column.Name));
+                var existingColumn = deleted.Find(c => c.Name.EqualsIgnoreCase(column.Name));
                 if (existingColumn == null)
                 {
                     added.Add(column);
@@ -6033,7 +6033,7 @@ namespace SqlNado
     {
         Unhandled,
         Break,
-        Continue
+        Continue,
     }
 }
 
@@ -6059,7 +6059,7 @@ namespace SqlNado
     public class SQLiteQuery<T> : IQueryable<T>, IEnumerable<T>, IOrderedQueryable<T>
     {
         private QueryProvider _provider;
-        private Expression _expression;
+        private readonly Expression _expression;
 
         public SQLiteQuery(SQLiteDatabase database)
         {
@@ -6152,7 +6152,7 @@ namespace SqlNado
                 if (sql != null && sql.Length > 2)
                 {
                     const string token = "SELECT ";
-                    if (!sql.StartsWith(token))
+                    if (!sql.StartsWith(token, StringComparison.OrdinalIgnoreCase))
                     {
                         // escaped table name have a ", let's use that information
                         if (sql.Length > token.Length && sql[0] == '"')
@@ -6287,7 +6287,7 @@ namespace SqlNado
                         Visit(callExpression.Arguments[0]);
                         Writer.Write(" ORDER BY ");
                         Visit(callExpression.Arguments[1]);
-                        if (callExpression.Method.Name == nameof(Queryable.OrderByDescending))
+                        if (string.Equals(callExpression.Method.Name, nameof(Queryable.OrderByDescending), StringComparison.Ordinal))
                         {
                             Writer.Write(" DESC");
                         }
@@ -6298,7 +6298,7 @@ namespace SqlNado
                         Visit(callExpression.Arguments[0]);
                         Writer.Write(", ");
                         Visit(callExpression.Arguments[1]);
-                        if (callExpression.Method.Name == nameof(Queryable.ThenByDescending))
+                        if (string.Equals(callExpression.Method.Name, nameof(Queryable.ThenByDescending), StringComparison.Ordinal))
                         {
                             Writer.Write(" DESC");
                         }
@@ -6349,14 +6349,14 @@ namespace SqlNado
                         if (IsQuoted(sub))
                         {
                             Writer.Write('\'');
-                            if (callExpression.Method.Name == nameof(string.EndsWith) ||
-                                callExpression.Method.Name == nameof(string.Contains))
+                            if (string.Equals(callExpression.Method.Name, nameof(string.EndsWith), StringComparison.Ordinal) ||
+                                string.Equals(callExpression.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
                             {
                                 Writer.Write('%');
                             }
                             Writer.Write(sub.Substring(1, sub.Length - 2));
-                            if (callExpression.Method.Name == nameof(string.StartsWith) ||
-                                callExpression.Method.Name == nameof(string.Contains))
+                            if (string.Equals(callExpression.Method.Name, nameof(string.StartsWith), StringComparison.Ordinal) ||
+                                string.Equals(callExpression.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
                             {
                                 Writer.Write('%');
                             }
@@ -6501,7 +6501,7 @@ namespace SqlNado
             }
 
             // kinda hack: generic ToString handling
-            if (callExpression.Method.Name == "ToString" &&
+            if (string.Equals(callExpression.Method.Name, nameof(ToString), StringComparison.Ordinal) &&
                 callExpression.Method.GetParameters().Length == 0)
             {
                 Visit(callExpression.Object);
@@ -6511,7 +6511,7 @@ namespace SqlNado
             throw new SqlNadoException(BuildNotSupported("The method '" + callExpression.Method.Name + "' of type '" + callExpression.Method.DeclaringType.FullName + "'"));
         }
 
-        private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'") && s.EndsWith("'");
+        private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'", StringComparison.Ordinal) && s.EndsWith("'", StringComparison.Ordinal);
 
         protected override Expression VisitUnary(UnaryExpression unaryExpression)
         {
@@ -6722,7 +6722,7 @@ namespace SqlNado
 
                 if (memberExpression.Member != null && memberExpression.Member.DeclaringType == typeof(string))
                 {
-                    if (memberExpression.Member.Name == nameof(string.Length))
+                    if (string.Equals(memberExpression.Member.Name, nameof(string.Length), StringComparison.Ordinal))
                     {
                         Writer.Write(" length(");
                         Visit(memberExpression.Expression);
@@ -6754,7 +6754,7 @@ namespace SqlNado
             private class SubtreeEvaluator : ExpressionVisitor
             {
                 private HashSet<Expression> _candidates;
-                private Func<ConstantExpression, Expression> _evalFunc;
+                private readonly Func<ConstantExpression, Expression> _evalFunc;
 
                 private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression> evalFunc)
                 {
@@ -6858,7 +6858,7 @@ namespace SqlNado
 
             private class Nominator : ExpressionVisitor
             {
-                private Func<Expression, bool> _fnCanBeEvaluated;
+                private readonly Func<Expression, bool> _fnCanBeEvaluated;
                 private HashSet<Expression> _candidates;
                 private bool _cannotBeEvaluated;
 
@@ -7109,7 +7109,7 @@ namespace SqlNado
         private IntPtr _handle;
         internal bool _realDispose = true;
         internal int _locked;
-        private static readonly byte[] _zeroBytes = new byte[0];
+        private static readonly byte[] _zeroBytes = Array.Empty<byte>();
         private Dictionary<string, int> _columnsIndices;
         private string[] _columnsNames;
 
@@ -7581,7 +7581,7 @@ namespace SqlNado
         Off = 0,
         Normal = 1,
         Full = 2,
-        Extra = 3
+        Extra = 3,
     }
 }
 
@@ -7598,7 +7598,7 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(database));
 
             Database = database;
-            TokenizedSql = new string[0];
+            TokenizedSql = Array.Empty<string>();
         }
 
         [Browsable(false)] // remove from tablestring dumps
@@ -7618,13 +7618,13 @@ namespace SqlNado
             get => _sql;
             internal set
             {
-                if (_sql == value)
+                if (string.Equals(_sql, value, StringComparison.Ordinal))
                     return;
 
                 _sql = value;
                 if (string.IsNullOrWhiteSpace(Sql))
                 {
-                    TokenizedSql = new string[0];
+                    TokenizedSql = Array.Empty<string>();
                     Module = null;
                     ModuleArguments = null;
                 }
@@ -7741,7 +7741,7 @@ namespace SqlNado
 
                     foreach (var column in Columns)
                     {
-                        var existing = all.FirstOrDefault(c => c.Name == column.Name);
+                        var existing = all.FirstOrDefault(c => string.Equals(c.Name, column.Name, StringComparison.Ordinal));
                         if (existing != null)
                         {
                             all.Remove(existing);
@@ -7914,7 +7914,7 @@ namespace SqlNado
     {
         Default,
         File,
-        Memory
+        Memory,
     }
 }
 
@@ -7925,7 +7925,7 @@ namespace SqlNado
     {
         SingleThreaded = 0, // totally unsafe for multithread
         Serialized = 1, // safe for multithread
-        MultiThreaded = 2 // safe for multithread, except for database and statement uses
+        MultiThreaded = 2, // safe for multithread, except for database and statement uses
     }
 }
 
@@ -7974,7 +7974,7 @@ namespace SqlNado
         internal GCHandle _next;
         internal GCHandle _languageid;
 
-        public SQLiteTokenizer(SQLiteDatabase database, string name)
+        protected SQLiteTokenizer(SQLiteDatabase database, string name)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -8050,7 +8050,7 @@ namespace SqlNado
     {
         Deferred,
         Immediate,
-        Exclusive
+        Exclusive,
     }
 }
 
@@ -8118,10 +8118,10 @@ namespace SqlNado
                     return "0x" + Conversions.ToHexa(BlobValue);
 
                 case SQLiteColumnType.REAL:
-                    return DoubleValue.ToString();
+                    return DoubleValue.ToString(CultureInfo.CurrentCulture);
 
                 case SQLiteColumnType.INTEGER:
-                    return Int64Value.ToString();
+                    return Int64Value.ToString(CultureInfo.CurrentCulture);
 
                 case SQLiteColumnType.NULL:
                     return "<NULL>";
@@ -8139,7 +8139,7 @@ namespace SqlNado
     {
         public int Size { get; set; }
 
-        public override string ToString() => Size.ToString();
+        public override string ToString() => Size.ToString(CultureInfo.CurrentCulture);
     }
 }
 
@@ -8189,7 +8189,7 @@ namespace SqlNado
             if (pos < 0)
                 return -1;
 
-            if (int.TryParse(message.Substring(Prefix.Length, pos - Prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out int i))
+            if (int.TryParse(message.Substring(Prefix.Length, pos - Prefix.Length), NumberStyles.Integer, CultureInfo.InvariantCulture, out int i))
                 return i;
 
             return -1;
@@ -8201,7 +8201,7 @@ namespace SqlNado.Utilities
 {
     public abstract class ChangeTrackingDictionaryObject : DictionaryObject, IChangeTrackingDictionaryObject
     {
-        private readonly ConcurrentDictionary<string, DictionaryObjectProperty> _changedProperties = new ConcurrentDictionary<string, DictionaryObjectProperty>();
+        private readonly ConcurrentDictionary<string, DictionaryObjectProperty> _changedProperties = new ConcurrentDictionary<string, DictionaryObjectProperty>(System.StringComparer.Ordinal);
 
         protected virtual ConcurrentDictionary<string, DictionaryObjectProperty> DictionaryObjectChangedProperties => _changedProperties;
 
@@ -8298,7 +8298,7 @@ namespace SqlNado.Utilities
 {
     public static class Conversions
     {
-        private static char[] _enumSeparators = new char[] { ',', ';', '+', '|', ' ' };
+        private static readonly char[] _enumSeparators = new char[] { ',', ';', '+', '|', ' ' };
 
         public static Type GetEnumeratedType(Type collectionType)
         {
@@ -8371,7 +8371,7 @@ namespace SqlNado.Utilities
                 return null;
 
             if (text.Length == 0)
-                return new byte[0];
+                return Array.Empty<byte>();
 
             var list = new List<byte>();
             bool lo = false;
@@ -8442,7 +8442,7 @@ namespace SqlNado.Utilities
             var sb = new StringBuilder(count * 2);
             for (int i = offset; i < (offset + count); i++)
             {
-                sb.Append(bytes[i].ToString("X2"));
+                sb.AppendFormat(CultureInfo.InvariantCulture, "X2", bytes[i]);
             }
             return sb.ToString();
         }
@@ -8523,15 +8523,15 @@ namespace SqlNado.Utilities
             for (int i = 0; i < count; i += 16)
             {
                 sb.Append(prefix);
-                sb.AppendFormat("{0:X8}  ", i + offset);
+                sb.AppendFormat(CultureInfo.InvariantCulture, "{0:X8}  ", i + offset);
 
                 int j = 0;
                 for (j = 0; (j < 16) && ((i + j) < count); j++)
                 {
-                    sb.AppendFormat("{0:X2} ", bytes[i + j + offset]);
+                    sb.AppendFormat(CultureInfo.InvariantCulture, "{0:X2} ", bytes[i + j + offset]);
                 }
 
-                sb.Append(" ");
+                sb.Append(' ');
                 if (j < 16)
                 {
                     sb.Append(new string(' ', 3 * (16 - j)));
@@ -8554,8 +8554,8 @@ namespace SqlNado.Utilities
             return sb.ToString();
         }
 
-        public static List<T> SplitToList<T>(string text, params char[] separators) => SplitToList<T>(text, null, separators);
-        public static List<T> SplitToList<T>(string text, IFormatProvider provider, params char[] separators)
+        public static IList<T> SplitToList<T>(string text, params char[] separators) => SplitToList<T>(text, null, separators);
+        public static IList<T> SplitToList<T>(string text, IFormatProvider provider, params char[] separators)
         {
             var al = new List<T>();
             if (text == null || separators == null || separators.Length == 0)
@@ -9300,17 +9300,17 @@ namespace SqlNado.Utilities
                 case TypeCode.Int16:
                 case TypeCode.Int32:
                 case TypeCode.Int64:
-                    return (ulong)Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                    return (ulong)Convert.ToInt64(value, CultureInfo.CurrentCulture);
 
                 case TypeCode.Byte:
                 case TypeCode.UInt16:
                 case TypeCode.UInt32:
                 case TypeCode.UInt64:
-                    return Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+                    return Convert.ToUInt64(value, CultureInfo.CurrentCulture);
 
                 case TypeCode.String:
                 default:
-                    return ChangeType<ulong>(value, 0, CultureInfo.InvariantCulture);
+                    return ChangeType<ulong>(value, 0, CultureInfo.CurrentCulture);
             }
         }
 
@@ -9331,7 +9331,7 @@ namespace SqlNado.Utilities
                 if (input.Length > 0 && input[0] == '-')
                 {
                     var ul = (long)EnumToUInt64(valuei);
-                    if (ul.ToString().EqualsIgnoreCase(input))
+                    if (ul.ToString(CultureInfo.CurrentCulture).EqualsIgnoreCase(input))
                     {
                         value = valuei;
                         return true;
@@ -9340,7 +9340,7 @@ namespace SqlNado.Utilities
                 else
                 {
                     var ul = EnumToUInt64(valuei);
-                    if (ul.ToString().EqualsIgnoreCase(input))
+                    if (ul.ToString(CultureInfo.CurrentCulture).EqualsIgnoreCase(input))
                     {
                         value = valuei;
                         return true;
@@ -9454,7 +9454,7 @@ namespace SqlNado.Utilities
                 return false;
             }
 
-            var stringInput = string.Format(CultureInfo.InvariantCulture, "{0}", input);
+            var stringInput = string.Format(CultureInfo.CurrentCulture, "{0}", input);
             stringInput = stringInput.Nullify();
             if (stringInput == null)
             {
@@ -9464,9 +9464,9 @@ namespace SqlNado.Utilities
 
             if (stringInput.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
-                if (ulong.TryParse(stringInput.Substring(2), NumberStyles.HexNumber, null, out ulong ulx))
+                if (ulong.TryParse(stringInput.Substring(2), NumberStyles.HexNumber, CultureInfo.CurrentCulture, out ulong ulx))
                 {
-                    value = ToEnum(ulx.ToString(CultureInfo.InvariantCulture), type);
+                    value = ToEnum(ulx.ToString(CultureInfo.CurrentCulture), type);
                     return true;
                 }
             }
@@ -9512,11 +9512,11 @@ namespace SqlNado.Utilities
                     case TypeCode.Int32:
                     case TypeCode.Int64:
                     case TypeCode.SByte:
-                        tokenUl = (ulong)Convert.ToInt64(tokenValue, CultureInfo.InvariantCulture);
+                        tokenUl = (ulong)Convert.ToInt64(tokenValue, CultureInfo.CurrentCulture);
                         break;
 
                     default:
-                        tokenUl = Convert.ToUInt64(tokenValue, CultureInfo.InvariantCulture);
+                        tokenUl = Convert.ToUInt64(tokenValue, CultureInfo.CurrentCulture);
                         break;
                 }
 
@@ -9597,8 +9597,8 @@ namespace SqlNado.Utilities
             return ChangeType(str, defaultValue, provider);
         }
 
-        public static bool Compare<TKey, TValue>(this Dictionary<TKey, TValue> dic1, Dictionary<TKey, TValue> dic2) => Compare(dic1, dic2, null);
-        public static bool Compare<TKey, TValue>(this Dictionary<TKey, TValue> dic1, Dictionary<TKey, TValue> dic2, IEqualityComparer<TValue> comparer)
+        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2) => Compare(dic1, dic2, null);
+        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2, IEqualityComparer<TValue> comparer)
         {
             if (dic1 == null)
                 return dic2 == null;
@@ -9635,7 +9635,7 @@ namespace SqlNado.Utilities
     // all properties and methods start with DictionaryObject and are protected so they won't interfere with super type
     public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChanged, INotifyPropertyChanging, IDataErrorInfo, INotifyDataErrorInfo
     {
-        private readonly ConcurrentDictionary<string, DictionaryObjectProperty> _properties = new ConcurrentDictionary<string, DictionaryObjectProperty>();
+        private readonly ConcurrentDictionary<string, DictionaryObjectProperty> _properties = new ConcurrentDictionary<string, DictionaryObjectProperty>(StringComparer.Ordinal);
 
         protected DictionaryObject()
         {
@@ -10101,8 +10101,7 @@ namespace SqlNado.Utilities
 
             public override bool Equals(object obj)
             {
-                var comparer = obj as CultureStringComparer;
-                if (comparer == null)
+                if (!(obj is CultureStringComparer comparer))
                     return false;
 
                 if (_ignoreCase != comparer._ignoreCase)
@@ -10120,11 +10119,11 @@ namespace SqlNado.Utilities
                 return ~code;
             }
 
-            public override bool Equals(string x, string y) => (x == y || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0);
+            public override bool Equals(string x, string y) => (string.Equals(x, y, StringComparison.Ordinal) || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0);
 
             public override int Compare(string x, string y)
             {
-                if (x == y)
+                if (string.Equals(x, y, StringComparison.Ordinal))
                     return 0;
 
                 if (x == null)
@@ -10356,7 +10355,7 @@ namespace SqlNado.Utilities
                     if (split.Length >= 2 && (split[0].EqualsIgnoreCase("rows") || split[0].EqualsIgnoreCase("data")))
                     {
                         int maxRows = int.MaxValue;
-                        if (split.Length >= 3 && int.TryParse(split[2], out int i))
+                        if (split.Length >= 3 && int.TryParse(split[2], NumberStyles.Integer, CultureInfo.CurrentCulture, out int i))
                         {
                             maxRows = i;
                         }
@@ -10411,6 +10410,7 @@ namespace SqlNado.Utilities
 
 namespace SqlNado.Utilities
 {
+    // note: all conversions here are using invariant culture by design
     public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
     {
         private SQLiteDatabase _database;
@@ -10654,7 +10654,7 @@ namespace SqlNado.Utilities
             if (type.IsEnum)
             {
                 typeName = type.AssemblyQualifiedName;
-                return Conversions.EnumToUInt64(input).ToString();
+                return Conversions.EnumToUInt64(input).ToString(CultureInfo.InvariantCulture);
             }
 
             var tc = Type.GetTypeCode(type);
@@ -10671,25 +10671,25 @@ namespace SqlNado.Utilities
                 case TypeCode.Object:
                     if (type == typeof(byte[]))
                     {
-                        typeName = ((int)TypeCodeEx.ByteArray).ToString();
+                        typeName = ((int)TypeCodeEx.ByteArray).ToString(CultureInfo.InvariantCulture);
                         return Conversions.ToHexa((byte[])input);
                     }
 
                     if (type == typeof(Guid))
                     {
-                        typeName = ((int)TypeCodeEx.Guid).ToString();
+                        typeName = ((int)TypeCodeEx.Guid).ToString(CultureInfo.InvariantCulture);
                         return ((Guid)input).ToString("N");
                     }
 
                     if (type == typeof(TimeSpan))
                     {
-                        typeName = ((int)TypeCodeEx.TimeSpan).ToString();
+                        typeName = ((int)TypeCodeEx.TimeSpan).ToString(CultureInfo.InvariantCulture);
                         return ((TimeSpan)input).ToString();
                     }
 
                     if (type == typeof(DateTimeOffset))
                     {
-                        typeName = ((int)TypeCodeEx.DateTimeOffset).ToString();
+                        typeName = ((int)TypeCodeEx.DateTimeOffset).ToString(CultureInfo.InvariantCulture);
                         return ((DateTimeOffset)input).ToString(CultureInfo.InvariantCulture);
                     }
 
@@ -10699,7 +10699,7 @@ namespace SqlNado.Utilities
                     return Conversions.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
 
                 default:
-                    typeName = ((int)tc).ToString();
+                    typeName = ((int)tc).ToString(CultureInfo.InvariantCulture);
                     return Conversions.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
             }
         }
@@ -10709,7 +10709,7 @@ namespace SqlNado.Utilities
             if (typeName == null)
                 return input;
 
-            if (!int.TryParse(typeName, out var i))
+            if (!int.TryParse(typeName, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i))
             {
                 var type = Type.GetType(typeName, true);
                 if (type.IsEnum)
@@ -10840,7 +10840,7 @@ namespace SqlNado.Utilities
             Guid = 20,
             TimeSpan,
             DateTimeOffset,
-            ByteArray
+            ByteArray,
         }
 
         private class TypedEntry : Entry
@@ -12415,7 +12415,7 @@ namespace SqlNado.Utilities
                             continue;
 
                         // this one will cause unwanted array dumps
-                        if (array != null && property.Name == nameof(Array.SyncRoot))
+                        if (array != null && string.Equals(property.Name, nameof(Array.SyncRoot), StringComparison.Ordinal))
                             continue;
 
                         object value = GetValue(property, Object, ThrowOnPropertyGetError);
@@ -12556,7 +12556,7 @@ namespace SqlNado.Utilities
     public class ArrayItemTableStringColumn : TableStringColumn
     {
         public ArrayItemTableStringColumn(TableString table, int index)
-            : base(table, "#" + index.ToString(), (c, r) => ((Array)r).GetValue(((ArrayItemTableStringColumn)c).ArrayIndex))
+            : base(table, "#" + index.ToString(CultureInfo.CurrentCulture), (c, r) => ((Array)r).GetValue(((ArrayItemTableStringColumn)c).ArrayIndex))
         {
             ArrayIndex = index;
         }

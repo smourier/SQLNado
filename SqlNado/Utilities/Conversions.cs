@@ -318,6 +318,17 @@ namespace SqlNado.Utilities
             return t.Length == 0 ? null : t;
         }
 
+        public static Type GetNullableTypeArgument(this Type type)
+        {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+
+            if (!IsNullable(type))
+                return null;
+
+            return type.GetGenericArguments()[0];
+        }
+
         public static bool IsNullable(this Type type)
         {
             if (type == null)

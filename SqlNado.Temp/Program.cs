@@ -40,13 +40,32 @@ namespace SqlNado.Temp
                 {
                     var c = new Customer();
                     c.Name = "name" + i;
+                    switch (i)
+                    {
+                        case 0:
+                            c.NullableInt = 1;
+                            break;
+
+                        case 2:
+                            c.NullableInt = 3;
+                            break;
+
+                        case 3:
+                            c.NullableInt = 12;
+                            break;
+                    }
                     db.Save(c);
                 }
 
                 var op = db.CreateLoadOptions();
                 //op.Offset = 8;
-                op.Limit = 5;
-                db.LoadAll<Customer>(op).ToTableString(Console.Out);
+                //op.Limit = 5;
+                db.Load<Customer>("SELECT * FROM Customer ORDER BY NullableInt", op).ToTableString(Console.Out);
+
+                foreach (var customer in db.LoadAll<Customer>())
+                {
+                    Console.WriteLine(customer.Name + " ni:" + customer.NullableInt + " (" + (customer.NullableInt.HasValue ? customer.NullableInt.Value.GetType().FullName : "<null>") + ")");
+                }
             }
         }
 
@@ -582,6 +601,7 @@ namespace SqlNado.Temp
         public int Age { get; set; }
         //[SQLiteColumn(HasDefaultValue = true, IsDefaultValueIntrinsic = true, DefaultValue = "CURRENT_TIMESTAMP")]
         public DateTime CreationDate { get; set; }
+        public int? NullableInt { get; set; }
 
         //[SQLiteColumn(Ignore = true)]
         //public object[] PrimaryKey => new object[] { Id };
