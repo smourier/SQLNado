@@ -398,14 +398,21 @@ namespace SqlNado
             CheckExpression = attribute.CheckExpression;
             if (HasDefaultValue)
             {
-                if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object value))
-                {
-                    string type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
-                    throw new SqlNadoException("0028: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
-                }
-
-                DefaultValue = value;
                 IsDefaultValueIntrinsic = attribute.IsDefaultValueIntrinsic;
+                if (IsDefaultValueIntrinsic)
+                {
+                    DefaultValue = attribute.DefaultValue;
+                }
+                else
+                {
+                    if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object value))
+                    {
+                        string type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
+                        throw new SqlNadoException("0028: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
+                    }
+
+                    DefaultValue = value;
+                }
             }
         }
     }

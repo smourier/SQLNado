@@ -38,33 +38,14 @@ namespace SqlNado.Temp
             {
                 for (int i = 0; i < 10; i++)
                 {
-                    var c = new Customer();
-                    c.Name = "name" + i;
-                    switch (i)
-                    {
-                        case 0:
-                            c.NullableInt = 1;
-                            break;
-
-                        case 2:
-                            c.NullableInt = 3;
-                            break;
-
-                        case 3:
-                            c.NullableInt = 12;
-                            break;
-                    }
+                    var c = new CustomerWithRowId();
+                    c.Name = "bob" + i;
                     db.Save(c);
                 }
 
-                var op = db.CreateLoadOptions();
-                //op.Offset = 8;
-                //op.Limit = 5;
-                db.Load<Customer>("SELECT * FROM Customer ORDER BY NullableInt", op).ToTableString(Console.Out);
-
-                foreach (var customer in db.LoadAll<Customer>())
+                foreach (var customer in db.LoadAll<CustomerWithRowId>())
                 {
-                    Console.WriteLine(customer.Name + " ni:" + customer.NullableInt + " (" + (customer.NullableInt.HasValue ? customer.NullableInt.Value.GetType().FullName : "<null>") + ")");
+                    Console.WriteLine(customer.Name + " id:" + customer.MyRowId);
                 }
             }
         }
