@@ -1347,7 +1347,7 @@ namespace SqlNado
                         // else throw
                     }
 
-                    CheckError(code);
+                    CheckError(code, sql: sql);
                 }
                 while (true);
             }
@@ -1515,7 +1515,7 @@ namespace SqlNado
                         // else throw
                     }
 
-                    CheckError(code);
+                    CheckError(code, sql: sql);
                 }
                 while (true);
             }
@@ -1837,7 +1837,7 @@ namespace SqlNado
                         // else throw
                     }
 
-                    CheckError(code);
+                    CheckError(code, sql: sql);
                 }
                 while (true);
             }
@@ -1886,7 +1886,7 @@ namespace SqlNado
                         // else throw
                     }
 
-                    CheckError(code);
+                    CheckError(code, sql: sql);
                 }
                 while (true);
             }
