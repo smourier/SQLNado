@@ -859,7 +859,7 @@ namespace SqlNado
         private readonly ConcurrentDictionary<string, SQLiteTokenizer> _tokenizers = new ConcurrentDictionary<string, SQLiteTokenizer>(StringComparer.OrdinalIgnoreCase);
 
         // note the pool is case-sensitive. it may not be always optimized, but it's safer
-        private ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>(StringComparer.Ordinal);
         private readonly collationNeeded _collationNeeded;
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
