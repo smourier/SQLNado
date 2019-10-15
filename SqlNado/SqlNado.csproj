@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>1.2.2</Version>
+    <Version>1.2.3</Version>
     <AssemblyVersion>1.2.2.0</AssemblyVersion>
     <FileVersion>1.2.2.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Simon Mourier</Authors>
     <Copyright>Copyright (c) 2017-2019 Simon Mourier. All rights reserved.</Copyright>
     <PackageProjectUrl>https://github.com/smourier/SQLNado</PackageProjectUrl>
-    <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
     <PackageTags>SQLite c# .net SQL winsqlite azure</PackageTags>
     <Description>SQLNado (SQLite Not ADO) is a .NET lightweight bloat free object persistence framework based on SQLite.
 
@@ -25,6 +25,7 @@ SQLNado supports all of SQLite features when using SQL commands, and also suppor
 * SQLite collation support, including the possibility to add custom collations using .NET code
 * SQLite Full Text Search engine (FTS3/4) support, including the possibility to add custom FTS3 tokenizers using .NET code
 * Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file (supported on azure web apps).</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

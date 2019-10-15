@@ -2176,7 +2176,7 @@ namespace SqlNado
                         // else throw
                     }
 
-                    CheckError(code);
+                    CheckError(code, sql: sql);
                 }
                 while (true);
             }
@@ -2344,7 +2344,7 @@ namespace SqlNado
                         // else throw
                     }
 
-                    CheckError(code);
+                    CheckError(code, sql: sql);
                 }
                 while (true);
             }
@@ -2666,7 +2666,7 @@ namespace SqlNado
                         // else throw
                     }
 
-                    CheckError(code);
+                    CheckError(code, sql: sql);
                 }
                 while (true);
             }
@@ -2715,7 +2715,7 @@ namespace SqlNado
                         // else throw
                     }
 
-                    CheckError(code);
+                    CheckError(code, sql: sql);
                 }
                 while (true);
             }
@@ -3107,8 +3107,8 @@ namespace SqlNado
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpFileName);
 
-        [DllImport("kernel32", SetLastError = true)]
-        private static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
+        private static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string lpProcName);
 
         [DllImport("kernel32")]
         internal static extern long GetTickCount64();
