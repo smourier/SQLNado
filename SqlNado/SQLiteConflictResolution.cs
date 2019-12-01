@@ -1,5 +1,4 @@
-﻿
-namespace SqlNado
+﻿namespace SqlNado
 {
     public enum SQLiteConflictResolution
     {

@@ -6,6 +6,11 @@ namespace SqlNado
     [Serializable]
     public class SQLiteException : Exception
     {
+        public SQLiteException()
+            : this(SQLiteErrorCode.SQLITE_ERROR)
+        {
+        }
+
         public SQLiteException(SQLiteErrorCode code)
             : base(GetMessage(code))
         {

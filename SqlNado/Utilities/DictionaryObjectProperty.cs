@@ -1,5 +1,4 @@
-﻿
-namespace SqlNado.Utilities
+﻿namespace SqlNado.Utilities
 {
     public class DictionaryObjectProperty
     {

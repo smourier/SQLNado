@@ -9,7 +9,9 @@ using SqlNado.Utilities;
 
 namespace SqlNado
 {
+#pragma warning disable CA1063 // Implement IDisposable Correctly
     public class SQLiteStatement : IDisposable
+#pragma warning restore CA1063 // Implement IDisposable Correctly
     {
         private IntPtr _handle;
         internal bool _realDispose = true;
@@ -461,7 +463,9 @@ namespace SqlNado
             GC.SuppressFinalize(this);
         }
 
+#pragma warning disable CA1063 // Implement IDisposable Correctly
         public virtual void Dispose()
+#pragma warning restore CA1063 // Implement IDisposable Correctly
         {
             if (_realDispose)
             {
@@ -475,6 +479,8 @@ namespace SqlNado
             }
         }
 
+#pragma warning disable CA1063 // Implement IDisposable Correctly
         ~SQLiteStatement() => RealDispose();
+#pragma warning restore CA1063 // Implement IDisposable Correctly
     }
 }

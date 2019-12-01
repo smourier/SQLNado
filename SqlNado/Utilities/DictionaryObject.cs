@@ -89,7 +89,7 @@ namespace SqlNado.Utilities
 
         private class ObjectComparer : IEqualityComparer<object>
         {
-            private DictionaryObject _dob;
+            private readonly DictionaryObject _dob;
 
             public ObjectComparer(DictionaryObject dob)
             {

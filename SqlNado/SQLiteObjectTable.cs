@@ -10,7 +10,7 @@ namespace SqlNado
     {
         private readonly List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
         private readonly List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
-        private static Random _random = new Random(Environment.TickCount);
+        private static readonly Random _random = new Random(Environment.TickCount);
         internal const string _tempTablePrefix = "__temp";
 
         public SQLiteObjectTable(SQLiteDatabase database, string name)
@@ -410,11 +410,11 @@ namespace SqlNado
             {
                 var lo = instance as ISQLiteObjectEvents;
                 if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loading, statement, options))
-                    return default(T);
+                    return default;
 
                 LoadAction(statement, options, instance);
                 if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loaded, statement, options))
-                    return default(T);
+                    return default;
             }
             else
             {

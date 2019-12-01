@@ -3,7 +3,9 @@ using System.ComponentModel;
 
 namespace SqlNado
 {
+#pragma warning disable CA1036 // Override methods on comparable types
     public sealed class SQLiteForeignKey : IComparable<SQLiteForeignKey>
+#pragma warning restore CA1036 // Override methods on comparable types
     {
         internal SQLiteForeignKey(SQLiteTable table)
         {

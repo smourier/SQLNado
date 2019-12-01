@@ -24,7 +24,9 @@ namespace SqlNado
         public static readonly SQLiteBindType DecimalType;
         public static readonly SQLiteBindType DateTimeType;
 
+#pragma warning disable CA1810 // Initialize reference type static fields inline
         static SQLiteBindType()
+#pragma warning restore CA1810 // Initialize reference type static fields inline
         {
             PassThroughType = new SQLiteBindType(ctx => ctx.Value,
                 typeof(bool), typeof(int), typeof(long), typeof(byte[]), typeof(double), typeof(string),
@@ -151,7 +153,9 @@ namespace SqlNado
             ConvertFunc = convertFunc;
         }
 
+#pragma warning disable CA1819 // Properties should not return arrays
         public Type[] HandledClrTypes { get; }
+#pragma warning restore CA1819 // Properties should not return arrays
         public virtual Func<SQLiteBindContext, object> ConvertFunc { get; }
 
         public override string ToString() => string.Join(", ", HandledClrTypes.Select(t => t.FullName));

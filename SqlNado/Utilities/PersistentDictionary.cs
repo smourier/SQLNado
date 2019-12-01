@@ -12,6 +12,7 @@ namespace SqlNado.Utilities
     public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
     {
         private SQLiteDatabase _database;
+        private bool _disposedValue = false;
         private readonly SQLiteLoadOptions _loadKeysOptions;
         private readonly SQLiteLoadOptions _loadTypedValuesOptions;
         private readonly SQLiteLoadOptions _loadValuesOptions;
@@ -96,18 +97,45 @@ namespace SqlNado.Utilities
 
         public override string ToString() => _database?.FilePath;
 
-        public virtual void Dispose()
+        protected virtual void Dispose(bool disposing)
         {
-            var db = Interlocked.Exchange(ref _database, null);
-            if (db != null)
+            if (!_disposedValue)
             {
-                db.Dispose();
-                if (DeleteOnDispose)
+                if (disposing)
                 {
-                    Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                    // dispose managed state (managed objects).
+                    var db = Interlocked.Exchange(ref _database, null);
+                    if (db != null)
+                    {
+                        db.Dispose();
+                        if (DeleteOnDispose)
+                        {
+                            Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                        }
+                    }
                 }
+
+                // free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // set large fields to null.
+
+                _disposedValue = true;
             }
         }
+
+
+        // override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~PersistentDictionary()
+        // {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+#pragma warning disable CA1063 // Implement IDisposable Correctly
+        public void Dispose() =>
+#pragma warning restore CA1063 // Implement IDisposable Correctly
+                              // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);// uncomment the following line if the finalizer is overridden above.// GC.SuppressFinalize(this);
 
         public virtual void Clear()
         {
@@ -119,7 +147,7 @@ namespace SqlNado.Utilities
             CheckDisposed().DeleteAll<Entry>();
         }
 
-        public virtual bool ContainsKey(Tk key) => TryGetValue(key, out var value);
+        public virtual bool ContainsKey(Tk key) => TryGetValue(key, out _);
 
         // note today we just support replace mode.
         // if the key alreay exists, no error will be throw and the value will be replaced.
@@ -174,7 +202,7 @@ namespace SqlNado.Utilities
                 }
             }
 
-            value = default(Tv);
+            value = default;
             return false;
         }
 
@@ -382,7 +410,7 @@ namespace SqlNado.Utilities
         private class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<TypedEntry> _enumerator;
-            private PersistentDictionary<Tk, Tv> _dic;
+            private readonly PersistentDictionary<Tk, Tv> _dic;
 
             public TypedEntryEnumerator(PersistentDictionary<Tk, Tv> dic)
             {
@@ -409,7 +437,7 @@ namespace SqlNado.Utilities
         private class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<Entry> _enumerator;
-            private PersistentDictionary<Tk, Tv> _dic;
+            private readonly PersistentDictionary<Tk, Tv> _dic;
 
             public EntryEnumerator(PersistentDictionary<Tk, Tv> dic)
             {

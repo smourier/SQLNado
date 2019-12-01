@@ -98,7 +98,7 @@ namespace SqlNado
         {
             if (!TryGetValue(name, out object obj))
             {
-                value = default(T);
+                value = default;
                 return false;
             }
 
@@ -127,7 +127,7 @@ namespace SqlNado
 
         private class Enumerator : IEnumerator<KeyValuePair<string, object>>
         {
-            private SQLiteRow _row;
+            private readonly SQLiteRow _row;
             private int _index = -1;
 
             public Enumerator(SQLiteRow row)

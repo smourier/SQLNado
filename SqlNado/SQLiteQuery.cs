@@ -11,7 +11,7 @@ namespace SqlNado
 {
     public class SQLiteQuery<T> : IQueryable<T>, IEnumerable<T>, IOrderedQueryable<T>
     {
-        private QueryProvider _provider;
+        private readonly QueryProvider _provider;
         private readonly Expression _expression;
 
         public SQLiteQuery(SQLiteDatabase database)
@@ -64,7 +64,7 @@ namespace SqlNado
 
         private class QueryProvider : IQueryProvider
         {
-            private SQLiteQuery<T> _query;
+            private readonly SQLiteQuery<T> _query;
             private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance);
 
             public QueryProvider(SQLiteQuery<T> query)

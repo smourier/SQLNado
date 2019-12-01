@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace SqlNado
 {
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public class SQLiteIndexAttribute : Attribute
+    public sealed class SQLiteIndexAttribute : Attribute
     {
         public const int DefaultOrder = -1;
 
@@ -20,12 +20,12 @@ namespace SqlNado
             Name = name;
         }
 
-        public virtual string Name { get; }
-        public virtual string SchemaName { get; set; }
-        public virtual bool IsUnique { get; set; }
-        public virtual int Order { get; set; }
-        public virtual string CollationName { get; set; }
-        public virtual SQLiteDirection? Direction { get; set; }
+        public string Name { get; }
+        public string SchemaName { get; set; }
+        public bool IsUnique { get; set; }
+        public int Order { get; set; }
+        public string CollationName { get; set; }
+        public SQLiteDirection? Direction { get; set; }
 
         public override string ToString()
         {

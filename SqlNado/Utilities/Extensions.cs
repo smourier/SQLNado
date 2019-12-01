@@ -94,9 +94,9 @@ namespace SqlNado.Utilities
 
         private class CultureStringComparer : StringComparer
         {
-            private CompareInfo _compareInfo;
-            private CompareOptions _options;
-            private bool _ignoreCase;
+            private readonly CompareInfo _compareInfo;
+            private readonly CompareOptions _options;
+            private readonly bool _ignoreCase;
 
             public CultureStringComparer(CompareInfo compareInfo, CompareOptions options)
             {

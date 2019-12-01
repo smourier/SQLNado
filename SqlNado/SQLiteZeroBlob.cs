@@ -2,7 +2,7 @@
 
 namespace SqlNado
 {
-    public class SQLiteZeroBlob
+    public sealed class SQLiteZeroBlob
     {
         public int Size { get; set; }
 

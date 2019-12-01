@@ -14,7 +14,7 @@ namespace SqlNado.Utilities
 
         public ConsoleLogger(bool addThreadId)
         {
-            AddThreadId = true;
+            AddThreadId = addThreadId;
         }
 
         public bool AddThreadId { get; set; }

@@ -20,9 +20,9 @@ namespace SqlNado.Utilities
 
         private const int _columnBorderWidth = 1;
         private const int _absoluteMinimumColumnWidth = 1;
-        private static Lazy<bool> _isConsoleValid = new Lazy<bool>(GetConsoleValidity, true);
+        private static readonly Lazy<bool> _isConsoleValid = new Lazy<bool>(GetConsoleValidity, true);
         private static int _defaultMaximumWidth = ConsoleWindowWidth;
-        private List<TableStringColumn> _columns = new List<TableStringColumn>();
+        private readonly List<TableStringColumn> _columns = new List<TableStringColumn>();
         private int _minimumColumnWidth;
         private int _maximumWidth;
         private int _maximumRowHeight;
@@ -124,10 +124,12 @@ namespace SqlNado.Utilities
                 var width = Console.WindowWidth;
                 return true;
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 return false;
             }
+#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         public int MaximumNumberOfColumnsWithoutPadding
@@ -230,47 +232,48 @@ namespace SqlNado.Utilities
         // we need this because the console textwriter does WriteLine by its own...
         private class ConsoleModeTextWriter : TextWriter
         {
+            private readonly int _maximumWidth;
+            private int _column;
+            private bool _lastWasNewLine;
+
             public ConsoleModeTextWriter(TextWriter writer, int maximumWidth)
             {
                 Writer = writer;
-                MaximumWidth = maximumWidth;
+                _maximumWidth = maximumWidth;
             }
 
-            public int MaximumWidth;
-            public int Column;
-            public int Line;
-            public TextWriter Writer;
-            public bool LastWasNewLine;
-            public override Encoding Encoding => Writer.Encoding;
+            public int Line { get; set; }
+            public TextWriter Writer { get; }
 
+            public override Encoding Encoding => Writer.Encoding;
             public override void Flush() => base.Flush();
             public override void Close() => base.Close();
 
             public override void Write(char value)
             {
                 Writer.Write(value);
-                Column++;
-                if (Column == MaximumWidth)
+                _column++;
+                if (_column == _maximumWidth)
                 {
-                    LastWasNewLine = true;
+                    _lastWasNewLine = true;
                     Line++;
-                    Column = 0;
+                    _column = 0;
                 }
                 else
                 {
-                    LastWasNewLine = false;
+                    _lastWasNewLine = false;
                 }
             }
 
             public override void WriteLine()
             {
-                if (LastWasNewLine)
+                if (_lastWasNewLine)
                 {
-                    LastWasNewLine = false;
+                    _lastWasNewLine = false;
                     return;
                 }
                 Writer.WriteLine();
-                Column = 0;
+                _column = 0;
                 Line++;
             }
 
@@ -289,19 +292,19 @@ namespace SqlNado.Utilities
                     throw new NotSupportedException();
 #endif
                 Writer.Write(value);
-                Column += value.Length;
-                if (Column == MaximumWidth)
+                _column += value.Length;
+                if (_column == _maximumWidth)
                 {
-                    LastWasNewLine = true;
+                    _lastWasNewLine = true;
                     Line++;
-                    Column = 0;
+                    _column = 0;
                 }
                 else
                 {
-                    LastWasNewLine = false;
+                    _lastWasNewLine = false;
                 }
 #if DEBUG
-                if (Column > MaximumWidth)
+                if (_column > _maximumWidth)
                     throw new InvalidOperationException();
 #endif
             }
@@ -320,13 +323,17 @@ namespace SqlNado.Utilities
 
             bool consoleMode = IsInConsoleMode(writer);
             bool useConsoleWriter = MaximumWidth > 0 && consoleMode && ConsoleWindowWidth == MaximumWidth;
+#pragma warning disable IDE0068 // Use recommended dispose pattern
             var cw = useConsoleWriter ? new ConsoleModeTextWriter(writer, MaximumWidth) : writer;
+#pragma warning restore IDE0068 // Use recommended dispose pattern
 
             // switch to indented writer if needed
             TextWriter wr;
             if (Indent > 0)
             {
+#pragma warning disable IDE0068 // Use recommended dispose pattern
                 var itw = new IndentedTextWriter(cw, IndentTabString);
+#pragma warning restore IDE0068 // Use recommended dispose pattern
                 itw.Indent = Indent;
                 for (int i = 0; i < Indent; i++)
                 {
@@ -975,6 +982,7 @@ namespace SqlNado.Utilities
     public class TableStringCell
     {
         private string[] _split;
+
         public TableStringCell(TableStringColumn column, object value)
         {
             if (column == null)
@@ -988,7 +996,9 @@ namespace SqlNado.Utilities
         public object Value { get; }
         public virtual TableStringAlignment Alignment => Column.Alignment;
         public virtual string Text { get; protected set; }
+#pragma warning disable CA1819 // Properties should not return arrays
         public virtual string[] TextLines { get; protected set; }
+#pragma warning restore CA1819 // Properties should not return arrays
 
         public virtual int DesiredColumnWith
         {
@@ -1096,10 +1106,8 @@ namespace SqlNado.Utilities
                         int pos = 0;
                         do
                         {
-                            string dline;
                             if (pos + segmentWidth >= line.Length || (split.Length == 1 && split[0].Length <= Column.WidthWithoutPadding))
                             {
-                                dline = line.Substring(pos);
                                 lines.Add(Align(EscapeTextLine(line.Substring(pos))));
                                 break;
                             }
@@ -1111,7 +1119,7 @@ namespace SqlNado.Utilities
                             }
                             else
                             {
-                                dline = line.Substring(pos, segmentWidth);
+                                var dline = line.Substring(pos, segmentWidth);
                                 lines.Add(Align(EscapeTextLine(dline) + Column.NewLineReplacement));
                             }
                             pos += segmentWidth;
@@ -1224,7 +1232,9 @@ namespace SqlNado.Utilities
         {
         }
 
+#pragma warning disable CA1819 // Properties should not return arrays
         public new byte[] Value => (byte[])base.Value;
+#pragma warning restore CA1819 // Properties should not return arrays
 
         public override void ComputeText()
         {
@@ -1280,10 +1290,12 @@ namespace SqlNado.Utilities
                     if (value is IEnumerable enumerable)
                         return GetValue(enumerable);
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     value = "#ERR: " + e.Message;
                 }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
             return value;
         }
@@ -1442,10 +1454,12 @@ namespace SqlNado.Utilities
                 {
                     value = field.GetValue(obj);
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     value = "#ERR: " + e.Message;
                 }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
             return value;
         }
@@ -1522,10 +1536,12 @@ namespace SqlNado.Utilities
             {
                 return Property.GetValue(component);
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 return null;
             }
+#pragma warning restore CA1031 // Do not catch general exception types
         }
     }
 

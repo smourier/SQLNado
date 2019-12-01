@@ -568,7 +568,7 @@ namespace SqlNado
 
             private class SubtreeEvaluator : ExpressionVisitor
             {
-                private HashSet<Expression> _candidates;
+                private readonly HashSet<Expression> _candidates;
                 private readonly Func<ConstantExpression, Expression> _evalFunc;
 
                 private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression> evalFunc)
@@ -674,7 +674,7 @@ namespace SqlNado
             private class Nominator : ExpressionVisitor
             {
                 private readonly Func<Expression, bool> _fnCanBeEvaluated;
-                private HashSet<Expression> _candidates;
+                private readonly HashSet<Expression> _candidates;
                 private bool _cannotBeEvaluated;
 
                 public Nominator(Func<Expression, bool> fnCanBeEvaluated)

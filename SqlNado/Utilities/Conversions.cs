@@ -237,7 +237,7 @@ namespace SqlNado.Utilities
                 sb.Append(prefix);
                 sb.AppendFormat(CultureInfo.InvariantCulture, "{0:X8}  ", i + offset);
 
-                int j = 0;
+                int j;
                 for (j = 0; (j < 16) && ((i + j) < count); j++)
                 {
                     sb.AppendFormat(CultureInfo.InvariantCulture, "{0:X2} ", bytes[i + j + offset]);
@@ -362,7 +362,7 @@ namespace SqlNado.Utilities
         {
             if (!TryChangeType(input, typeof(T), provider, out object tvalue))
             {
-                value = default(T);
+                value = default;
                 return false;
             }
 
@@ -382,10 +382,9 @@ namespace SqlNado.Utilities
                 return true;
             }
 
-            Type nullableType = null;
             if (conversionType.IsNullable())
             {
-                nullableType = conversionType.GenericTypeArguments[0];
+                Type nullableType = conversionType.GenericTypeArguments[0];
                 if (input == null)
                 {
                     value = null;
@@ -1037,7 +1036,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        private static bool StringToEnum(Type type, Type underlyingType, string[] names, Array values, string input, out object value)
+        private static bool StringToEnum(Type type, string[] names, Array values, string input, out object value)
         {
             for (int i = 0; i < names.Length; i++)
             {
@@ -1201,11 +1200,10 @@ namespace SqlNado.Utilities
                 return false;
             }
 
-            var underlyingType = Enum.GetUnderlyingType(type);
             var values = Enum.GetValues(type);
             // some enums like System.CodeDom.MemberAttributes *are* flags but are not declared with Flags...
             if (!type.IsDefined(typeof(FlagsAttribute), true) && stringInput.IndexOfAny(_enumSeparators) < 0)
-                return StringToEnum(type, underlyingType, names, values, stringInput, out value);
+                return StringToEnum(type, names, values, stringInput, out value);
 
             // multi value enum
             var tokens = stringInput.Split(_enumSeparators, StringSplitOptions.RemoveEmptyEntries);
@@ -1222,7 +1220,7 @@ namespace SqlNado.Utilities
                 if (token == null)
                     continue;
 
-                if (!StringToEnum(type, underlyingType, names, values, token, out object tokenValue))
+                if (!StringToEnum(type, names, values, token, out object tokenValue))
                 {
                     value = Activator.CreateInstance(type);
                     return false;

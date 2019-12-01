@@ -230,7 +230,7 @@ namespace SqlNado
             if (comparer == null)
             {
                 CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null));
-                _collationSinks.TryRemove(name, out CollationSink cs);
+                _collationSinks.TryRemove(name, out _);
                 return;
             }
 
@@ -470,7 +470,7 @@ namespace SqlNado
             private readonly xClose _closeFn;
             private readonly xOpen _openFn;
             private readonly xNext _nextFn;
-            private readonly xLanguageid _languageidFn;
+            //private readonly xLanguageid _languageidFn;
             private readonly IntPtr _tokenizer;
             private int _disposed;
 
@@ -484,7 +484,7 @@ namespace SqlNado
                 _openFn = Marshal.GetDelegateForFunctionPointer<xOpen>(module.xOpen);
                 _closeFn = Marshal.GetDelegateForFunctionPointer<xClose>(module.xClose);
                 _nextFn = Marshal.GetDelegateForFunctionPointer<xNext>(module.xNext);
-                _languageidFn = module.xLanguageid != IntPtr.Zero ? Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid) : null;
+                //_languageidFn = module.xLanguageid != IntPtr.Zero ? Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid) : null;
                 int argc = (arguments?.Length).GetValueOrDefault();
                 Database.CheckError(create(argc, arguments, out _tokenizer));
             }
@@ -611,7 +611,7 @@ namespace SqlNado
             if (function == null)
             {
                 CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null, null, null));
-                _functionSinks.TryRemove(key, out ScalarFunctionSink sf);
+                _functionSinks.TryRemove(key, out _);
                 return;
             }
 
@@ -810,10 +810,12 @@ namespace SqlNado
                 {
                     ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     Log(TraceLevel.Warning, "Error trying to delete TABLE '" + name + "': " + e);
                 }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
         }
 
@@ -1669,10 +1671,12 @@ namespace SqlNado
                         // for some reason, this can throw in rare conditions
                         taken = _statements.TryTake(out entry);
                     }
+#pragma warning disable CA1031 // Do not catch general exception types
                     catch
                     {
                         taken = false;
                     }
+#pragma warning restore CA1031 // Do not catch general exception types
 
                     if (taken && entry != null)
                     {
@@ -1892,7 +1896,7 @@ namespace SqlNado
             }
         }
 
-        public T ChangeType<T>(object input) => ChangeType<T>(input, default(T));
+        public T ChangeType<T>(object input) => ChangeType<T>(input, default);
         public T ChangeType<T>(object input, T defaultValue)
         {
             if (TryChangeType(input, out T value))
@@ -1963,7 +1967,7 @@ namespace SqlNado
         {
             if (!TryChangeType(input, typeof(T), out object obj))
             {
-                value = default(T);
+                value = default;
                 return false;
             }
 
@@ -2162,11 +2166,13 @@ namespace SqlNado
 
                 return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine).Nullify();
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 // probably an access denied, continue
                 return null;
             }
+#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         private static void HookNativeProcs()
@@ -2279,7 +2285,9 @@ namespace SqlNado
         private static extern IntPtr LoadLibrary(string lpFileName);
 
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
+#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
         private static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string lpProcName);
+#pragma warning restore CA2101 // Specify marshaling for P/Invoke string arguments
 
         [DllImport("kernel32")]
         internal static extern long GetTickCount64();
@@ -2735,8 +2743,11 @@ namespace SqlNado
         {
             public static readonly Utf8Marshaler Instance = new Utf8Marshaler();
 
+
             // *must* exist for a custom marshaler
+#pragma warning disable IDE0060 // Remove unused parameter
             public static ICustomMarshaler GetInstance(string cookie) => Instance;
+#pragma warning restore IDE0060 // Remove unused parameter
 
             public void CleanUpManagedData(object managedObj)
             {
