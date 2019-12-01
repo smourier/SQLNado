@@ -194,7 +194,9 @@ namespace SqlNado
         public static readonly SQLiteBindType DecimalType;
         public static readonly SQLiteBindType DateTimeType;
 
+#pragma warning disable CA1810 // Initialize reference type static fields inline
         static SQLiteBindType()
+#pragma warning restore CA1810 // Initialize reference type static fields inline
         {
             PassThroughType = new SQLiteBindType(ctx => ctx.Value,
                 typeof(bool), typeof(int), typeof(long), typeof(byte[]), typeof(double), typeof(string),
@@ -321,7 +323,9 @@ namespace SqlNado
             ConvertFunc = convertFunc;
         }
 
+#pragma warning disable CA1819 // Properties should not return arrays
         public Type[] HandledClrTypes { get; }
+#pragma warning restore CA1819 // Properties should not return arrays
         public virtual Func<SQLiteBindContext, object> ConvertFunc { get; }
 
         public override string ToString() => string.Join(", ", HandledClrTypes.Select(t => t.FullName));
@@ -566,6 +570,7 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
+        public virtual string CacheKey { get; set; }
     }
 }
 
@@ -708,7 +713,9 @@ namespace SqlNado
 namespace SqlNado
 {
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class SQLiteColumnAttribute : Attribute, IComparable, IComparable<SQLiteColumnAttribute>
+#pragma warning disable CA1036 // Override methods on comparable types
+    public sealed class SQLiteColumnAttribute : Attribute, IComparable, IComparable<SQLiteColumnAttribute>
+#pragma warning restore CA1036 // Override methods on comparable types
     {
         // because Guid.Empty is not a const
         public const string GuidEmpty = "00000000-0000-0000-0000-000000000000";
@@ -723,35 +730,35 @@ namespace SqlNado
         internal int? _sortOrder;
         private readonly List<SQLiteIndexAttribute> _indices = new List<SQLiteIndexAttribute>();
 
-        public virtual string Name { get; set; }
-        public virtual string DataType { get; set; }
-        public virtual Type ClrType { get; set; }
-        public virtual string Collation { get; set; }
-        public virtual bool Ignore { get => _ignore ?? false; set => _ignore = value; }
-        public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
-        public virtual bool AutoIncrements { get => _autoIncrements ?? false; set => _autoIncrements = value; }
-        public virtual bool IsPrimaryKey { get => _isPrimaryKey ?? false; set => _isPrimaryKey = value; }
-        public virtual SQLiteDirection PrimaryKeyDirection { get; set; }
-        public virtual bool IsUnique { get; set; }
-        public virtual string CheckExpression { get; set; }
-        public virtual bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
-        public virtual bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
-        public virtual bool InsertOnly { get; set; }
-        public virtual bool UpdateOnly { get; set; }
-        public virtual bool HasDefaultValue { get => _hasDefaultValue ?? false; set => _hasDefaultValue = value; }
-        public virtual bool IsDefaultValueIntrinsic { get => _isDefaultValueIntrinsic ?? false; set => _isDefaultValueIntrinsic = value; }
-        public virtual int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
-        public virtual SQLiteBindOptions BindOptions { get; set; }
-        public virtual object DefaultValue { get; set; }
-        public virtual IList<SQLiteIndexAttribute> Indices => _indices;
+        public string Name { get; set; }
+        public string DataType { get; set; }
+        public Type ClrType { get; set; }
+        public string Collation { get; set; }
+        public bool Ignore { get => _ignore ?? false; set => _ignore = value; }
+        public SQLiteAutomaticColumnType AutomaticType { get; set; }
+        public bool AutoIncrements { get => _autoIncrements ?? false; set => _autoIncrements = value; }
+        public bool IsPrimaryKey { get => _isPrimaryKey ?? false; set => _isPrimaryKey = value; }
+        public SQLiteDirection PrimaryKeyDirection { get; set; }
+        public bool IsUnique { get; set; }
+        public string CheckExpression { get; set; }
+        public bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
+        public bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
+        public bool InsertOnly { get; set; }
+        public bool UpdateOnly { get; set; }
+        public bool HasDefaultValue { get => _hasDefaultValue ?? false; set => _hasDefaultValue = value; }
+        public bool IsDefaultValueIntrinsic { get => _isDefaultValueIntrinsic ?? false; set => _isDefaultValueIntrinsic = value; }
+        public int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
+        public SQLiteBindOptions BindOptions { get; set; }
+        public object DefaultValue { get; set; }
+        public IList<SQLiteIndexAttribute> Indices => _indices;
 
-        public virtual Expression<Func<object, object>> GetValueExpression { get; set; }
-        public virtual Expression<Action<SQLiteLoadOptions, object, object>> SetValueExpression { get; set; }
+        public Expression<Func<object, object>> GetValueExpression { get; set; }
+        public Expression<Action<SQLiteLoadOptions, object, object>> SetValueExpression { get; set; }
 
         public override string ToString() => Name;
         int IComparable.CompareTo(object obj) => CompareTo(obj as SQLiteColumnAttribute);
 
-        public virtual int CompareTo(SQLiteColumnAttribute other)
+        public int CompareTo(SQLiteColumnAttribute other)
         {
             if (other == null)
                 throw new ArgumentNullException(nameof(other));
@@ -853,7 +860,7 @@ namespace SqlNado
         private bool _enableStatementsCache = true;
         private volatile bool _querySupportFunctionsAdded = false;
         private readonly ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
-        private readonly ConcurrentDictionary<Type, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<Type, SQLiteObjectTable>();
+        private readonly ConcurrentDictionary<string, SQLiteObjectTable> _objectTables = new ConcurrentDictionary<string, SQLiteObjectTable>();
         private readonly ConcurrentDictionary<string, ScalarFunctionSink> _functionSinks = new ConcurrentDictionary<string, ScalarFunctionSink>(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, CollationSink> _collationSinks = new ConcurrentDictionary<string, CollationSink>(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, SQLiteTokenizer> _tokenizers = new ConcurrentDictionary<string, SQLiteTokenizer>(StringComparer.OrdinalIgnoreCase);
@@ -884,6 +891,9 @@ namespace SqlNado
             ErrorOptions |= SQLiteErrorOptions.AddSqlText;
 #endif
             BindOptions = CreateBindOptions();
+            if (BindOptions == null)
+                throw new InvalidOperationException();
+
             HookNativeProcs();
             CheckError(_sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
             _collationNeeded = NativeCollationNeeded;
@@ -970,6 +980,9 @@ namespace SqlNado
             get
             {
                 var options = CreateLoadOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.GetInstanceFunc = (t, s, o) => new SQLiteTable(this);
                 return Load<SQLiteTable>("WHERE type='table'", options);
             }
@@ -980,6 +993,9 @@ namespace SqlNado
             get
             {
                 var options = CreateLoadOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.GetInstanceFunc = (t, s, o) => new SQLiteIndex(this);
                 return Load<SQLiteIndex>("WHERE type='index'", options);
             }
@@ -1059,7 +1075,7 @@ namespace SqlNado
             if (comparer == null)
             {
                 CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null));
-                _collationSinks.TryRemove(name, out CollationSink cs);
+                _collationSinks.TryRemove(name, out _);
                 return;
             }
 
@@ -1299,7 +1315,7 @@ namespace SqlNado
             private readonly xClose _closeFn;
             private readonly xOpen _openFn;
             private readonly xNext _nextFn;
-            private readonly xLanguageid _languageidFn;
+            //private readonly xLanguageid _languageidFn;
             private readonly IntPtr _tokenizer;
             private int _disposed;
 
@@ -1313,7 +1329,7 @@ namespace SqlNado
                 _openFn = Marshal.GetDelegateForFunctionPointer<xOpen>(module.xOpen);
                 _closeFn = Marshal.GetDelegateForFunctionPointer<xClose>(module.xClose);
                 _nextFn = Marshal.GetDelegateForFunctionPointer<xNext>(module.xNext);
-                _languageidFn = module.xLanguageid != IntPtr.Zero ? Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid) : null;
+                //_languageidFn = module.xLanguageid != IntPtr.Zero ? Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid) : null;
                 int argc = (arguments?.Length).GetValueOrDefault();
                 Database.CheckError(create(argc, arguments, out _tokenizer));
             }
@@ -1440,7 +1456,7 @@ namespace SqlNado
             if (function == null)
             {
                 CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null, null, null));
-                _functionSinks.TryRemove(key, out ScalarFunctionSink sf);
+                _functionSinks.TryRemove(key, out _);
                 return;
             }
 
@@ -1609,15 +1625,16 @@ namespace SqlNado
             return Tables.FirstOrDefault(t => name.EqualsIgnoreCase(t.Name));
         }
 
-        public SQLiteObjectTable SynchronizeSchema<T>() => SynchronizeSchema(typeof(T), null);
-        public SQLiteObjectTable SynchronizeSchema<T>(SQLiteSaveOptions options) => SynchronizeSchema(typeof(T), options);
-        public SQLiteObjectTable SynchronizeSchema(Type type) => SynchronizeSchema(type, null);
-        public virtual SQLiteObjectTable SynchronizeSchema(Type type, SQLiteSaveOptions options)
+        public SQLiteObjectTable SynchronizeSchema<T>(SQLiteSaveOptions options = null) => SynchronizeSchema(typeof(T), options);
+        public virtual SQLiteObjectTable SynchronizeSchema(Type type, SQLiteSaveOptions options = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            var table = GetObjectTable(type);
+            var table = GetObjectTable(type, options?.BuildTableOptions);
+            if (table == null)
+                throw new InvalidOperationException();
+
             table.SynchronizeSchema(options);
             return table;
         }
@@ -1639,10 +1656,12 @@ namespace SqlNado
                 {
                     ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     Log(TraceLevel.Warning, "Error trying to delete TABLE '" + name + "': " + e);
                 }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
         }
 
@@ -1664,7 +1683,7 @@ namespace SqlNado
             return ExecuteScalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1 COLLATE NOCASE LIMIT 1", 0, name) > 0;
         }
 
-        public virtual object CoerceValueForBind(object value, SQLiteBindOptions bindOptions)
+        public virtual object CoerceValueForBind(object value, SQLiteBindOptions bindOptions = null)
         {
             if (value == null || Convert.IsDBNull(value))
                 return null;
@@ -1692,6 +1711,9 @@ namespace SqlNado
 
             var type = GetBindType(value);
             var ctx = CreateBindContext();
+            if (ctx == null)
+                throw new InvalidOperationException();
+
             if (bindOptions != null)
             {
                 ctx.Options = bindOptions;
@@ -1721,7 +1743,7 @@ namespace SqlNado
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            if (_bindTypes.TryGetValue(type, out SQLiteBindType bindType) && bindType != null)
+            if (_bindTypes.TryGetValue(type, out var bindType) && bindType != null)
                 return bindType;
 
             if (type.IsEnum)
@@ -1771,7 +1793,7 @@ namespace SqlNado
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            _bindTypes.TryRemove(type, out SQLiteBindType value);
+            _bindTypes.TryRemove(type, out var value);
             return value;
         }
 
@@ -1814,13 +1836,15 @@ namespace SqlNado
             return ExecuteNonQuery(sql);
         }
 
-        public bool Delete(object obj) => Delete(obj, null);
-        public virtual bool Delete(object obj, SQLiteDeleteOptions options)
+        public virtual bool Delete(object obj, SQLiteDeleteOptions options = null)
         {
             if (obj == null)
                 return false;
 
             var table = GetObjectTable(obj.GetType());
+            if (table == null)
+                return false;
+
             if (!table.HasPrimaryKey)
                 throw new SqlNadoException("0008: Cannot delete object from table '" + table.Name + "' as it does not define a primary key.");
 
@@ -1839,14 +1863,14 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(objectType));
 
             var table = GetObjectTable(objectType);
+            if (table == null)
+                return 0;
+
             return ExecuteScalar("SELECT count(*) FROM " + table.EscapedName, 0);
         }
 
-        public int Save<T>(IEnumerable<T> enumerable) => Save(enumerable, null);
-        public virtual int Save<T>(IEnumerable<T> enumerable, SQLiteSaveOptions options) => Save((IEnumerable)enumerable, options);
-
-        public int Save(IEnumerable enumerable) => Save(enumerable, null);
-        public virtual int Save(IEnumerable enumerable, SQLiteSaveOptions options)
+        public virtual int Save<T>(IEnumerable<T> enumerable, SQLiteSaveOptions options = null) => Save((IEnumerable)enumerable, options);
+        public virtual int Save(IEnumerable enumerable, SQLiteSaveOptions options = null)
         {
             if (enumerable == null)
                 return 0;
@@ -1854,6 +1878,9 @@ namespace SqlNado
             if (options == null)
             {
                 options = CreateSaveOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.UseSavePoint = true;
                 options.SynchronizeSchema = true;
                 options.SynchronizeIndices = true;
@@ -1981,8 +2008,7 @@ namespace SqlNado
         public virtual void Commit() => ExecuteNonQuery("COMMIT");
         public virtual void Rollback() => ExecuteNonQuery("ROLLBACK");
 
-        public bool Save(object obj) => Save(obj, null);
-        public virtual bool Save(object obj, SQLiteSaveOptions options)
+        public virtual bool Save(object obj, SQLiteSaveOptions options = null)
         {
             if (obj == null)
                 return false;
@@ -1990,11 +2016,17 @@ namespace SqlNado
             if (options == null)
             {
                 options = CreateSaveOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.SynchronizeSchema = true;
                 options.SynchronizeIndices = true;
             }
 
-            var table = GetObjectTable(obj.GetType());
+            var table = GetObjectTable(obj.GetType(), options.BuildTableOptions);
+            if (table == null)
+                throw new InvalidOperationException();
+
             if (options.SynchronizeSchema)
             {
                 table.SynchronizeSchema(options);
@@ -2003,21 +2035,28 @@ namespace SqlNado
             return table.Save(obj, options);
         }
 
-        public IEnumerable<T> LoadByForeignKey<T>(object instance) => LoadByForeignKey<T>(instance, null);
-        public virtual IEnumerable<T> LoadByForeignKey<T>(object instance, SQLiteLoadForeignKeyOptions options)
+        public virtual IEnumerable<T> LoadByForeignKey<T>(object instance, SQLiteLoadForeignKeyOptions options = null)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
             var instanceTable = GetObjectTable(instance.GetType());
+            if (instanceTable == null)
+                yield break;
+
             if (!instanceTable.HasPrimaryKey)
                 throw new SqlNadoException("0013: Table '" + instanceTable.Name + "' has no primary key.", new ArgumentException(null, nameof(instance)));
 
             var table = GetObjectTable(typeof(T));
+            if (table == null)
+                yield break;
+
             if (table.LoadAction == null)
                 throw new SqlNadoException("0014: Table '" + table.Name + "' does not define a LoadAction.");
 
             options = options ?? CreateLoadForeignKeyOptions();
+            if (options == null)
+                throw new InvalidOperationException();
 
             var fkCol = options.ForeignKeyColumn;
             if (fkCol == null)
@@ -2075,16 +2114,21 @@ namespace SqlNado
         public IEnumerable<T> LoadAll<T>(int maximumRows)
         {
             var options = CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
             options.MaximumRows = maximumRows;
             return Load<T>(null, options);
         }
 
-        public IEnumerable<T> LoadAll<T>() => Load<T>(null, null, null);
-        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options) => Load<T>(null, options);
+        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options = null) => Load<T>(null, options);
         public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
         public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions options, params object[] args)
         {
             var table = GetObjectTable(typeof(T));
+            if (table == null)
+                yield break;
+
             if (table.LoadAction == null)
                 throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
 
@@ -2110,6 +2154,9 @@ namespace SqlNado
             }
 
             options = options ?? CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
             if (options.TestTableExists && !TableExists<T>())
                 yield break;
 
@@ -2182,21 +2229,19 @@ namespace SqlNado
             }
         }
 
-        public T LoadByPrimaryKeyOrCreate<T>(object key) => LoadByPrimaryKeyOrCreate<T>(key, null);
-        public T LoadByPrimaryKeyOrCreate<T>(object key, SQLiteLoadOptions options) => (T)LoadByPrimaryKeyOrCreate(typeof(T), key, options);
-        public object LoadByPrimaryKeyOrCreate(Type objectType, object key) => LoadByPrimaryKeyOrCreate(objectType, key, null);
-        public virtual object LoadByPrimaryKeyOrCreate(Type objectType, object key, SQLiteLoadOptions options)
+        public T LoadByPrimaryKeyOrCreate<T>(object key, SQLiteLoadOptions options = null) => (T)LoadByPrimaryKeyOrCreate(typeof(T), key, options);
+        public virtual object LoadByPrimaryKeyOrCreate(Type objectType, object key, SQLiteLoadOptions options = null)
         {
             options = options ?? CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
             options.CreateIfNotLoaded = true;
             return LoadByPrimaryKey(objectType, key, options);
         }
 
-        public T LoadByPrimaryKey<T>(object key) => LoadByPrimaryKey<T>(key, null);
-        public virtual T LoadByPrimaryKey<T>(object key, SQLiteLoadOptions options) => (T)LoadByPrimaryKey(typeof(T), key, options);
-
-        public object LoadByPrimaryKey(Type objectType, object key) => LoadByPrimaryKey(objectType, key, null);
-        public virtual object LoadByPrimaryKey(Type objectType, object key, SQLiteLoadOptions options)
+        public virtual T LoadByPrimaryKey<T>(object key, SQLiteLoadOptions options = null) => (T)LoadByPrimaryKey(typeof(T), key, options);
+        public virtual object LoadByPrimaryKey(Type objectType, object key, SQLiteLoadOptions options = null)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
@@ -2205,6 +2250,9 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(key));
 
             var table = GetObjectTable(objectType);
+            if (table == null)
+                return null;
+
             if (table.LoadAction == null)
                 throw new SqlNadoException("0009: Table '" + table.Name + "' does not define a LoadAction.");
 
@@ -2243,7 +2291,7 @@ namespace SqlNado
             var obj = Load(objectType, sql, options, keys).FirstOrDefault();
             if (obj == null && (options?.CreateIfNotLoaded).GetValueOrDefault())
             {
-                obj = table.GetInstance(objectType, options);
+                obj = table.GetInstance(objectType, null, options);
                 table.SetPrimaryKey(options, obj, keys);
             }
             return obj;
@@ -2284,6 +2332,9 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(objectType));
 
             var table = GetObjectTable(objectType);
+            if (table == null)
+                yield break;
+
             if (table.LoadAction == null)
                 throw new SqlNadoException("0024: Table '" + table.Name + "' does not define a LoadAction.");
 
@@ -2299,6 +2350,9 @@ namespace SqlNado
             }
 
             options = options ?? CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
             if (options.TestTableExists && !TableExists(objectType))
                 yield break;
 
@@ -2350,44 +2404,52 @@ namespace SqlNado
             }
         }
 
-        public T CreateObjectInstance<T>() => CreateObjectInstance<T>(null);
-        public T CreateObjectInstance<T>(SQLiteLoadOptions options) => (T)CreateObjectInstance(typeof(T), options);
-        public object CreateObjectInstance(Type objectType) => CreateObjectInstance(objectType, null);
-        public virtual object CreateObjectInstance(Type objectType, SQLiteLoadOptions options)
+        public T CreateObjectInstance<T>(SQLiteLoadOptions options = null) => (T)CreateObjectInstance(typeof(T), options);
+        public virtual object CreateObjectInstance(Type objectType, SQLiteLoadOptions options = null)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
 
             var table = GetObjectTable(objectType);
-            return table.GetInstance(objectType, options);
+            if (table == null)
+                throw new InvalidOperationException();
+
+            return table.GetInstance(objectType, null, options);
         }
 
-        public SQLiteObjectTable GetObjectTable<T>() => GetObjectTable(typeof(T));
-        public SQLiteObjectTable GetObjectTable<T>(SQLiteBuildTableOptions options) => GetObjectTable(typeof(T), options);
-        public SQLiteObjectTable GetObjectTable(Type type) => GetObjectTable(type, null);
-        public virtual SQLiteObjectTable GetObjectTable(Type type, SQLiteBuildTableOptions options)
+        public SQLiteObjectTable GetObjectTable<T>(SQLiteBuildTableOptions options = null) => GetObjectTable(typeof(T), options);
+        public virtual SQLiteObjectTable GetObjectTable(Type type, SQLiteBuildTableOptions options = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            if (!_objectTables.TryGetValue(type, out SQLiteObjectTable table))
+            var key = type.FullName;
+            if (options?.CacheKey != null)
+            {
+                // a character invalid in type names
+                key += "!" + options.CacheKey;
+            }
+
+            if (!_objectTables.TryGetValue(key, out var table))
             {
                 table = BuildObjectTable(type, options);
-                table = _objectTables.AddOrUpdate(type, table, (k, o) => o);
+                table = _objectTables.AddOrUpdate(key, table, (k, o) => o);
             }
             return table;
         }
 
-        protected SQLiteObjectTable BuildObjectTable(Type type) => BuildObjectTable(type, null);
-        protected virtual SQLiteObjectTable BuildObjectTable(Type type, SQLiteBuildTableOptions options)
+        protected virtual SQLiteObjectTable BuildObjectTable(Type type, SQLiteBuildTableOptions options = null)
         {
-            var builder = CreateObjectTableBuilder(type);
-            return builder.Build(options);
+            var builder = CreateObjectTableBuilder(type, options);
+            if (builder == null)
+                throw new InvalidOperationException();
+
+            return builder.Build();
         }
 
         public override string ToString() => FilePath;
 
-        protected virtual SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type) => new SQLiteObjectTableBuilder(this, type);
+        protected virtual SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type, SQLiteBuildTableOptions options = null) => new SQLiteObjectTableBuilder(this, type, options);
         protected virtual SQLiteStatement CreateStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction> prepareErrorHandler) => new SQLiteStatement(this, sql, prepareErrorHandler);
         protected virtual SQLiteRow CreateRow(int index, string[] names, object[] values) => new SQLiteRow(index, names, values);
         protected virtual SQLiteBlob CreateBlob(IntPtr handle, string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode) => new SQLiteBlob(this, handle, tableName, columnName, rowId, mode);
@@ -2426,8 +2488,12 @@ namespace SqlNado
             if (columnName == null)
                 throw new ArgumentNullException(null, nameof(columnName));
 
-            CheckError(_sqlite3_blob_open(CheckDisposed(), "main", tableName, columnName, rowId, (int)mode, out IntPtr handle));
-            return CreateBlob(handle, tableName, columnName, rowId, mode);
+            CheckError(_sqlite3_blob_open(CheckDisposed(), "main", tableName, columnName, rowId, (int)mode, out var handle));
+            var blob = CreateBlob(handle, tableName, columnName, rowId, mode);
+            if (blob == null)
+                throw new InvalidOperationException();
+
+            return blob;
         }
 
         public SQLiteStatement PrepareStatement(string sql, params object[] args) => PrepareStatement(sql, null, args);
@@ -2442,6 +2508,8 @@ namespace SqlNado
             {
                 statement = CreateStatement(sql, errorHandler);
             }
+            if (statement == null)
+                throw new InvalidOperationException();
 
             if (args != null)
             {
@@ -2461,7 +2529,7 @@ namespace SqlNado
             if (!EnableStatementsCache)
                 return CreateStatement(sql, null);
 
-            if (!_statementPools.TryGetValue(sql, out StatementPool pool))
+            if (!_statementPools.TryGetValue(sql, out var pool))
             {
                 pool = new StatementPool(sql, (s) => CreateStatement(s, null));
                 pool = _statementPools.AddOrUpdate(sql, pool, (k, o) => o);
@@ -2498,10 +2566,12 @@ namespace SqlNado
                         // for some reason, this can throw in rare conditions
                         taken = _statements.TryTake(out entry);
                     }
+#pragma warning disable CA1031 // Do not catch general exception types
                     catch
                     {
                         taken = false;
                     }
+#pragma warning restore CA1031 // Do not catch general exception types
 
                     if (taken && entry != null)
                     {
@@ -2562,7 +2632,7 @@ namespace SqlNado
         {
             foreach (var key in _statementPools.Keys.ToArray())
             {
-                if (_statementPools.TryRemove(key, out StatementPool pool))
+                if (_statementPools.TryRemove(key, out var pool))
                 {
                     pool.Clear();
                 }
@@ -2692,6 +2762,9 @@ namespace SqlNado
                     {
                         object[] values = statement.BuildRow().ToArray();
                         var row = CreateRow(index, statement.ColumnsNames, values);
+                        if (row == null)
+                            throw new InvalidOperationException();
+
                         yield return row;
                         index++;
                         continue;
@@ -2721,7 +2794,7 @@ namespace SqlNado
             }
         }
 
-        public T ChangeType<T>(object input) => ChangeType<T>(input, default(T));
+        public T ChangeType<T>(object input) => ChangeType<T>(input, default);
         public T ChangeType<T>(object input, T defaultValue)
         {
             if (TryChangeType(input, out T value))
@@ -2792,7 +2865,7 @@ namespace SqlNado
         {
             if (!TryChangeType(input, typeof(T), out object obj))
             {
-                value = default(T);
+                value = default;
                 return false;
             }
 
@@ -2991,11 +3064,13 @@ namespace SqlNado
 
                 return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine).Nullify();
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 // probably an access denied, continue
                 return null;
             }
+#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         private static void HookNativeProcs()
@@ -3108,7 +3183,9 @@ namespace SqlNado
         private static extern IntPtr LoadLibrary(string lpFileName);
 
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
+#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
         private static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string lpProcName);
+#pragma warning restore CA2101 // Specify marshaling for P/Invoke string arguments
 
         [DllImport("kernel32")]
         internal static extern long GetTickCount64();
@@ -3564,8 +3641,11 @@ namespace SqlNado
         {
             public static readonly Utf8Marshaler Instance = new Utf8Marshaler();
 
+
             // *must* exist for a custom marshaler
+#pragma warning disable IDE0060 // Remove unused parameter
             public static ICustomMarshaler GetInstance(string cookie) => Instance;
+#pragma warning restore IDE0060 // Remove unused parameter
 
             public void CleanUpManagedData(object managedObj)
             {
@@ -3842,6 +3922,11 @@ namespace SqlNado
     [Serializable]
     public class SQLiteException : Exception
     {
+        public SQLiteException()
+            : this(SQLiteErrorCode.SQLITE_ERROR)
+        {
+        }
+
         public SQLiteException(SQLiteErrorCode code)
             : base(GetMessage(code))
         {
@@ -4016,7 +4101,9 @@ namespace SqlNado
 
 namespace SqlNado
 {
+#pragma warning disable CA1036 // Override methods on comparable types
     public sealed class SQLiteForeignKey : IComparable<SQLiteForeignKey>
+#pragma warning restore CA1036 // Override methods on comparable types
     {
         internal SQLiteForeignKey(SQLiteTable table)
         {
@@ -4175,7 +4262,7 @@ namespace SqlNado
 namespace SqlNado
 {
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public class SQLiteIndexAttribute : Attribute
+    public sealed class SQLiteIndexAttribute : Attribute
     {
         public const int DefaultOrder = -1;
 
@@ -4191,12 +4278,12 @@ namespace SqlNado
             Name = name;
         }
 
-        public virtual string Name { get; }
-        public virtual string SchemaName { get; set; }
-        public virtual bool IsUnique { get; set; }
-        public virtual int Order { get; set; }
-        public virtual string CollationName { get; set; }
-        public virtual SQLiteDirection? Direction { get; set; }
+        public string Name { get; }
+        public string SchemaName { get; set; }
+        public bool IsUnique { get; set; }
+        public int Order { get; set; }
+        public string CollationName { get; set; }
+        public SQLiteDirection? Direction { get; set; }
 
         public override string ToString()
         {
@@ -4599,6 +4686,8 @@ namespace SqlNado
                 throw new InvalidOperationException();
 
             options = options ?? Table.Database.CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
 
             bool raiseOnErrorsChanged = false;
             bool raiseOnPropertyChanging = false;
@@ -4889,10 +4978,10 @@ namespace SqlNado
     {
         private readonly List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
         private readonly List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
-        private static Random _random = new Random(Environment.TickCount);
+        private static readonly Random _random = new Random(Environment.TickCount);
         internal const string _tempTablePrefix = "__temp";
 
-        public SQLiteObjectTable(SQLiteDatabase database, string name)
+        public SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions options = null)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -4902,9 +4991,11 @@ namespace SqlNado
 
             Database = database;
             Name = name;
+            Options = options;
         }
 
         public SQLiteDatabase Database { get; }
+        public SQLiteBuildTableOptions Options { get; }
         public string Name { get; }
         public string Schema { get; set; } // unused in SqlNado's SQLite
         public string Module { get; set; }
@@ -5054,8 +5145,7 @@ namespace SqlNado
             }
         }
 
-        public T GetInstance<T>(SQLiteStatement statement) => GetInstance<T>(statement, null);
-        public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions options)
+        public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions options = null)
         {
             if (options?.GetInstanceFunc != null)
                 return (T)options.GetInstanceFunc(typeof(T), statement, options);
@@ -5063,9 +5153,7 @@ namespace SqlNado
             return (T)GetInstance(typeof(T), statement, options);
         }
 
-        public object GetInstance(Type type) => GetInstance(type, null, null);
-        public object GetInstance(Type type, SQLiteLoadOptions options) => GetInstance(type, null, options);
-        public virtual object GetInstance(Type type, SQLiteStatement statement, SQLiteLoadOptions options)
+        public virtual object GetInstance(Type type, SQLiteStatement statement = null, SQLiteLoadOptions options = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -5278,22 +5366,25 @@ namespace SqlNado
             }
         }
 
-        public virtual T Load<T>(SQLiteStatement statement, SQLiteLoadOptions options)
+        public virtual T Load<T>(SQLiteStatement statement, SQLiteLoadOptions options = null)
         {
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
 
             options = options ?? Database.CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
             var instance = (T)GetInstance(typeof(T), statement, options);
             if (!options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObjectEvents;
                 if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loading, statement, options))
-                    return default(T);
+                    return default;
 
                 LoadAction(statement, options, instance);
                 if (lo != null && !lo.OnLoadAction(SQLiteObjectAction.Loaded, statement, options))
-                    return default(T);
+                    return default;
             }
             else
             {
@@ -5302,7 +5393,7 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual object Load(Type objectType, SQLiteStatement statement, SQLiteLoadOptions options)
+        public virtual object Load(Type objectType, SQLiteStatement statement, SQLiteLoadOptions options = null)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
@@ -5311,6 +5402,9 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(statement));
 
             options = options ?? Database.CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
             var instance = GetInstance(objectType, statement, options);
             if (!options.ObjectEventsDisabled)
             {
@@ -5329,12 +5423,14 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual bool Save(object instance, SQLiteSaveOptions options)
+        public virtual bool Save(object instance, SQLiteSaveOptions options = null)
         {
             if (instance == null)
                 return false;
 
             options = options ?? Database.CreateSaveOptions();
+            if (options == null)
+                throw new InvalidOperationException();
 
             InitializeAutomaticColumns(instance);
 
@@ -5454,7 +5550,7 @@ namespace SqlNado
             return "OR " + res.ToString().ToUpperInvariant() + " ";
         }
 
-        public virtual void SynchronizeIndices(SQLiteSaveOptions options)
+        public virtual void SynchronizeIndices(SQLiteSaveOptions options = null)
         {
             foreach (var index in Indices)
             {
@@ -5462,12 +5558,14 @@ namespace SqlNado
             }
         }
 
-        public virtual int SynchronizeSchema(SQLiteSaveOptions options)
+        public virtual int SynchronizeSchema(SQLiteSaveOptions options = null)
         {
             if (Columns.Count == 0)
                 throw new SqlNadoException("0006: Object table '" + Name + "' has no columns.");
 
             options = options ?? Database.CreateSaveOptions();
+            if (options == null)
+                throw new InvalidOperationException();
 
             string sql;
             var existing = Table;
@@ -5604,7 +5702,7 @@ namespace SqlNado
 {
     public class SQLiteObjectTableBuilder
     {
-        public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type)
+        public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions options = null)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -5614,21 +5712,21 @@ namespace SqlNado
 
             Database = database;
             Type = type;
+            Options = options;
         }
 
         public SQLiteDatabase Database { get; }
         public Type Type { get; }
+        public SQLiteBuildTableOptions Options { get; }
 
         protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
         protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
-        protected SQLiteObjectTable CreateObjectTable(string name) => CreateObjectTable(name, null);
-        protected virtual SQLiteObjectTable CreateObjectTable(string name, SQLiteBuildTableOptions options) => new SQLiteObjectTable(Database, name);
+        protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name, Options);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
             Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
 
-        public SQLiteObjectTable Build() => Build(null);
-        public virtual SQLiteObjectTable Build(SQLiteBuildTableOptions options)
+        public virtual SQLiteObjectTable Build()
         {
             string name = Type.Name;
             var typeAtt = Type.GetCustomAttribute<SQLiteTableAttribute>();
@@ -5640,7 +5738,10 @@ namespace SqlNado
                 }
             }
 
-            var table = CreateObjectTable(name, options);
+            var table = CreateObjectTable(name);
+            if (table == null)
+                throw new InvalidOperationException();
+
             if (typeAtt != null)
             {
                 table.DisableRowId = typeAtt.WithoutRowId;
@@ -5688,6 +5789,9 @@ namespace SqlNado
                 var column = CreateObjectColumn(table, attribute.Name, attribute.DataType, attribute.ClrType,
                     attribute.GetValueExpression.Compile(),
                     attribute.SetValueExpression?.Compile());
+                if (column == null)
+                    throw new InvalidOperationException();
+
                 table.AddColumn(column);
                 column.CopyAttributes(attribute);
 
@@ -5765,6 +5869,9 @@ namespace SqlNado
                 foreach (var kv in list.OrderBy(l => l.Item2.Order))
                 {
                     var col = CreateIndexedColumn(kv.Item1.Name);
+                    if (col == null)
+                        throw new InvalidOperationException();
+
                     col.CollationName = kv.Item2.CollationName;
                     col.Direction = kv.Item2.Direction;
 
@@ -5783,6 +5890,9 @@ namespace SqlNado
                 }
 
                 var oidx = CreateObjectIndex(table, index.Key, columns);
+                if (oidx == null)
+                    throw new InvalidOperationException();
+
                 oidx.IsUnique = unique;
                 oidx.SchemaName = schemaName;
                 table.AddIndex(oidx);
@@ -5942,6 +6052,9 @@ namespace SqlNado
                             att.DataType = nameof(SQLiteColumnType.TEXT);
                             // we need to force this column type options
                             att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
+                            if (att.BindOptions == null)
+                                throw new InvalidOperationException();
+
                             att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
                         }
                     }
@@ -6073,7 +6186,7 @@ namespace SqlNado
 {
     public class SQLiteQuery<T> : IQueryable<T>, IEnumerable<T>, IOrderedQueryable<T>
     {
-        private QueryProvider _provider;
+        private readonly QueryProvider _provider;
         private readonly Expression _expression;
 
         public SQLiteQuery(SQLiteDatabase database)
@@ -6118,6 +6231,9 @@ namespace SqlNado
             using (var sw = new StringWriter())
             {
                 var translator = CreateTranslator(sw);
+                if (translator == null)
+                    throw new InvalidOperationException();
+
                 translator.BindOptions = BindOptions;
                 translator.Translate(expression);
                 return sw.ToString();
@@ -6126,7 +6242,7 @@ namespace SqlNado
 
         private class QueryProvider : IQueryProvider
         {
-            private SQLiteQuery<T> _query;
+            private readonly SQLiteQuery<T> _query;
             private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance);
 
             public QueryProvider(SQLiteQuery<T> query)
@@ -6768,7 +6884,7 @@ namespace SqlNado
 
             private class SubtreeEvaluator : ExpressionVisitor
             {
-                private HashSet<Expression> _candidates;
+                private readonly HashSet<Expression> _candidates;
                 private readonly Func<ConstantExpression, Expression> _evalFunc;
 
                 private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression> evalFunc)
@@ -6874,7 +6990,7 @@ namespace SqlNado
             private class Nominator : ExpressionVisitor
             {
                 private readonly Func<Expression, bool> _fnCanBeEvaluated;
-                private HashSet<Expression> _candidates;
+                private readonly HashSet<Expression> _candidates;
                 private bool _cannotBeEvaluated;
 
                 public Nominator(Func<Expression, bool> fnCanBeEvaluated)
@@ -7014,7 +7130,7 @@ namespace SqlNado
         {
             if (!TryGetValue(name, out object obj))
             {
-                value = default(T);
+                value = default;
                 return false;
             }
 
@@ -7043,7 +7159,7 @@ namespace SqlNado
 
         private class Enumerator : IEnumerator<KeyValuePair<string, object>>
         {
-            private SQLiteRow _row;
+            private readonly SQLiteRow _row;
             private int _index = -1;
 
             public Enumerator(SQLiteRow row)
@@ -7103,6 +7219,7 @@ namespace SqlNado
         public virtual Func<SQLiteObjectColumn, object, object> GetValueForBindFunc { get; set; }
         public virtual string SavePointName { get; protected internal set; }
         public virtual int Index { get; protected internal set; }
+        public virtual SQLiteBuildTableOptions BuildTableOptions { get; set; }
 
         public override string ToString()
         {
@@ -7119,7 +7236,9 @@ namespace SqlNado
 
 namespace SqlNado
 {
+#pragma warning disable CA1063 // Implement IDisposable Correctly
     public class SQLiteStatement : IDisposable
+#pragma warning restore CA1063 // Implement IDisposable Correctly
     {
         private IntPtr _handle;
         internal bool _realDispose = true;
@@ -7229,6 +7348,9 @@ namespace SqlNado
             SQLiteErrorCode code;
             var type = Database.GetBindType(value); // never null
             var ctx = Database.CreateBindContext();
+            if (ctx == null)
+                throw new InvalidOperationException();
+
             ctx.Statement = this;
             ctx.Value = value;
             ctx.Index = index;
@@ -7571,7 +7693,9 @@ namespace SqlNado
             GC.SuppressFinalize(this);
         }
 
+#pragma warning disable CA1063 // Implement IDisposable Correctly
         public virtual void Dispose()
+#pragma warning restore CA1063 // Implement IDisposable Correctly
         {
             if (_realDispose)
             {
@@ -7585,7 +7709,9 @@ namespace SqlNado
             }
         }
 
+#pragma warning disable CA1063 // Implement IDisposable Correctly
         ~SQLiteStatement() => RealDispose();
+#pragma warning restore CA1063 // Implement IDisposable Correctly
     }
 }
 
@@ -7722,6 +7848,9 @@ namespace SqlNado
                 if (!string.IsNullOrWhiteSpace(Name))
                 {
                     var options = Database.CreateLoadOptions();
+                    if (options == null)
+                        throw new InvalidOperationException();
+
                     options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
                     list = Database.Load<SQLiteColumn>("PRAGMA table_info(" + EscapedName + ")", options).ToList();
                     var pkColumns = list.Where(CanBeRowId).ToArray();
@@ -7746,6 +7875,9 @@ namespace SqlNado
                 if (!string.IsNullOrWhiteSpace(Name))
                 {
                     var options = Database.CreateLoadOptions();
+                    if (options == null)
+                        throw new InvalidOperationException();
+
                     options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
                     var all = Database.Load<SQLiteColumn>("PRAGMA table_xinfo(" + EscapedName + ")", options).ToList();
                     var pkColumns = all.Where(CanBeRowId).ToArray();
@@ -7789,6 +7921,9 @@ namespace SqlNado
                     return Enumerable.Empty<SQLiteForeignKey>();
 
                 var options = Database.CreateLoadOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.GetInstanceFunc = (t, s, o) => new SQLiteForeignKey(this);
                 return Database.Load<SQLiteForeignKey>("PRAGMA foreign_key_list(" + EscapedName + ")", options);
             }
@@ -7802,6 +7937,9 @@ namespace SqlNado
                     return Enumerable.Empty<SQLiteTableIndex>();
 
                 var options = Database.CreateLoadOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.GetInstanceFunc = (t, s, o) => new SQLiteTableIndex(this);
                 return Database.Load<SQLiteTableIndex>("PRAGMA index_list(" + EscapedName + ")", options);
             }
@@ -7855,15 +7993,15 @@ namespace SqlNado
 namespace SqlNado
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false)]
-    public class SQLiteTableAttribute : Attribute
+    public sealed class SQLiteTableAttribute : Attribute
     {
-        public virtual string Name { get; set; }
-        public virtual string Schema { get; set; } // unused in SqlNado's SQLite
-        public virtual string Module { get; set; } // virtual table
-        public virtual string ModuleArguments { get; set; } // virtual table
+        public string Name { get; set; }
+        public string Schema { get; set; } // unused in SqlNado's SQLite
+        public string Module { get; set; } // virtual table
+        public string ModuleArguments { get; set; } // virtual table
 
         // note every WITHOUT ROWID table must have a PRIMARY KEY
-        public virtual bool WithoutRowId { get; set; }
+        public bool WithoutRowId { get; set; }
 
         public override string ToString() => Name;
     }
@@ -7914,6 +8052,9 @@ namespace SqlNado
             get
             {
                 var options = Table.Database.CreateLoadOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.GetInstanceFunc = (t, s, o) => new SQLiteIndexColumn(this);
                 return Table.Database.Load<SQLiteIndexColumn>("PRAGMA index_xinfo(" + SQLiteStatement.EscapeName(Name) + ")", options);
             }
@@ -8150,7 +8291,7 @@ namespace SqlNado
 
 namespace SqlNado
 {
-    public class SQLiteZeroBlob
+    public sealed class SQLiteZeroBlob
     {
         public int Size { get; set; }
 
@@ -8224,8 +8365,7 @@ namespace SqlNado.Utilities
 
         protected virtual void DictionaryObjectCommitChanges() => DictionaryObjectChangedProperties.Clear();
 
-        protected void DictionaryObjectRollbackChanges() => DictionaryObjectRollbackChanges(DictionaryObjectPropertySetOptions.None);
-        protected virtual void DictionaryObjectRollbackChanges(DictionaryObjectPropertySetOptions options)
+        protected virtual void DictionaryObjectRollbackChanges(DictionaryObjectPropertySetOptions options = DictionaryObjectPropertySetOptions.None)
         {
             var kvs = DictionaryObjectChangedProperties.ToArray(); // freeze
             foreach (var kv in kvs)
@@ -8269,7 +8409,7 @@ namespace SqlNado.Utilities
 
         public ConsoleLogger(bool addThreadId)
         {
-            AddThreadId = true;
+            AddThreadId = addThreadId;
         }
 
         public bool AddThreadId { get; set; }
@@ -8540,7 +8680,7 @@ namespace SqlNado.Utilities
                 sb.Append(prefix);
                 sb.AppendFormat(CultureInfo.InvariantCulture, "{0:X8}  ", i + offset);
 
-                int j = 0;
+                int j;
                 for (j = 0; (j < 16) && ((i + j) < count); j++)
                 {
                     sb.AppendFormat(CultureInfo.InvariantCulture, "{0:X2} ", bytes[i + j + offset]);
@@ -8665,7 +8805,7 @@ namespace SqlNado.Utilities
         {
             if (!TryChangeType(input, typeof(T), provider, out object tvalue))
             {
-                value = default(T);
+                value = default;
                 return false;
             }
 
@@ -8685,10 +8825,9 @@ namespace SqlNado.Utilities
                 return true;
             }
 
-            Type nullableType = null;
             if (conversionType.IsNullable())
             {
-                nullableType = conversionType.GenericTypeArguments[0];
+                Type nullableType = conversionType.GenericTypeArguments[0];
                 if (input == null)
                 {
                     value = null;
@@ -9340,7 +9479,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        private static bool StringToEnum(Type type, Type underlyingType, string[] names, Array values, string input, out object value)
+        private static bool StringToEnum(Type type, string[] names, Array values, string input, out object value)
         {
             for (int i = 0; i < names.Length; i++)
             {
@@ -9504,11 +9643,10 @@ namespace SqlNado.Utilities
                 return false;
             }
 
-            var underlyingType = Enum.GetUnderlyingType(type);
             var values = Enum.GetValues(type);
             // some enums like System.CodeDom.MemberAttributes *are* flags but are not declared with Flags...
             if (!type.IsDefined(typeof(FlagsAttribute), true) && stringInput.IndexOfAny(_enumSeparators) < 0)
-                return StringToEnum(type, underlyingType, names, values, stringInput, out value);
+                return StringToEnum(type, names, values, stringInput, out value);
 
             // multi value enum
             var tokens = stringInput.Split(_enumSeparators, StringSplitOptions.RemoveEmptyEntries);
@@ -9525,7 +9663,7 @@ namespace SqlNado.Utilities
                 if (token == null)
                     continue;
 
-                if (!StringToEnum(type, underlyingType, names, values, token, out object tokenValue))
+                if (!StringToEnum(type, names, values, token, out object tokenValue))
                 {
                     value = Activator.CreateInstance(type);
                     return false;
@@ -9739,7 +9877,7 @@ namespace SqlNado.Utilities
 
         private class ObjectComparer : IEqualityComparer<object>
         {
-            private DictionaryObject _dob;
+            private readonly DictionaryObject _dob;
 
             public ObjectComparer(DictionaryObject dob)
             {
@@ -9818,6 +9956,9 @@ namespace SqlNado.Utilities
             }
 
             var newProp = DictionaryObjectCreateProperty();
+            if (newProp == null)
+                throw new InvalidOperationException();
+
             newProp.Value = value;
             DictionaryObjectProperty oldProp = null;
             var finalProp = DictionaryObjectProperties.AddOrUpdate(name, newProp, (k, o) =>
@@ -10113,9 +10254,9 @@ namespace SqlNado.Utilities
 
         private class CultureStringComparer : StringComparer
         {
-            private CompareInfo _compareInfo;
-            private CompareOptions _options;
-            private bool _ignoreCase;
+            private readonly CompareInfo _compareInfo;
+            private readonly CompareOptions _options;
+            private readonly bool _ignoreCase;
 
             public CultureStringComparer(CompareInfo compareInfo, CompareOptions options)
             {
@@ -10440,6 +10581,7 @@ namespace SqlNado.Utilities
     public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
     {
         private SQLiteDatabase _database;
+        private bool _disposedValue = false;
         private readonly SQLiteLoadOptions _loadKeysOptions;
         private readonly SQLiteLoadOptions _loadTypedValuesOptions;
         private readonly SQLiteLoadOptions _loadValuesOptions;
@@ -10524,18 +10666,45 @@ namespace SqlNado.Utilities
 
         public override string ToString() => _database?.FilePath;
 
-        public virtual void Dispose()
+        protected virtual void Dispose(bool disposing)
         {
-            var db = Interlocked.Exchange(ref _database, null);
-            if (db != null)
+            if (!_disposedValue)
             {
-                db.Dispose();
-                if (DeleteOnDispose)
+                if (disposing)
                 {
-                    Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                    // dispose managed state (managed objects).
+                    var db = Interlocked.Exchange(ref _database, null);
+                    if (db != null)
+                    {
+                        db.Dispose();
+                        if (DeleteOnDispose)
+                        {
+                            Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                        }
+                    }
                 }
+
+                // free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // set large fields to null.
+
+                _disposedValue = true;
             }
         }
+
+
+        // override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~PersistentDictionary()
+        // {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+#pragma warning disable CA1063 // Implement IDisposable Correctly
+        public void Dispose() =>
+#pragma warning restore CA1063 // Implement IDisposable Correctly
+                              // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);// uncomment the following line if the finalizer is overridden above.// GC.SuppressFinalize(this);
 
         public virtual void Clear()
         {
@@ -10547,7 +10716,7 @@ namespace SqlNado.Utilities
             CheckDisposed().DeleteAll<Entry>();
         }
 
-        public virtual bool ContainsKey(Tk key) => TryGetValue(key, out var value);
+        public virtual bool ContainsKey(Tk key) => TryGetValue(key, out _);
 
         // note today we just support replace mode.
         // if the key alreay exists, no error will be throw and the value will be replaced.
@@ -10558,6 +10727,9 @@ namespace SqlNado.Utilities
 
             var db = CheckDisposed();
             var options = db.CreateSaveOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
             options.SynchronizeSchema = false;
             if (IsTypedValue)
             {
@@ -10602,7 +10774,7 @@ namespace SqlNado.Utilities
                 }
             }
 
-            value = default(Tv);
+            value = default;
             return false;
         }
 
@@ -10810,7 +10982,7 @@ namespace SqlNado.Utilities
         private class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<TypedEntry> _enumerator;
-            private PersistentDictionary<Tk, Tv> _dic;
+            private readonly PersistentDictionary<Tk, Tv> _dic;
 
             public TypedEntryEnumerator(PersistentDictionary<Tk, Tv> dic)
             {
@@ -10837,7 +11009,7 @@ namespace SqlNado.Utilities
         private class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<Entry> _enumerator;
-            private PersistentDictionary<Tk, Tv> _dic;
+            private readonly PersistentDictionary<Tk, Tv> _dic;
 
             public EntryEnumerator(PersistentDictionary<Tk, Tv> dic)
             {
@@ -10912,14 +11084,9 @@ namespace SqlNado.Utilities
         SQLiteDatabase ISQLiteObject.Database { get; set; }
         protected SQLiteDatabase Database => ((ISQLiteObject)this).Database;
 
-        public bool Save() => Save(null);
-        public virtual bool Save(SQLiteSaveOptions options) => Database.Save(this, options);
-
-        public bool Delete() => Delete(null);
-        public virtual bool Delete(SQLiteDeleteOptions options) => Database.Delete(this, options);
-
-        protected IEnumerable<T> LoadByForeignKey<T>() => LoadByForeignKey<T>(null);
-        protected virtual IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options) => Database.LoadByForeignKey<T>(this, options);
+        public virtual bool Save(SQLiteSaveOptions options = null) => Database.Save(this, options);
+        public virtual bool Delete(SQLiteDeleteOptions options = null) => Database.Delete(this, options);
+        protected virtual IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options = null) => Database.LoadByForeignKey<T>(this, options);
     }
 }
 
@@ -10947,13 +11114,9 @@ namespace SqlNado.Utilities
         [SQLiteColumn(Ignore = true)]
         public new SQLiteDatabase Database => base.Database;
 
-        public new IEnumerable<T> LoadByForeignKey<T>() => LoadByForeignKey<T>(null);
-        public virtual new IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options) => base.LoadByForeignKey<T>(options);
-
+        public virtual new IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options = null) => base.LoadByForeignKey<T>(options);
         public virtual void CommitChanges() => DictionaryObjectCommitChanges();
-
-        public void RollbackChanges() => RollbackChanges(DictionaryObjectPropertySetOptions.None);
-        public virtual void RollbackChanges(DictionaryObjectPropertySetOptions options) => DictionaryObjectRollbackChanges(options);
+        public virtual void RollbackChanges(DictionaryObjectPropertySetOptions options = DictionaryObjectPropertySetOptions.None) => DictionaryObjectRollbackChanges(options);
 
         public T GetPropertyValue<T>([CallerMemberName] string name = null) => GetPropertyValue(default(T), name);
         public virtual T GetPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue(defaultValue, name);
@@ -11140,9 +11303,9 @@ namespace SqlNado.Utilities
 
         private const int _columnBorderWidth = 1;
         private const int _absoluteMinimumColumnWidth = 1;
-        private static Lazy<bool> _isConsoleValid = new Lazy<bool>(GetConsoleValidity, true);
+        private static readonly Lazy<bool> _isConsoleValid = new Lazy<bool>(GetConsoleValidity, true);
         private static int _defaultMaximumWidth = ConsoleWindowWidth;
-        private List<TableStringColumn> _columns = new List<TableStringColumn>();
+        private readonly List<TableStringColumn> _columns = new List<TableStringColumn>();
         private int _minimumColumnWidth;
         private int _maximumWidth;
         private int _maximumRowHeight;
@@ -11244,10 +11407,12 @@ namespace SqlNado.Utilities
                 var width = Console.WindowWidth;
                 return true;
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 return false;
             }
+#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         public int MaximumNumberOfColumnsWithoutPadding
@@ -11350,47 +11515,48 @@ namespace SqlNado.Utilities
         // we need this because the console textwriter does WriteLine by its own...
         private class ConsoleModeTextWriter : TextWriter
         {
+            private readonly int _maximumWidth;
+            private int _column;
+            private bool _lastWasNewLine;
+
             public ConsoleModeTextWriter(TextWriter writer, int maximumWidth)
             {
                 Writer = writer;
-                MaximumWidth = maximumWidth;
+                _maximumWidth = maximumWidth;
             }
 
-            public int MaximumWidth;
-            public int Column;
-            public int Line;
-            public TextWriter Writer;
-            public bool LastWasNewLine;
-            public override Encoding Encoding => Writer.Encoding;
+            public int Line { get; set; }
+            public TextWriter Writer { get; }
 
+            public override Encoding Encoding => Writer.Encoding;
             public override void Flush() => base.Flush();
             public override void Close() => base.Close();
 
             public override void Write(char value)
             {
                 Writer.Write(value);
-                Column++;
-                if (Column == MaximumWidth)
+                _column++;
+                if (_column == _maximumWidth)
                 {
-                    LastWasNewLine = true;
+                    _lastWasNewLine = true;
                     Line++;
-                    Column = 0;
+                    _column = 0;
                 }
                 else
                 {
-                    LastWasNewLine = false;
+                    _lastWasNewLine = false;
                 }
             }
 
             public override void WriteLine()
             {
-                if (LastWasNewLine)
+                if (_lastWasNewLine)
                 {
-                    LastWasNewLine = false;
+                    _lastWasNewLine = false;
                     return;
                 }
                 Writer.WriteLine();
-                Column = 0;
+                _column = 0;
                 Line++;
             }
 
@@ -11409,19 +11575,19 @@ namespace SqlNado.Utilities
                     throw new NotSupportedException();
 #endif
                 Writer.Write(value);
-                Column += value.Length;
-                if (Column == MaximumWidth)
+                _column += value.Length;
+                if (_column == _maximumWidth)
                 {
-                    LastWasNewLine = true;
+                    _lastWasNewLine = true;
                     Line++;
-                    Column = 0;
+                    _column = 0;
                 }
                 else
                 {
-                    LastWasNewLine = false;
+                    _lastWasNewLine = false;
                 }
 #if DEBUG
-                if (Column > MaximumWidth)
+                if (_column > _maximumWidth)
                     throw new InvalidOperationException();
 #endif
             }
@@ -11440,13 +11606,17 @@ namespace SqlNado.Utilities
 
             bool consoleMode = IsInConsoleMode(writer);
             bool useConsoleWriter = MaximumWidth > 0 && consoleMode && ConsoleWindowWidth == MaximumWidth;
+#pragma warning disable IDE0068 // Use recommended dispose pattern
             var cw = useConsoleWriter ? new ConsoleModeTextWriter(writer, MaximumWidth) : writer;
+#pragma warning restore IDE0068 // Use recommended dispose pattern
 
             // switch to indented writer if needed
             TextWriter wr;
             if (Indent > 0)
             {
+#pragma warning disable IDE0068 // Use recommended dispose pattern
                 var itw = new IndentedTextWriter(cw, IndentTabString);
+#pragma warning restore IDE0068 // Use recommended dispose pattern
                 itw.Indent = Indent;
                 for (int i = 0; i < Indent; i++)
                 {
@@ -12095,6 +12265,7 @@ namespace SqlNado.Utilities
     public class TableStringCell
     {
         private string[] _split;
+
         public TableStringCell(TableStringColumn column, object value)
         {
             if (column == null)
@@ -12108,7 +12279,9 @@ namespace SqlNado.Utilities
         public object Value { get; }
         public virtual TableStringAlignment Alignment => Column.Alignment;
         public virtual string Text { get; protected set; }
+#pragma warning disable CA1819 // Properties should not return arrays
         public virtual string[] TextLines { get; protected set; }
+#pragma warning restore CA1819 // Properties should not return arrays
 
         public virtual int DesiredColumnWith
         {
@@ -12216,10 +12389,8 @@ namespace SqlNado.Utilities
                         int pos = 0;
                         do
                         {
-                            string dline;
                             if (pos + segmentWidth >= line.Length || (split.Length == 1 && split[0].Length <= Column.WidthWithoutPadding))
                             {
-                                dline = line.Substring(pos);
                                 lines.Add(Align(EscapeTextLine(line.Substring(pos))));
                                 break;
                             }
@@ -12231,7 +12402,7 @@ namespace SqlNado.Utilities
                             }
                             else
                             {
-                                dline = line.Substring(pos, segmentWidth);
+                                var dline = line.Substring(pos, segmentWidth);
                                 lines.Add(Align(EscapeTextLine(dline) + Column.NewLineReplacement));
                             }
                             pos += segmentWidth;
@@ -12344,7 +12515,9 @@ namespace SqlNado.Utilities
         {
         }
 
+#pragma warning disable CA1819 // Properties should not return arrays
         public new byte[] Value => (byte[])base.Value;
+#pragma warning restore CA1819 // Properties should not return arrays
 
         public override void ComputeText()
         {
@@ -12400,10 +12573,12 @@ namespace SqlNado.Utilities
                     if (value is IEnumerable enumerable)
                         return GetValue(enumerable);
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     value = "#ERR: " + e.Message;
                 }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
             return value;
         }
@@ -12481,10 +12656,18 @@ namespace SqlNado.Utilities
             }
 
             var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object, object>)r).Item1 ?? "<null>");
+            if (nameColumn == null)
+                throw new InvalidOperationException();
+
             nameColumn.HeaderAlignment = TableStringAlignment.Left;
             nameColumn.Alignment = nameColumn.HeaderAlignment;
             AddColumn(nameColumn);
-            AddColumn(CreateColumn("Value", (c, r) => ((Tuple<object, object>)r).Item2));
+
+            var valueColumn = CreateColumn("Value", (c, r) => ((Tuple<object, object>)r).Item2);
+            if (valueColumn == null)
+                throw new InvalidOperationException();
+
+            AddColumn(valueColumn);
 
             if (AddValueTypeColumn)
             {
@@ -12496,6 +12679,9 @@ namespace SqlNado.Utilities
 
                     return value.GetType().FullName;
                 });
+
+                if (typeColumn == null)
+                    throw new InvalidOperationException();
 
                 AddColumn(typeColumn);
             }
@@ -12562,10 +12748,12 @@ namespace SqlNado.Utilities
                 {
                     value = field.GetValue(obj);
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     value = "#ERR: " + e.Message;
                 }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
             return value;
         }
@@ -12642,10 +12830,12 @@ namespace SqlNado.Utilities
             {
                 return Property.GetValue(component);
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 return null;
             }
+#pragma warning restore CA1031 // Do not catch general exception types
         }
     }
 
