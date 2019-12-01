@@ -9,7 +9,7 @@ namespace SqlNado
 {
     public class SQLiteObjectTableBuilder
     {
-        public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type)
+        public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions options = null)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -19,21 +19,21 @@ namespace SqlNado
 
             Database = database;
             Type = type;
+            Options = options;
         }
 
         public SQLiteDatabase Database { get; }
         public Type Type { get; }
+        public SQLiteBuildTableOptions Options { get; }
 
         protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
         protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
-        protected SQLiteObjectTable CreateObjectTable(string name) => CreateObjectTable(name, null);
-        protected virtual SQLiteObjectTable CreateObjectTable(string name, SQLiteBuildTableOptions options) => new SQLiteObjectTable(Database, name);
+        protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name, Options);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
             Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
 
-        public SQLiteObjectTable Build() => Build(null);
-        public virtual SQLiteObjectTable Build(SQLiteBuildTableOptions options)
+        public virtual SQLiteObjectTable Build()
         {
             string name = Type.Name;
             var typeAtt = Type.GetCustomAttribute<SQLiteTableAttribute>();
@@ -45,7 +45,10 @@ namespace SqlNado
                 }
             }
 
-            var table = CreateObjectTable(name, options);
+            var table = CreateObjectTable(name);
+            if (table == null)
+                throw new InvalidOperationException();
+
             if (typeAtt != null)
             {
                 table.DisableRowId = typeAtt.WithoutRowId;
@@ -93,6 +96,9 @@ namespace SqlNado
                 var column = CreateObjectColumn(table, attribute.Name, attribute.DataType, attribute.ClrType,
                     attribute.GetValueExpression.Compile(),
                     attribute.SetValueExpression?.Compile());
+                if (column == null)
+                    throw new InvalidOperationException();
+
                 table.AddColumn(column);
                 column.CopyAttributes(attribute);
 
@@ -170,6 +176,9 @@ namespace SqlNado
                 foreach (var kv in list.OrderBy(l => l.Item2.Order))
                 {
                     var col = CreateIndexedColumn(kv.Item1.Name);
+                    if (col == null)
+                        throw new InvalidOperationException();
+
                     col.CollationName = kv.Item2.CollationName;
                     col.Direction = kv.Item2.Direction;
 
@@ -188,6 +197,9 @@ namespace SqlNado
                 }
 
                 var oidx = CreateObjectIndex(table, index.Key, columns);
+                if (oidx == null)
+                    throw new InvalidOperationException();
+
                 oidx.IsUnique = unique;
                 oidx.SchemaName = schemaName;
                 table.AddIndex(oidx);
@@ -347,6 +359,9 @@ namespace SqlNado
                             att.DataType = nameof(SQLiteColumnType.TEXT);
                             // we need to force this column type options
                             att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
+                            if (att.BindOptions == null)
+                                throw new InvalidOperationException();
+
                             att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
                         }
                     }

@@ -12,8 +12,7 @@ namespace SqlNado.Utilities
 
         protected virtual void DictionaryObjectCommitChanges() => DictionaryObjectChangedProperties.Clear();
 
-        protected void DictionaryObjectRollbackChanges() => DictionaryObjectRollbackChanges(DictionaryObjectPropertySetOptions.None);
-        protected virtual void DictionaryObjectRollbackChanges(DictionaryObjectPropertySetOptions options)
+        protected virtual void DictionaryObjectRollbackChanges(DictionaryObjectPropertySetOptions options = DictionaryObjectPropertySetOptions.None)
         {
             var kvs = DictionaryObjectChangedProperties.ToArray(); // freeze
             foreach (var kv in kvs)

@@ -126,6 +126,9 @@ namespace SqlNado
                 if (!string.IsNullOrWhiteSpace(Name))
                 {
                     var options = Database.CreateLoadOptions();
+                    if (options == null)
+                        throw new InvalidOperationException();
+
                     options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
                     list = Database.Load<SQLiteColumn>("PRAGMA table_info(" + EscapedName + ")", options).ToList();
                     var pkColumns = list.Where(CanBeRowId).ToArray();
@@ -150,6 +153,9 @@ namespace SqlNado
                 if (!string.IsNullOrWhiteSpace(Name))
                 {
                     var options = Database.CreateLoadOptions();
+                    if (options == null)
+                        throw new InvalidOperationException();
+
                     options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
                     var all = Database.Load<SQLiteColumn>("PRAGMA table_xinfo(" + EscapedName + ")", options).ToList();
                     var pkColumns = all.Where(CanBeRowId).ToArray();
@@ -193,6 +199,9 @@ namespace SqlNado
                     return Enumerable.Empty<SQLiteForeignKey>();
 
                 var options = Database.CreateLoadOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.GetInstanceFunc = (t, s, o) => new SQLiteForeignKey(this);
                 return Database.Load<SQLiteForeignKey>("PRAGMA foreign_key_list(" + EscapedName + ")", options);
             }
@@ -206,6 +215,9 @@ namespace SqlNado
                     return Enumerable.Empty<SQLiteTableIndex>();
 
                 var options = Database.CreateLoadOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.GetInstanceFunc = (t, s, o) => new SQLiteTableIndex(this);
                 return Database.Load<SQLiteTableIndex>("PRAGMA index_list(" + EscapedName + ")", options);
             }

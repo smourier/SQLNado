@@ -26,13 +26,9 @@ namespace SqlNado.Utilities
         [SQLiteColumn(Ignore = true)]
         public new SQLiteDatabase Database => base.Database;
 
-        public new IEnumerable<T> LoadByForeignKey<T>() => LoadByForeignKey<T>(null);
-        public virtual new IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options) => base.LoadByForeignKey<T>(options);
-
+        public virtual new IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options = null) => base.LoadByForeignKey<T>(options);
         public virtual void CommitChanges() => DictionaryObjectCommitChanges();
-
-        public void RollbackChanges() => RollbackChanges(DictionaryObjectPropertySetOptions.None);
-        public virtual void RollbackChanges(DictionaryObjectPropertySetOptions options) => DictionaryObjectRollbackChanges(options);
+        public virtual void RollbackChanges(DictionaryObjectPropertySetOptions options = DictionaryObjectPropertySetOptions.None) => DictionaryObjectRollbackChanges(options);
 
         public T GetPropertyValue<T>([CallerMemberName] string name = null) => GetPropertyValue(default(T), name);
         public virtual T GetPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue(defaultValue, name);

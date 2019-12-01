@@ -191,6 +191,8 @@ namespace SqlNado
                 throw new InvalidOperationException();
 
             options = options ?? Table.Database.CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
 
             bool raiseOnErrorsChanged = false;
             bool raiseOnPropertyChanging = false;

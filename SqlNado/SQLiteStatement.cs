@@ -121,6 +121,9 @@ namespace SqlNado
             SQLiteErrorCode code;
             var type = Database.GetBindType(value); // never null
             var ctx = Database.CreateBindContext();
+            if (ctx == null)
+                throw new InvalidOperationException();
+
             ctx.Statement = this;
             ctx.Value = value;
             ctx.Index = index;

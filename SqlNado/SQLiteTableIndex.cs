@@ -47,6 +47,9 @@ namespace SqlNado
             get
             {
                 var options = Table.Database.CreateLoadOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
                 options.GetInstanceFunc = (t, s, o) => new SQLiteIndexColumn(this);
                 return Table.Database.Load<SQLiteIndexColumn>("PRAGMA index_xinfo(" + SQLiteStatement.EscapeName(Name) + ")", options);
             }

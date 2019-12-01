@@ -158,6 +158,9 @@ namespace SqlNado.Utilities
 
             var db = CheckDisposed();
             var options = db.CreateSaveOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
             options.SynchronizeSchema = false;
             if (IsTypedValue)
             {

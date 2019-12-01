@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SqlNado.Utilities;
@@ -77,6 +78,9 @@ namespace SqlNado.Tests
                 Assert.AreEqual(nameof(SQLiteColumnType.TEXT), table.GetColumn("Name").Type);
 
                 var saveOptions = db.CreateSaveOptions();
+                if (saveOptions == null)
+                    throw new InvalidOperationException();
+
                 saveOptions.DeleteUnusedColumns = true;
                 db.SynchronizeSchema<Customer2>(saveOptions);
                 table = db.GetTable("Customer");

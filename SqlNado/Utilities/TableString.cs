@@ -1373,10 +1373,18 @@ namespace SqlNado.Utilities
             }
 
             var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object, object>)r).Item1 ?? "<null>");
+            if (nameColumn == null)
+                throw new InvalidOperationException();
+
             nameColumn.HeaderAlignment = TableStringAlignment.Left;
             nameColumn.Alignment = nameColumn.HeaderAlignment;
             AddColumn(nameColumn);
-            AddColumn(CreateColumn("Value", (c, r) => ((Tuple<object, object>)r).Item2));
+
+            var valueColumn = CreateColumn("Value", (c, r) => ((Tuple<object, object>)r).Item2);
+            if (valueColumn == null)
+                throw new InvalidOperationException();
+
+            AddColumn(valueColumn);
 
             if (AddValueTypeColumn)
             {
@@ -1388,6 +1396,9 @@ namespace SqlNado.Utilities
 
                     return value.GetType().FullName;
                 });
+
+                if (typeColumn == null)
+                    throw new InvalidOperationException();
 
                 AddColumn(typeColumn);
             }

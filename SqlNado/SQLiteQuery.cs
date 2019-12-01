@@ -56,6 +56,9 @@ namespace SqlNado
             using (var sw = new StringWriter())
             {
                 var translator = CreateTranslator(sw);
+                if (translator == null)
+                    throw new InvalidOperationException();
+
                 translator.BindOptions = BindOptions;
                 translator.Translate(expression);
                 return sw.ToString();

@@ -168,6 +168,9 @@ namespace SqlNado.Utilities
             }
 
             var newProp = DictionaryObjectCreateProperty();
+            if (newProp == null)
+                throw new InvalidOperationException();
+
             newProp.Value = value;
             DictionaryObjectProperty oldProp = null;
             var finalProp = DictionaryObjectProperties.AddOrUpdate(name, newProp, (k, o) =>

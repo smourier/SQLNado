@@ -28,6 +28,7 @@ namespace SqlNado
         public virtual Func<SQLiteObjectColumn, object, object> GetValueForBindFunc { get; set; }
         public virtual string SavePointName { get; protected internal set; }
         public virtual int Index { get; protected internal set; }
+        public virtual SQLiteBuildTableOptions BuildTableOptions { get; set; }
 
         public override string ToString()
         {
