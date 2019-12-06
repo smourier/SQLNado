@@ -17,8 +17,10 @@ namespace SqlNado
         }
 
         public SQLiteTable Table { get; }
+
         [SQLiteColumn(Name = "cid")]
         public int Id { get; internal set; }
+
         [SQLiteColumn(Name = "pk")]
         public bool IsPrimaryKey { get; internal set; }
 
@@ -43,17 +45,26 @@ namespace SqlNado
         }
 
         public string Type { get; internal set; }
+
         [SQLiteColumn(Name = "notnull")]
         public bool IsNotNullable { get; internal set; }
+
         [SQLiteColumn(Name = "dflt_value")]
         public object DefaultValue { get => _defaultValue; set => _defaultValue = SQLiteObjectColumn.FromLiteral(value); }
+
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool IsRowId { get; internal set; }
+
         [SQLiteColumn(Ignore = true)]
         public string Collation { get; private set; }
+
         [SQLiteColumn(Ignore = true)]
         public bool AutoIncrements { get; private set; }
+
+        [SQLiteColumn(Ignore = true)]
+        public bool IsNullable => !IsNotNullable;
+
         [SQLiteColumn(Ignore = true)]
         public SQLiteColumnAffinity Affinity
         {

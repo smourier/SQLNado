@@ -300,6 +300,18 @@ namespace SqlNado
             value.EqualsIgnoreCase("CURRENT_DATE") ||
             value.EqualsIgnoreCase("CURRENT_TIMESTAMP");
 
+        protected virtual SQLiteColumnAttribute CreateColumnAttribute() => new SQLiteColumnAttribute();
+
+        protected virtual SQLiteColumnAttribute AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute attribute)
+        {
+            if (property == null)
+                throw new ArgumentNullException(nameof(property));
+
+            // NOTE: we don't add RequiredAttribute, ColumnAttribute here because that would require us to add a package
+            // but check the test project, it has an example in the TestDataAnnotations method.
+            return attribute;
+        }
+
         protected virtual SQLiteColumnAttribute GetColumnAttribute(PropertyInfo property)
         {
             if (property == null)
@@ -307,6 +319,7 @@ namespace SqlNado
 
             // discard enumerated types unless att is defined to not ignore
             var att = property.GetCustomAttribute<SQLiteColumnAttribute>();
+            att = AddAnnotationAttributes(property, att);
             if (property.PropertyType != typeof(string))
             {
                 var et = Conversions.GetEnumeratedType(property.PropertyType);
@@ -325,7 +338,9 @@ namespace SqlNado
 
             if (att == null)
             {
-                att = new SQLiteColumnAttribute();
+                att = CreateColumnAttribute();
+                if (att == null)
+                    throw new InvalidOperationException();
             }
 
             if (att.ClrType == null)

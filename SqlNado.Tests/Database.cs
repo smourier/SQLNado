@@ -1,5 +1,8 @@
 using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SqlNado.Utilities;
 
@@ -155,6 +158,35 @@ namespace SqlNado.Tests
             }
         }
 
+        [TestMethod]
+        public void TestDataAnnotations()
+        {
+            using (var db = new AnnotatedDb(":memory:"))
+            {
+                var cust = new AnnotatedCustomer();
+                cust.Name = "Bob" + Environment.TickCount;
+                cust.NotNullableGuid = Guid.NewGuid();
+                db.Save(cust);
+
+                var table = db.Tables.First();
+                Assert.AreEqual(table.Columns.Count, 5);
+                Assert.AreEqual(table.Columns[0].Name, nameof(AnnotatedCustomer.Id));
+                Assert.AreEqual(table.Columns[1].Name, nameof(AnnotatedCustomer.NullableGuid));
+                Assert.AreEqual(table.Columns[2].Name, nameof(AnnotatedCustomer.NotNullableGuid));
+                Assert.AreEqual(table.Columns[3].Name, nameof(AnnotatedCustomer.Guid));
+                Assert.AreEqual(table.Columns[4].Name, "OtherName");
+
+                var rows = table.GetRows().ToArray();
+
+                var cust2 = db.LoadByPrimaryKey<AnnotatedCustomer>(cust.Id);
+                Assert.AreEqual(cust.Guid, cust2.Guid);
+                Assert.AreEqual(cust.Id, cust2.Id);
+                Assert.AreEqual(cust.Name, cust2.Name);
+                Assert.AreEqual(cust.NotNullableGuid, cust2.NotNullableGuid);
+                Assert.AreEqual(cust.NullableGuid, cust2.NullableGuid);
+            }
+        }
+
         [SQLiteTable(Name = "Customer")]
         private class Customer1
         {
@@ -212,6 +244,110 @@ namespace SqlNado.Tests
             public byte Byte { get; set; }
             public MyEnum MyEnum { get; set; }
             public MyFlagsEnum MyFlagsEnum { get; set; }
+        }
+
+        private class AnnotatedDb : SQLiteDatabase
+        {
+            public AnnotatedDb(string filePath) : base(filePath)
+            {
+            }
+
+            protected override SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type, SQLiteBuildTableOptions options = null) => new AnnotatedBuilder(this, type, options);
+
+            private class AnnotatedBuilder : SQLiteObjectTableBuilder
+            {
+                public AnnotatedBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions options = null)
+                    : base(database, type, options)
+                {
+                }
+
+                protected override SQLiteColumnAttribute AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute attribute)
+                {
+                    if (property == null)
+                        throw new ArgumentNullException(nameof(property));
+
+                    // attribute may be null here
+
+                    var ignore = property.GetCustomAttribute<NotMappedAttribute>();
+                    if (ignore != null)
+                    {
+                        attribute ??= CreateColumnAttribute();
+                        attribute.Ignore = true;
+                    }
+
+                    var col = property.GetCustomAttribute<ColumnAttribute>();
+                    if (col != null)
+                    {
+                        attribute ??= CreateColumnAttribute();
+                        if (!string.IsNullOrWhiteSpace(col.Name))
+                        {
+                            attribute.Name = col.Name;
+                        }
+
+                        if (col.Order != -1)
+                        {
+                            attribute.SortOrder = col.Order;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(col.TypeName))
+                        {
+                            attribute.DataType = col.TypeName;
+                        }
+                    }
+
+                    var key = property.GetCustomAttribute<KeyAttribute>();
+                    if (key != null)
+                    {
+                        attribute ??= CreateColumnAttribute();
+                        attribute.IsPrimaryKey = true;
+                    }
+
+                    var req = property.GetCustomAttribute<RequiredAttribute>();
+                    if (req != null)
+                    {
+                        attribute ??= CreateColumnAttribute();
+                        attribute.IsNullable = false;
+                    }
+
+                    var gen = property.GetCustomAttribute<DatabaseGeneratedAttribute>();
+                    if (gen != null && gen.DatabaseGeneratedOption != DatabaseGeneratedOption.None)
+                    {
+                        switch (gen.DatabaseGeneratedOption)
+                        {
+                            case DatabaseGeneratedOption.Identity:
+                                attribute ??= CreateColumnAttribute();
+                                attribute.AutoIncrements = true;
+                                break;
+                        }
+                    }
+                    return attribute;
+                }
+            }
+        }
+
+        // this uses data annotations
+        private class AnnotatedCustomer
+        {
+            public AnnotatedCustomer()
+            {
+                Id = Guid.NewGuid();
+            }
+
+            [Key]
+            public Guid Id { get; set; }
+
+            public Guid? NullableGuid { get; set; }
+
+            [Required]
+            public Guid? NotNullableGuid { get; set; }
+
+            public Guid Guid { get; set; }
+
+            [Column("OtherName")]
+            public string Name { get; set; }
+
+            [NotMapped]
+            public bool IsEmptyId => Id == Guid.Empty;
         }
 
         private enum MyEnum
