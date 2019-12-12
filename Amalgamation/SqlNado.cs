@@ -639,8 +639,10 @@ namespace SqlNado
         }
 
         public SQLiteTable Table { get; }
+
         [SQLiteColumn(Name = "cid")]
         public int Id { get; internal set; }
+
         [SQLiteColumn(Name = "pk")]
         public bool IsPrimaryKey { get; internal set; }
 
@@ -665,17 +667,26 @@ namespace SqlNado
         }
 
         public string Type { get; internal set; }
+
         [SQLiteColumn(Name = "notnull")]
         public bool IsNotNullable { get; internal set; }
+
         [SQLiteColumn(Name = "dflt_value")]
         public object DefaultValue { get => _defaultValue; set => _defaultValue = SQLiteObjectColumn.FromLiteral(value); }
+
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool IsRowId { get; internal set; }
+
         [SQLiteColumn(Ignore = true)]
         public string Collation { get; private set; }
+
         [SQLiteColumn(Ignore = true)]
         public bool AutoIncrements { get; private set; }
+
+        [SQLiteColumn(Ignore = true)]
+        public bool IsNullable => !IsNotNullable;
+
         [SQLiteColumn(Ignore = true)]
         public SQLiteColumnAffinity Affinity
         {
@@ -5993,6 +6004,18 @@ namespace SqlNado
             value.EqualsIgnoreCase("CURRENT_DATE") ||
             value.EqualsIgnoreCase("CURRENT_TIMESTAMP");
 
+        protected virtual SQLiteColumnAttribute CreateColumnAttribute() => new SQLiteColumnAttribute();
+
+        protected virtual SQLiteColumnAttribute AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute attribute)
+        {
+            if (property == null)
+                throw new ArgumentNullException(nameof(property));
+
+            // NOTE: we don't add RequiredAttribute, ColumnAttribute here because that would require us to add a package
+            // but check the test project, it has an example in the TestDataAnnotations method.
+            return attribute;
+        }
+
         protected virtual SQLiteColumnAttribute GetColumnAttribute(PropertyInfo property)
         {
             if (property == null)
@@ -6000,6 +6023,7 @@ namespace SqlNado
 
             // discard enumerated types unless att is defined to not ignore
             var att = property.GetCustomAttribute<SQLiteColumnAttribute>();
+            att = AddAnnotationAttributes(property, att);
             if (property.PropertyType != typeof(string))
             {
                 var et = Conversions.GetEnumeratedType(property.PropertyType);
@@ -6018,7 +6042,9 @@ namespace SqlNado
 
             if (att == null)
             {
-                att = new SQLiteColumnAttribute();
+                att = CreateColumnAttribute();
+                if (att == null)
+                    throw new InvalidOperationException();
             }
 
             if (att.ClrType == null)
@@ -8853,6 +8879,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(Guid))
             {
+                if (0.Equals(input))
+                {
+                    value = Guid.Empty;
+                    return true;
+                }
+
                 if (inputType == typeof(byte[]))
                 {
                     var bytes = (byte[])input;
@@ -8874,6 +8906,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(IntPtr))
             {
+                if (0.Equals(input))
+                {
+                    value = IntPtr.Zero;
+                    return true;
+                }
+
                 if (IntPtr.Size == 8)
                 {
                     if (TryChangeType(input, provider, out long l))
@@ -8892,6 +8930,18 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(bool))
             {
+                if (0.Equals(input))
+                {
+                    value = false;
+                    return true;
+                }
+
+                if (1.Equals(input))
+                {
+                    value = true;
+                    return true;
+                }
+
                 if (inputType == typeof(byte[]))
                 {
                     var bytes = (byte[])input;
@@ -9232,6 +9282,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(DateTime))
             {
+                if (0.Equals(input))
+                {
+                    value = DateTime.MinValue;
+                    return true;
+                }
+
                 if (inputType == typeof(long))
                 {
                     value = new DateTime((long)input);
@@ -9247,6 +9303,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(TimeSpan))
             {
+                if (0.Equals(input))
+                {
+                    value = TimeSpan.Zero;
+                    return true;
+                }
+
                 if (inputType == typeof(long))
                 {
                     value = new TimeSpan((long)input);
@@ -9295,6 +9357,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(DateTimeOffset))
             {
+                if (0.Equals(input))
+                {
+                    value = DateTimeOffset.MinValue;
+                    return true;
+                }
+
                 if (inputType == typeof(DateTime))
                 {
                     value = new DateTimeOffset((DateTime)input);

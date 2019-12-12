@@ -410,6 +410,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(Guid))
             {
+                if (0.Equals(input))
+                {
+                    value = Guid.Empty;
+                    return true;
+                }
+
                 if (inputType == typeof(byte[]))
                 {
                     var bytes = (byte[])input;
@@ -431,6 +437,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(IntPtr))
             {
+                if (0.Equals(input))
+                {
+                    value = IntPtr.Zero;
+                    return true;
+                }
+
                 if (IntPtr.Size == 8)
                 {
                     if (TryChangeType(input, provider, out long l))
@@ -449,6 +461,18 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(bool))
             {
+                if (0.Equals(input))
+                {
+                    value = false;
+                    return true;
+                }
+
+                if (1.Equals(input))
+                {
+                    value = true;
+                    return true;
+                }
+
                 if (inputType == typeof(byte[]))
                 {
                     var bytes = (byte[])input;
@@ -789,6 +813,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(DateTime))
             {
+                if (0.Equals(input))
+                {
+                    value = DateTime.MinValue;
+                    return true;
+                }
+
                 if (inputType == typeof(long))
                 {
                     value = new DateTime((long)input);
@@ -804,6 +834,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(TimeSpan))
             {
+                if (0.Equals(input))
+                {
+                    value = TimeSpan.Zero;
+                    return true;
+                }
+
                 if (inputType == typeof(long))
                 {
                     value = new TimeSpan((long)input);
@@ -852,6 +888,12 @@ namespace SqlNado.Utilities
 
             if (conversionType == typeof(DateTimeOffset))
             {
+                if (0.Equals(input))
+                {
+                    value = DateTimeOffset.MinValue;
+                    return true;
+                }
+
                 if (inputType == typeof(DateTime))
                 {
                     value = new DateTimeOffset((DateTime)input);
