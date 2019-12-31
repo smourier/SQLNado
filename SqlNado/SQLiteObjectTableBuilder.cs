@@ -85,6 +85,9 @@ namespace SqlNado
             {
                 foreach (var idx in attribute.Indices)
                 {
+                    if (idx == null)
+                        continue;
+
                     if (!indices.TryGetValue(idx.Name, out var atts))
                     {
                         atts = new List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>();

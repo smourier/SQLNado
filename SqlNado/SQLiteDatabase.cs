@@ -789,6 +789,20 @@ namespace SqlNado
             return Tables.FirstOrDefault(t => name.EqualsIgnoreCase(t.Name));
         }
 
+        public SQLiteObjectTable SynchronizeIndices<T>(SQLiteSaveOptions options = null) => SynchronizeIndices(typeof(T), options);
+        public virtual SQLiteObjectTable SynchronizeIndices(Type type, SQLiteSaveOptions options = null)
+        {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+
+            var table = GetObjectTable(type, options?.BuildTableOptions);
+            if (table == null)
+                throw new InvalidOperationException();
+
+            table.SynchronizeIndices(options);
+            return table;
+        }
+
         public SQLiteObjectTable SynchronizeSchema<T>(SQLiteSaveOptions options = null) => SynchronizeSchema(typeof(T), options);
         public virtual SQLiteObjectTable SynchronizeSchema(Type type, SQLiteSaveOptions options = null)
         {
