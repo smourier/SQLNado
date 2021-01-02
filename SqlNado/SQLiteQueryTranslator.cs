@@ -160,7 +160,7 @@ namespace SqlNado
                         Visit(callExpression.Object);
                         Writer.Write(" LIKE ");
 
-                        string sub = SubTranslate(callExpression.Arguments[0]);
+                        var sub = SubTranslate(callExpression.Arguments[0]);
                         if (IsQuoted(sub))
                         {
                             Writer.Write('\'');
@@ -468,7 +468,7 @@ namespace SqlNado
             }
             else
             {
-                object value = Database.CoerceValueForBind(constant.Value, BindOptions);
+                var value = Database.CoerceValueForBind(constant.Value, BindOptions);
                 switch (Type.GetTypeCode(value.GetType()))
                 {
                     case TypeCode.Boolean:
@@ -502,7 +502,7 @@ namespace SqlNado
                     default:
                         if (value is byte[] bytes)
                         {
-                            string hex = "X'" + Conversions.ToHexa(bytes) + "'";
+                            var hex = "X'" + Conversions.ToHexa(bytes) + "'";
                             Writer.Write(hex);
                             break;
                         }
@@ -600,7 +600,7 @@ namespace SqlNado
 
                 private Expression Evaluate(Expression expression)
                 {
-                    bool modified = false;
+                    var modified = false;
                     var type = expression.Type;
                     if (expression.NodeType == ExpressionType.Convert)
                     {
@@ -696,7 +696,7 @@ namespace SqlNado
                 {
                     if (expression != null)
                     {
-                        bool saveCannotBeEvaluated = _cannotBeEvaluated;
+                        var saveCannotBeEvaluated = _cannotBeEvaluated;
                         _cannotBeEvaluated = false;
                         base.Visit(expression);
                         if (!_cannotBeEvaluated)

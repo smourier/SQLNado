@@ -7,7 +7,7 @@
     <FileVersion>1.2.2.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Simon Mourier</Authors>
-    <Copyright>Copyright (c) 2017-2019 Simon Mourier. All rights reserved.</Copyright>
+    <Copyright>Copyright (c) 2017-2021 Simon Mourier. All rights reserved.</Copyright>
     <PackageProjectUrl>https://github.com/smourier/SQLNado</PackageProjectUrl>
     <PackageLicenseUrl></PackageLicenseUrl>
     <PackageTags>SQLite c# .net SQL winsqlite azure</PackageTags>

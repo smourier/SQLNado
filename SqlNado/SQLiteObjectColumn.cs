@@ -194,9 +194,9 @@ namespace SqlNado
             if (options == null)
                 throw new InvalidOperationException();
 
-            bool raiseOnErrorsChanged = false;
-            bool raiseOnPropertyChanging = false;
-            bool raiseOnPropertyChanged = false;
+            var raiseOnErrorsChanged = false;
+            var raiseOnPropertyChanging = false;
+            var raiseOnPropertyChanged = false;
             ISQLiteObjectChangeEvents ce = null;
 
             if (options.ObjectChangeEventsDisabled)
@@ -231,8 +231,8 @@ namespace SqlNado
 
         public virtual string GetCreateSql(SQLiteCreateSqlOptions options)
         {
-            string sql = EscapedName + " " + DataType;
-            int pkCols = Table.PrimaryKeyColumns.Count();
+            var sql = EscapedName + " " + DataType;
+            var pkCols = Table.PrimaryKeyColumns.Count();
             if (IsPrimaryKey && pkCols == 1)
             {
                 sql += " PRIMARY KEY";
@@ -335,7 +335,7 @@ namespace SqlNado
 
         public override string ToString()
         {
-            string s = Name;
+            var s = Name;
 
             var atts = new List<string>();
             if (IsPrimaryKey)
@@ -409,7 +409,7 @@ namespace SqlNado
                 {
                     if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object value))
                     {
-                        string type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
+                        var type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
                         throw new SqlNadoException("0028: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
                     }
 

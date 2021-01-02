@@ -22,13 +22,16 @@ namespace SqlNado
 
         [Browsable(false)] // remove from tablestring dumps
         public SQLiteDatabase Database { get; }
+
         public string Name { get; internal set; }
         public int RootPage { get; internal set; }
+
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool IsVirtual => Module != null;
         public bool IsFts => SQLiteObjectTable.IsFtsModule(Module);
         public string Module { get; private set; }
+        
         public string[] ModuleArguments { get; private set; }
         public string[] TokenizedSql { get; private set; }
 
@@ -51,12 +54,12 @@ namespace SqlNado
                 {
                     var split = Sql.Split(' ', '\t', '\r', '\n');
                     TokenizedSql = split.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
-                    for (int i = 0; i < TokenizedSql.Length; i++)
+                    for (var i = 0; i < TokenizedSql.Length; i++)
                     {
                         if (TokenizedSql[i].EqualsIgnoreCase("using") && (i + 1) < TokenizedSql.Length)
                         {
                             var usng = TokenizedSql[i + 1];
-                            int pos = usng.IndexOf('(');
+                            var pos = usng.IndexOf('(');
                             if (pos < 0)
                             {
                                 Module = usng;
@@ -65,7 +68,7 @@ namespace SqlNado
                             else
                             {
                                 Module = usng.Substring(0, pos);
-                                int end = usng.LastIndexOf(')');
+                                var end = usng.LastIndexOf(')');
                                 string args;
                                 if (end < 0)
                                 {

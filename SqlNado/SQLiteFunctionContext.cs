@@ -53,7 +53,7 @@ namespace SqlNado
             }
 
             var bi = BindOptions ?? Database.BindOptions;
-            object cvalue = Database.CoerceValueForBind(value, bi);
+            var cvalue = Database.CoerceValueForBind(value, bi);
             if (cvalue is int i)
             {
                 SQLiteDatabase._sqlite3_result_int(_handle, i);

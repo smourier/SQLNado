@@ -53,8 +53,10 @@ namespace SqlNado
 
         [Browsable(false)]
         public SQLiteDatabase Database { get; }
+        
         [Browsable(false)]
         public IntPtr Handle => _handle;
+        
         public string Sql { get; }
         public SQLiteErrorCode PrepareError { get; }
 
@@ -215,7 +217,7 @@ namespace SqlNado
 
         public virtual IEnumerable<object> BuildRow()
         {
-            for (int i = 0; i < ColumnCount; i++)
+            for (var i = 0; i < ColumnCount; i++)
             {
                 yield return GetColumnValue(i);
             }
@@ -266,7 +268,7 @@ namespace SqlNado
 
         public bool TryGetColumnValue(string name, out object value)
         {
-            int i = GetColumnIndex(name);
+            var i = GetColumnIndex(name);
             if (i < 0)
             {
                 value = null;
@@ -279,7 +281,7 @@ namespace SqlNado
 
         public virtual string GetNullifiedColumnValue(string name)
         {
-            int i = GetColumnIndex(name);
+            var i = GetColumnIndex(name);
             if (i < 0)
                 return null;
 
@@ -295,7 +297,7 @@ namespace SqlNado
 
         public object GetColumnValue(string name)
         {
-            int i = GetColumnIndex(name);
+            var i = GetColumnIndex(name);
             if (i < 0)
                 return null;
 
@@ -310,22 +312,22 @@ namespace SqlNado
             switch (type)
             {
                 case SQLiteColumnType.BLOB:
-                    byte[] bytes = GetColumnByteArray(index);
+                    var bytes = GetColumnByteArray(index);
                     value = bytes;
                     break;
 
                 case SQLiteColumnType.TEXT:
-                    string s = GetColumnString(index);
+                    var s = GetColumnString(index);
                     value = s;
                     break;
 
                 case SQLiteColumnType.REAL:
-                    double d = GetColumnDouble(index);
+                    var d = GetColumnDouble(index);
                     value = d;
                     break;
 
                 case SQLiteColumnType.INTEGER:
-                    long l = GetColumnInt64(index);
+                    var l = GetColumnInt64(index);
                     if (l >= int.MinValue && l <= int.MaxValue)
                     {
                         value = (int)l;
@@ -349,7 +351,7 @@ namespace SqlNado
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            int index = GetColumnIndex(name);
+            var index = GetColumnIndex(name);
             if (index < 0)
                 return defaultValue;
 
@@ -358,7 +360,7 @@ namespace SqlNado
 
         public virtual T GetColumnValue<T>(int index, T defaultValue)
         {
-            object rawValue = GetColumnValue(index);
+            var rawValue = GetColumnValue(index);
             if (!Conversions.TryChangeType(rawValue, CultureInfo.InvariantCulture, out T value))
                 return defaultValue;
 
@@ -395,11 +397,11 @@ namespace SqlNado
             if (func == null)
                 throw new ArgumentNullException(nameof(func));
 
-            int index = 0;
+            var index = 0;
             var handle = CheckDisposed();
             do
             {
-                SQLiteErrorCode code = SQLiteDatabase._sqlite3_step(handle);
+                var code = SQLiteDatabase._sqlite3_step(handle);
                 if (code == SQLiteErrorCode.SQLITE_DONE)
                 {
                     index++;
@@ -409,7 +411,7 @@ namespace SqlNado
 
                 if (code == SQLiteErrorCode.SQLITE_ROW)
                 {
-                    bool cont = func(this, index);
+                    var cont = func(this, index);
                     if (!cont)
                     {
                         Database.Log(TraceLevel.Verbose, "Step break at index " + index);

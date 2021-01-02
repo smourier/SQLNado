@@ -35,7 +35,7 @@ namespace SqlNado
 
         public virtual SQLiteObjectTable Build()
         {
-            string name = Type.Name;
+            var name = Type.Name;
             var typeAtt = Type.GetCustomAttribute<SQLiteTableAttribute>();
             if (typeAtt != null)
             {
@@ -163,7 +163,7 @@ namespace SqlNado
             foreach (var index in indices)
             {
                 var list = index.Value;
-                for (int i = 0; i < list.Count; i++)
+                for (var i = 0; i < list.Count; i++)
                 {
                     SQLiteColumnAttribute col = list[i].Item1;
                     SQLiteIndexAttribute idx = list[i].Item2;
@@ -174,7 +174,7 @@ namespace SqlNado
                 }
 
                 var columns = new List<SQLiteIndexedColumn>();
-                bool unique = false;
+                var unique = false;
                 string schemaName = null;
                 foreach (var kv in list.OrderBy(l => l.Item2.Order))
                 {

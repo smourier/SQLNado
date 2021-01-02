@@ -29,7 +29,7 @@ namespace SqlNado
 
         public override string ToString()
         {
-            string s = Name + ":" + Order;
+            var s = Name + ":" + Order;
 
             var atts = new List<string>();
             if (IsUnique)

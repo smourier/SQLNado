@@ -23,7 +23,7 @@ namespace SqlNado
             if (CollationName.Length > 2 && CollationName.StartsWith(CultureInfoCollationPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 string sid;
-                int pos = CollationName.IndexOf('_', CultureInfoCollationPrefix.Length);
+                var pos = CollationName.IndexOf('_', CultureInfoCollationPrefix.Length);
                 if (pos < 0)
                 {
                     sid = CollationName.Substring(CultureInfoCollationPrefix.Length);
@@ -37,7 +37,7 @@ namespace SqlNado
                     }
                 }
 
-                if (int.TryParse(sid, NumberStyles.Integer, CultureInfo.CurrentCulture, out int lcid))
+                if (int.TryParse(sid, NumberStyles.Integer, CultureInfo.CurrentCulture, out var lcid))
                 {
                     CollationCulture = CultureInfo.GetCultureInfo(lcid); // don't handle exception on purpose, we want the user to be aware of that issue
                 }

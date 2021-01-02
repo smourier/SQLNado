@@ -50,7 +50,7 @@ namespace SqlNado
 
         bool ICollection<KeyValuePair<string, object>>.Contains(KeyValuePair<string, object> item)
         {
-            for (int i = 0; i < Count; i++)
+            for (var i = 0; i < Count; i++)
             {
                 if (!Names[i].EqualsIgnoreCase(item.Key))
                     continue;
@@ -80,7 +80,7 @@ namespace SqlNado
             if (array.Length - arrayIndex < Count)
                 throw new ArgumentException(null, nameof(array));
 
-            for (int i = 0; i < Count; i++)
+            for (var i = 0; i < Count; i++)
             {
                 array[i + arrayIndex] = new KeyValuePair<string, object>(Names[i], Values[i]);
             }
@@ -110,7 +110,7 @@ namespace SqlNado
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            for (int i = 0; i < Count; i++)
+            for (var i = 0; i < Count; i++)
             {
                 if (name.EqualsIgnoreCase(Names[i]))
                 {

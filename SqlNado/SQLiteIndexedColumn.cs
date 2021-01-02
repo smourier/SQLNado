@@ -21,7 +21,7 @@ namespace SqlNado
 
         public virtual string GetCreateSql()
         {
-            string s = EscapedName;
+            var s = EscapedName;
             if (!string.IsNullOrWhiteSpace(CollationName))
             {
                 s += " COLLATE " + CollationName;

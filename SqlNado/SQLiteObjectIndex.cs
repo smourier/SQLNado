@@ -29,7 +29,7 @@ namespace SqlNado
 
         public override string ToString()
         {
-            string s = Name;
+            var s = Name;
 
             if (!string.IsNullOrWhiteSpace(SchemaName))
             {

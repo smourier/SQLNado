@@ -77,7 +77,7 @@ namespace SqlNado
 
         public virtual string GetCreateSql(string tableName)
         {
-            string sql = "CREATE ";
+            var sql = "CREATE ";
             if (IsVirtual)
             {
                 sql += "VIRTUAL ";
@@ -134,7 +134,7 @@ namespace SqlNado
             if (rowIdCol != null)
                 return (long)rowIdCol.GetValue(obj);
 
-            string sql = "SELECT rowid FROM " + EscapedName + " WHERE " + BuildWherePrimaryKeyStatement();
+            var sql = "SELECT rowid FROM " + EscapedName + " WHERE " + BuildWherePrimaryKeyStatement();
             var pk = GetPrimaryKey(obj);
             return Database.ExecuteScalar<long>(sql, pk);
         }
@@ -171,7 +171,7 @@ namespace SqlNado
             if (pkCols.Count != primaryKey.Length)
                 throw new ArgumentException(null, nameof(primaryKey));
 
-            for (int i = 0; i < primaryKey.Length; i++)
+            for (var i = 0; i < primaryKey.Length; i++)
             {
                 pkCols[i].SetValue(options, instance, primaryKey[i]);
             }
@@ -516,7 +516,7 @@ namespace SqlNado
                 }
             }
 
-            bool tryUpdate = !options.DontTryUpdate && HasPrimaryKey && pk.Count > 0 && updateArgs.Count > 0;
+            var tryUpdate = !options.DontTryUpdate && HasPrimaryKey && pk.Count > 0 && updateArgs.Count > 0;
 
             string sql;
             int count = 0;
@@ -620,7 +620,7 @@ namespace SqlNado
 
                 using (var statement = Database.PrepareStatement(sql, onError))
                 {
-                    int c = 0;
+                    var c = 0;
                     if (statement.PrepareError == SQLiteErrorCode.SQLITE_OK)
                     {
                         c = statement.StepOne(null);
@@ -658,19 +658,19 @@ namespace SqlNado
                 changed.Add(column);
             }
 
-            int count = 0;
-            bool hasNonConstantDefaults = added.Any(c => c.HasNonConstantDefaultValue);
+            var count = 0;
+            var hasNonConstantDefaults = added.Any(c => c.HasNonConstantDefaultValue);
 
             if ((options.DeleteUnusedColumns && deleted.Count > 0) || changed.Count > 0 || hasNonConstantDefaults)
             {
                 // SQLite does not support ALTER or DROP column.
                 // Note this may fail depending on column unicity, constraint violation, etc.
                 // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
-                string tempTableName = _tempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
+                var tempTableName = _tempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
                 sql = GetCreateSql(tempTableName);
                 count += Database.ExecuteNonQuery(sql);
-                bool dropped = false;
-                bool renamed = false;
+                var dropped = false;
+                var renamed = false;
                 try
                 {
                     if (options.UseTransactionForSchemaSynchronization)

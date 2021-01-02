@@ -89,7 +89,7 @@ namespace SqlNado.Temp
             {
                 dic.Database.CacheFlush();
                 return;
-                int max = 10;
+                var max = 10;
                 for (int i = 0; i < max; i++)
                 {
                     dic[i.ToString()] = i;

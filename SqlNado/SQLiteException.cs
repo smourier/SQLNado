@@ -25,7 +25,7 @@ namespace SqlNado
 
         private static string AddMessage(SQLiteErrorCode code, string message)
         {
-            string msg = GetMessage(code);
+            var msg = GetMessage(code);
             if (!string.IsNullOrEmpty(message))
             {
                 msg += " " + char.ToUpperInvariant(message[0]) + message.Substring(1);

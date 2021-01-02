@@ -15,12 +15,16 @@ namespace SqlNado
         }
 
         public SQLiteTable Table { get; }
+
         [SQLiteColumn(Name = "seq")]
         public int Ordinal { get; internal set; }
+
         [SQLiteColumn(Name = "unique")]
         public bool IsUnique { get; internal set; }
+
         [SQLiteColumn(Name = "partial")]
         public bool IsPartial { get; internal set; }
+
         public string Name { get; internal set; }
         public string Origin { get; internal set; }
 

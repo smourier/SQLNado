@@ -87,7 +87,7 @@ namespace SqlNado
                 if (expression == null)
                     throw new ArgumentNullException(nameof(expression));
 
-                string sql = _query.GetQueryText(expression);
+                var sql = _query.GetQueryText(expression);
                 sql = NormalizeSelect(sql);
                 var elementType = Conversions.GetEnumeratedType(typeof(TResult));
                 if (elementType == null)
@@ -113,7 +113,7 @@ namespace SqlNado
                         // escaped table name have a ", let's use that information
                         if (sql.Length > token.Length && sql[0] == '"')
                         {
-                            int pos = sql.IndexOf('"', 1);
+                            var pos = sql.IndexOf('"', 1);
                             if (pos > 1)
                                 return token + "* FROM (" + sql.Substring(0, pos + 1) + ")" + sql.Substring(pos + 1);
                         }
@@ -137,7 +137,7 @@ namespace SqlNado
                 if (expression == null)
                     throw new ArgumentNullException(nameof(expression));
 
-                string sql = _query.GetQueryText(expression);
+                var sql = _query.GetQueryText(expression);
                 sql = NormalizeSelect(sql);
                 foreach (var item in _query.Database.Load<TResult>(sql))
                 {

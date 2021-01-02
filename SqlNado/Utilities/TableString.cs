@@ -124,12 +124,10 @@ namespace SqlNado.Utilities
                 var width = Console.WindowWidth;
                 return true;
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 return false;
             }
-#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         public int MaximumNumberOfColumnsWithoutPadding
@@ -323,17 +321,13 @@ namespace SqlNado.Utilities
 
             bool consoleMode = IsInConsoleMode(writer);
             bool useConsoleWriter = MaximumWidth > 0 && consoleMode && ConsoleWindowWidth == MaximumWidth;
-#pragma warning disable IDE0068 // Use recommended dispose pattern
             var cw = useConsoleWriter ? new ConsoleModeTextWriter(writer, MaximumWidth) : writer;
-#pragma warning restore IDE0068 // Use recommended dispose pattern
 
             // switch to indented writer if needed
             TextWriter wr;
             if (Indent > 0)
             {
-#pragma warning disable IDE0068 // Use recommended dispose pattern
                 var itw = new IndentedTextWriter(cw, IndentTabString);
-#pragma warning restore IDE0068 // Use recommended dispose pattern
                 itw.Indent = Indent;
                 for (int i = 0; i < Indent; i++)
                 {
@@ -996,9 +990,7 @@ namespace SqlNado.Utilities
         public object Value { get; }
         public virtual TableStringAlignment Alignment => Column.Alignment;
         public virtual string Text { get; protected set; }
-#pragma warning disable CA1819 // Properties should not return arrays
         public virtual string[] TextLines { get; protected set; }
-#pragma warning restore CA1819 // Properties should not return arrays
 
         public virtual int DesiredColumnWith
         {
@@ -1232,9 +1224,7 @@ namespace SqlNado.Utilities
         {
         }
 
-#pragma warning disable CA1819 // Properties should not return arrays
         public new byte[] Value => (byte[])base.Value;
-#pragma warning restore CA1819 // Properties should not return arrays
 
         public override void ComputeText()
         {
@@ -1290,12 +1280,10 @@ namespace SqlNado.Utilities
                     if (value is IEnumerable enumerable)
                         return GetValue(enumerable);
                 }
-#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     value = "#ERR: " + e.Message;
                 }
-#pragma warning restore CA1031 // Do not catch general exception types
             }
             return value;
         }
@@ -1465,12 +1453,10 @@ namespace SqlNado.Utilities
                 {
                     value = field.GetValue(obj);
                 }
-#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     value = "#ERR: " + e.Message;
                 }
-#pragma warning restore CA1031 // Do not catch general exception types
             }
             return value;
         }
@@ -1547,12 +1533,10 @@ namespace SqlNado.Utilities
             {
                 return Property.GetValue(component);
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 return null;
             }
-#pragma warning restore CA1031 // Do not catch general exception types
         }
     }
 

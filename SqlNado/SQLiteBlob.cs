@@ -150,7 +150,7 @@ namespace SqlNado
                     buf = new byte[count];
                 }
 
-                int left = Math.Min(Blob.Size - _position, count);
+                var left = Math.Min(Blob.Size - _position, count);
                 Blob.Read(buf, left, _position);
                 if (offset != 0)
                 {
@@ -208,7 +208,7 @@ namespace SqlNado
                     Buffer.BlockCopy(buffer, offset, buf, 0, count);
                 }
 
-                int left = Math.Min(Blob.Size - count, count);
+                var left = Math.Min(Blob.Size - count, count);
                 if (left < 0)
                     throw new SqlNadoException("0022: Blob size (" + Blob.Size + " byte(s)) is too small. You must first resize the blob to the exact size.");
 

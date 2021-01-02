@@ -173,7 +173,7 @@ namespace SqlNado
         {
             get
             {
-                int changes = _sqlite3_changes(CheckDisposed());
+                var changes = _sqlite3_changes(CheckDisposed());
 #if DEBUG
                 Log(TraceLevel.Verbose, "Changes: " + changes);
 #endif
@@ -494,7 +494,7 @@ namespace SqlNado
                 _closeFn = Marshal.GetDelegateForFunctionPointer<xClose>(module.xClose);
                 _nextFn = Marshal.GetDelegateForFunctionPointer<xNext>(module.xNext);
                 //_languageidFn = module.xLanguageid != IntPtr.Zero ? Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid) : null;
-                int argc = (arguments?.Length).GetValueOrDefault();
+                var argc = (arguments?.Length).GetValueOrDefault();
                 Database.CheckError(create(argc, arguments, out _tokenizer));
             }
 
@@ -616,7 +616,7 @@ namespace SqlNado
             }
 
             // a function is defined by the unique combination of name+argc+encoding
-            string key = name + "\0" + argumentsCount + "\0" + (int)enc;
+            var key = name + "\0" + argumentsCount + "\0" + (int)enc;
             if (function == null)
             {
                 CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null, null, null));
@@ -834,12 +834,10 @@ namespace SqlNado
                 {
                     ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
                 }
-#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception e)
                 {
                     Log(TraceLevel.Warning, "Error trying to delete TABLE '" + name + "': " + e);
                 }
-#pragma warning restore CA1031 // Do not catch general exception types
             }
         }
 
@@ -1010,7 +1008,7 @@ namespace SqlNado
             if (tableName == null)
                 throw new ArgumentNullException(nameof(tableName));
 
-            string sql = "DELETE FROM " + SQLiteStatement.EscapeName(tableName);
+            var sql = "DELETE FROM " + SQLiteStatement.EscapeName(tableName);
             return ExecuteNonQuery(sql);
         }
 
@@ -1030,7 +1028,7 @@ namespace SqlNado
             if (pk == null)
                 throw new InvalidOperationException();
 
-            string sql = "DELETE FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement();
+            var sql = "DELETE FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement();
             return ExecuteNonQuery(sql, pk) > 0;
         }
 
@@ -1064,8 +1062,8 @@ namespace SqlNado
                 options.SynchronizeIndices = true;
             }
 
-            int count = 0;
-            int i = 0;
+            var count = 0;
+            var i = 0;
             try
             {
                 foreach (var obj in enumerable)
@@ -1254,14 +1252,14 @@ namespace SqlNado
             }
 
             var pk = instanceTable.GetPrimaryKey(instance);
-            string sql = "SELECT ";
+            var sql = "SELECT ";
             if (options.RemoveDuplicates)
             {
                 sql += "DISTINCT ";
             }
             sql += table.BuildColumnsStatement() + " FROM " + table.EscapedName + " WHERE " + fkCol.EscapedName + "=?";
 
-            bool setProp = options.SetForeignKeyPropertyValue && fkCol.SetValueAction != null;
+            var setProp = options.SetForeignKeyPropertyValue && fkCol.SetValueAction != null;
             foreach (var obj in Load<T>(sql, options, pk))
             {
                 if (setProp)
@@ -1281,7 +1279,7 @@ namespace SqlNado
             if (tableName == null)
                 throw new ArgumentNullException(nameof(tableName));
 
-            string sql = "SELECT * FROM " + SQLiteStatement.EscapeName(tableName);
+            var sql = "SELECT * FROM " + SQLiteStatement.EscapeName(tableName);
             if (maximumRows > 0 && maximumRows < int.MaxValue)
             {
                 sql += " LIMIT " + maximumRows;
@@ -1313,7 +1311,7 @@ namespace SqlNado
             sql = sql.Nullify();
             if (sql == null || sql.StartsWith("WHERE", StringComparison.OrdinalIgnoreCase))
             {
-                string newsql = "SELECT ";
+                var newsql = "SELECT ";
                 if (options?.RemoveDuplicates == true)
                 {
                     newsql += "DISTINCT ";
@@ -1355,7 +1353,7 @@ namespace SqlNado
 
             using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
-                int index = 0;
+                var index = 0;
                 do
                 {
                     var code = _sqlite3_step(statement.CheckDisposed());
@@ -1447,7 +1445,7 @@ namespace SqlNado
 
             if (options == null || !options.DontConvertPrimaryKey)
             {
-                for (int i = 0; i < keys.Length; i++)
+                for (var i = 0; i < keys.Length; i++)
                 {
                     if (keys[i] != null && !pk[i].ClrType.IsAssignableFrom(keys[i].GetType()))
                     {
@@ -1459,7 +1457,7 @@ namespace SqlNado
                 }
             }
 
-            string sql = "SELECT";
+            var sql = "SELECT";
             if (options?.RemoveDuplicates == true)
             {
                 sql += "DISTINCT ";
@@ -1536,7 +1534,7 @@ namespace SqlNado
 
             using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
             {
-                int index = 0;
+                var index = 0;
                 do
                 {
                     var code = _sqlite3_step(statement.Handle);
@@ -1641,7 +1639,7 @@ namespace SqlNado
 
         public virtual int GetBlobSize(string tableName, string columnName, long rowId)
         {
-            string sql = "SELECT length(" + SQLiteStatement.EscapeName(columnName) + ") FROM " + SQLiteStatement.EscapeName(tableName) + " WHERE rowid=" + rowId;
+            var sql = "SELECT length(" + SQLiteStatement.EscapeName(columnName) + ") FROM " + SQLiteStatement.EscapeName(tableName) + " WHERE rowid=" + rowId;
             return ExecuteScalar(sql, -1);
         }
 
@@ -1653,7 +1651,7 @@ namespace SqlNado
             if (columnName == null)
                 throw new ArgumentNullException(null, nameof(columnName));
 
-            string sql = "UPDATE " + SQLiteStatement.EscapeName(tableName) + " SET " + SQLiteStatement.EscapeName(columnName) + "=? WHERE rowid=" + rowId;
+            var sql = "UPDATE " + SQLiteStatement.EscapeName(tableName) + " SET " + SQLiteStatement.EscapeName(columnName) + "=? WHERE rowid=" + rowId;
             ExecuteNonQuery(sql, new SQLiteZeroBlob { Size = size });
         }
 
@@ -1691,7 +1689,7 @@ namespace SqlNado
 
             if (args != null)
             {
-                for (int i = 0; i < args.Length; i++)
+                for (var i = 0; i < args.Length; i++)
                 {
                     statement.BindParameter(i + 1, args[i]);
                 }
@@ -1744,12 +1742,10 @@ namespace SqlNado
                         // for some reason, this can throw in rare conditions
                         taken = _statements.TryTake(out entry);
                     }
-#pragma warning disable CA1031 // Do not catch general exception types
                     catch
                     {
                         taken = false;
                     }
-#pragma warning restore CA1031 // Do not catch general exception types
 
                     if (taken && entry != null)
                     {
@@ -1878,7 +1874,7 @@ namespace SqlNado
         {
             using (var statement = PrepareStatement(sql, errorHandler, args))
             {
-                int index = 0;
+                var index = 0;
                 do
                 {
                     var code = _sqlite3_step(statement.Handle);
@@ -1925,7 +1921,7 @@ namespace SqlNado
         {
             using (var statement = PrepareStatement(sql, errorHandler, args))
             {
-                int index = 0;
+                var index = 0;
                 do
                 {
                     var code = _sqlite3_step(statement.Handle);
@@ -1938,7 +1934,7 @@ namespace SqlNado
 
                     if (code == SQLiteErrorCode.SQLITE_ROW)
                     {
-                        object[] values = statement.BuildRow().ToArray();
+                        var values = statement.BuildRow().ToArray();
                         var row = CreateRow(index, statement.ColumnsNames, values);
                         if (row == null)
                             throw new InvalidOperationException();
@@ -2090,11 +2086,12 @@ namespace SqlNado
             if (!columns.Any())
                 throw new ArgumentException(null, nameof(columns));
 
-            string sql = "CREATE " + (unique ? "UNIQUE " : null) + "INDEX IF NOT EXISTS ";
+            var sql = "CREATE " + (unique ? "UNIQUE " : null) + "INDEX IF NOT EXISTS ";
             if (!string.IsNullOrWhiteSpace(schemaName))
             {
                 sql += schemaName + ".";
             }
+
             sql += name + " ON " + SQLiteStatement.EscapeName(tableName) + " (";
             sql += string.Join(",", columns.Select(c => c.GetCreateSql()));
             sql += ")";
@@ -2112,11 +2109,12 @@ namespace SqlNado
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            string sql = "DROP INDEX IF EXISTS ";
+            var sql = "DROP INDEX IF EXISTS ";
             if (!string.IsNullOrWhiteSpace(schemaName))
             {
                 sql += schemaName + ".";
             }
+
             sql += name;
             ExecuteNonQuery(sql);
         }
@@ -2150,7 +2148,7 @@ namespace SqlNado
             if (code == SQLiteErrorCode.SQLITE_OK)
                 return null;
 
-            string msg = GetErrorMessage(Handle); // don't check disposed here. maybe too late
+            var msg = GetErrorMessage(Handle); // don't check disposed here. maybe too late
             if (sql != null)
             {
                 if (msg == null || !msg.EndsWith(".", StringComparison.Ordinal))
@@ -2188,13 +2186,13 @@ namespace SqlNado
         {
             get
             {
-                string bd = AppDomain.CurrentDomain.BaseDirectory;
-                string rsp = AppDomain.CurrentDomain.RelativeSearchPath;
-                string bitness = IntPtr.Size == 8 ? "64" : "86";
-                bool searchRsp = rsp != null && !bd.EqualsIgnoreCase(rsp);
+                var bd = AppDomain.CurrentDomain.BaseDirectory;
+                var rsp = AppDomain.CurrentDomain.RelativeSearchPath;
+                var bitness = IntPtr.Size == 8 ? "64" : "86";
+                var searchRsp = rsp != null && !bd.EqualsIgnoreCase(rsp);
 
                 // look for an env variable
-                string env = GetEnvironmentVariable("SQLNADO_SQLITE_X" + bitness + "_DLL");
+                var env = GetEnvironmentVariable("SQLNADO_SQLITE_X" + bitness + "_DLL");
                 if (env != null)
                 {
                     // full path?
@@ -2212,7 +2210,7 @@ namespace SqlNado
                 }
 
                 // look in appdomain path
-                string name = "sqlite3.x" + bitness + ".dll";
+                var name = "sqlite3.x" + bitness + ".dll";
                 yield return Path.Combine(bd, name);
                 if (searchRsp)
                     yield return Path.Combine(rsp, name);
@@ -2232,7 +2230,7 @@ namespace SqlNado
         {
             try
             {
-                string value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process).Nullify();
+                var value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process).Nullify();
                 if (value != null)
                     return value;
 
@@ -2242,13 +2240,11 @@ namespace SqlNado
 
                 return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine).Nullify();
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 // probably an access denied, continue
                 return null;
             }
-#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         private static void HookNativeProcs()
@@ -2819,11 +2815,8 @@ namespace SqlNado
         {
             public static readonly Utf8Marshaler Instance = new Utf8Marshaler();
 
-
             // *must* exist for a custom marshaler
-#pragma warning disable IDE0060 // Remove unused parameter
             public static ICustomMarshaler GetInstance(string cookie) => Instance;
-#pragma warning restore IDE0060 // Remove unused parameter
 
             public void CleanUpManagedData(object managedObj)
             {
@@ -2858,7 +2851,7 @@ namespace SqlNado
                     return null;
 
                 // look for the terminating zero
-                int i = 0;
+                var i = 0;
                 while (Marshal.ReadByte(nativeData, i) != 0)
                 {
                     i++;

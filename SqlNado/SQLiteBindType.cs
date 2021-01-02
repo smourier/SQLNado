@@ -84,7 +84,7 @@ namespace SqlNado
                 {
                     dt = (DateTime)ctx.Value;
                 }
-                
+
                 // https://sqlite.org/datatype3.html
                 switch (ctx.Options.DateTimeFormat)
                 {
@@ -153,9 +153,7 @@ namespace SqlNado
             ConvertFunc = convertFunc;
         }
 
-#pragma warning disable CA1819 // Properties should not return arrays
         public Type[] HandledClrTypes { get; }
-#pragma warning restore CA1819 // Properties should not return arrays
         public virtual Func<SQLiteBindContext, object> ConvertFunc { get; }
 
         public override string ToString() => string.Join(", ", HandledClrTypes.Select(t => t.FullName));
