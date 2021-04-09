@@ -15,7 +15,7 @@ SQLNado supports all of SQLite features when using SQL commands, and also suppor
 * Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file.
 
 ## Requirements
-The only requirement is netstandard 2.0 or .NET Framework 4.6. It's 100% dependency free! Well, of course it requires an SQLite native dlls corresponding to the bitness (x86 vs x64) of the executing app. Note that it's only been validated on the Windows 32 and 64-bit platforms.
+The only requirement is netstandard 2.0 or .NET Framework 4.6, so it works fine with .NET Core and .NET 5 too. It's 100% dependency free! Well, of course it requires an SQLite native dlls corresponding to the bitness (x86 vs x64) of the executing app. Note that it's only been validated on the Windows 32 and 64-bit platforms.
 
 ## Installation
 If you're running on a recent Windows 10 or Windows Server 2016, there is a good chance that there's already a winsqlite3.dll present in \Windows\System32. If this is the case, you won't need to install any native dll, whatever the bitness (x86 vs x64) of your app is!
@@ -72,7 +72,7 @@ public class Customer
     public string Email { get; set; }
     public string Name { get; set; }
 }
-```    
+```
 When you run it, you should see this on the console.
 ![Console Output](/Doc/Images/TableString1.png?raw=true)
 
@@ -170,6 +170,6 @@ public class StopWordTokenizer : SQLiteTokenizer
         base.Dispose(disposing);
     }
 }
-```    
+```
 When you run it, you should see this on the console.
 ![Console Output](/Doc/Images/Fts.png?raw=true)

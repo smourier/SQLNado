@@ -130,7 +130,7 @@ namespace SqlNado
                 // do nothing special
             }
 
-            public override void SetLength(long value) => throw new NotImplementedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
 
             public override int Read(byte[] buffer, int offset, int count)
             {

@@ -1123,6 +1123,53 @@ namespace SqlNado
             return count;
         }
 
+        public virtual T RunSavePoint<T>(Func<T> action, string name = null)
+        {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                name = "_sp" + Guid.NewGuid().ToString("N");
+            }
+
+            ExecuteNonQuery("SAVEPOINT " + name);
+            try
+            {
+                var result = action();
+                ExecuteNonQuery("RELEASE " + name);
+                return result;
+            }
+            catch
+            {
+                ExecuteNonQuery("ROLLBACK TO " + name);
+                throw;
+            }
+        }
+
+        public virtual void RunSavePoint(Action action, string name = null)
+        {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                name = "_sp" + Guid.NewGuid().ToString("N");
+            }
+
+            ExecuteNonQuery("SAVEPOINT " + name);
+            try
+            {
+                action();
+                ExecuteNonQuery("RELEASE " + name);
+            }
+            catch
+            {
+                ExecuteNonQuery("ROLLBACK TO " + name);
+                throw;
+            }
+        }
+
         public virtual T RunTransaction<T>(Func<T> action)
         {
             if (action == null)
