@@ -1509,6 +1509,26 @@ namespace SqlNado
         public bool CheckIntegrity() => CheckIntegrity(100).FirstOrDefault().EqualsIgnoreCase("ok");
         public IEnumerable<string> CheckIntegrity(int maximumErrors) => LoadObjects("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string)o[0]);
 
+        public void EnableLoadExtension(bool enable, bool throwOnError = true) => CheckError(_sqlite3_enable_load_extension(Handle, enable ? 1 : 0), throwOnError);
+
+        public void LoadExtension(string fileName, string procedure = null, bool throwOnError = true)
+        {
+            var code = _sqlite3_load_extension(Handle, fileName, procedure, out var ptr);
+            if (code == SQLiteErrorCode.SQLITE_OK)
+                return;
+
+            string msg = null;
+            if (ptr != IntPtr.Zero)
+            {
+                msg = Marshal.PtrToStringAnsi(ptr).Nullify();
+            }
+
+            var ex = msg != null ? new SQLiteException(code, msg) : new SQLiteException(code);
+            Log(TraceLevel.Error, ex.Message, nameof(LoadExtension));
+            if (throwOnError)
+                throw ex;
+        }
+
         public static void EnableSharedCache(bool enable, bool throwOnError = true)
         {
             HookNativeProcs();
@@ -2252,7 +2272,7 @@ namespace SqlNado
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
                         index++;
-                        Log(TraceLevel.Verbose, "Step done at index " + index);
+                        Log(TraceLevel.Verbose, "Step done at index " + index + " for `" + sql + "`");
                         break;
                     }
 
@@ -2265,7 +2285,7 @@ namespace SqlNado
 
                         if (options.MaximumRows > 0 && index >= options.MaximumRows)
                         {
-                            Log(TraceLevel.Verbose, "Step break at index " + index);
+                            Log(TraceLevel.Verbose, "Step break at index " + index + " for `" + sql + "`");
                             break;
                         }
 
@@ -3194,6 +3214,8 @@ namespace SqlNado
             _sqlite3_db_config_0 = LoadProc<sqlite3_db_config_0>("sqlite3_db_config");
             _sqlite3_db_config_1 = LoadProc<sqlite3_db_config_1>("sqlite3_db_config");
             _sqlite3_db_config_2 = LoadProc<sqlite3_db_config_2>("sqlite3_db_config");
+            _sqlite3_enable_load_extension = LoadProc<sqlite3_enable_load_extension>();
+            _sqlite3_load_extension = LoadProc<sqlite3_load_extension>();
             _sqlite3_config_0 = LoadProc<sqlite3_config_0>("sqlite3_config");
             _sqlite3_config_1 = LoadProc<sqlite3_config_1>("sqlite3_config");
             _sqlite3_config_2 = LoadProc<sqlite3_config_2>("sqlite3_config");
@@ -3703,12 +3725,29 @@ namespace SqlNado
         internal delegate SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string s);
         internal static sqlite3_db_config_2 _sqlite3_db_config_2;
 
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
+        internal static sqlite3_enable_load_extension _sqlite3_enable_load_extension;
+
+#if !WINSQLITE
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+#endif
+        internal delegate SQLiteErrorCode sqlite3_load_extension(IntPtr db,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zProc,
+            out IntPtr pzErrMsg);
+        internal static sqlite3_load_extension _sqlite3_load_extension;
+
         internal class Utf8Marshaler : ICustomMarshaler
         {
             public static readonly Utf8Marshaler Instance = new Utf8Marshaler();
 
             // *must* exist for a custom marshaler
+#pragma warning disable IDE0060 // Remove unused parameter
             public static ICustomMarshaler GetInstance(string cookie) => Instance;
+#pragma warning restore IDE0060 // Remove unused parameter
 
             public void CleanUpManagedData(object managedObj)
             {
