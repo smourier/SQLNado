@@ -541,6 +541,9 @@ namespace SqlNado.Utilities
                     }
                 }
 
+                if (desiredPaddedColumnWidths == null)
+                    continue;
+
                 var cells = new TableStringCell[desiredPaddedColumnWidths.Length];
                 for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
                 {

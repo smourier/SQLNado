@@ -8,7 +8,7 @@
         {
             var value = Value;
             if (value == null)
-                return null;
+                return string.Empty;
 
             if (value is string svalue)
                 return svalue;

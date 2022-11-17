@@ -10252,7 +10252,7 @@ namespace SqlNado.Utilities
         {
             var value = Value;
             if (value == null)
-                return null;
+                return string.Empty;
 
             if (value is string svalue)
                 return svalue;
@@ -12009,6 +12009,9 @@ namespace SqlNado.Utilities
                         }
                     }
                 }
+
+                if (desiredPaddedColumnWidths == null)
+                    continue;
 
                 var cells = new TableStringCell[desiredPaddedColumnWidths.Length];
                 for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
