@@ -87,7 +87,7 @@ namespace SqlNado.Utilities
             return value1.Equals(value2);
         }
 
-        private class ObjectComparer : IEqualityComparer<object>
+        private sealed class ObjectComparer : IEqualityComparer<object>
         {
             private readonly DictionaryObject _dob;
 

@@ -125,7 +125,7 @@ namespace SqlNado
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         public IEnumerator<KeyValuePair<string, object>> GetEnumerator() => new Enumerator(this);
 
-        private class Enumerator : IEnumerator<KeyValuePair<string, object>>
+        private sealed class Enumerator : IEnumerator<KeyValuePair<string, object>>
         {
             private readonly SQLiteRow _row;
             private int _index = -1;

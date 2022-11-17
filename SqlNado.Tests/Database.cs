@@ -188,14 +188,14 @@ namespace SqlNado.Tests
         }
 
         [SQLiteTable(Name = "Customer")]
-        private class Customer1
+        private sealed class Customer1
         {
             public int Id { get; set; }
             public string Name { get; set; }
         }
 
         [SQLiteTable(Name = "Customer")]
-        private class Customer2
+        private sealed class Customer2
         {
             public int Id { get; set; }
             public string FirstName { get; set; }
@@ -203,14 +203,14 @@ namespace SqlNado.Tests
         }
 
         [SQLiteTable(Name = "Customer")]
-        private class Customer3
+        private sealed class Customer3
         {
             public string Id { get; set; }
             public string Name { get; set; }
         }
 
         [SQLiteTable(Name = "Customer")]
-        private class Customer4
+        private sealed class Customer4
         {
             [SQLiteColumn(IsPrimaryKey = true, Name = "Id")]
             public long Identifier { get; set; }
@@ -223,7 +223,7 @@ namespace SqlNado.Tests
         }
 
         [SQLiteTable(Name = "Customer")]
-        private class AllTypes
+        private sealed class AllTypes
         {
             public string Name { get; set; }
             public DateTime DateTime { get; set; }
@@ -246,7 +246,7 @@ namespace SqlNado.Tests
             public MyFlagsEnum MyFlagsEnum { get; set; }
         }
 
-        private class AnnotatedDb : SQLiteDatabase
+        private sealed class AnnotatedDb : SQLiteDatabase
         {
             public AnnotatedDb(string filePath) : base(filePath)
             {
@@ -254,7 +254,7 @@ namespace SqlNado.Tests
 
             protected override SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type, SQLiteBuildTableOptions options = null) => new AnnotatedBuilder(this, type, options);
 
-            private class AnnotatedBuilder : SQLiteObjectTableBuilder
+            private sealed class AnnotatedBuilder : SQLiteObjectTableBuilder
             {
                 public AnnotatedBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions options = null)
                     : base(database, type, options)
@@ -326,7 +326,7 @@ namespace SqlNado.Tests
         }
 
         // this uses data annotations
-        private class AnnotatedCustomer
+        private sealed class AnnotatedCustomer
         {
             public AnnotatedCustomer()
             {

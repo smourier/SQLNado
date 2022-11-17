@@ -123,7 +123,7 @@ namespace SqlNado
             public override bool CanSeek => true;
             public override bool CanWrite => Blob.Mode == SQLiteBlobOpenMode.ReadWrite;
             public override long Length => Blob.Size;
-            public override long Position { get => _position; set => Seek(Position, SeekOrigin.Begin); }
+            public override long Position { get => _position; set => Seek(value, SeekOrigin.Begin); }
 
             public override void Flush()
             {

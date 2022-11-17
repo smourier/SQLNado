@@ -10,7 +10,11 @@ namespace SqlNado
     {
         private readonly List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
         private readonly List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
+
+#pragma warning disable S2245
         private static readonly Random _random = new Random(Environment.TickCount);
+#pragma warning restore S2245
+        
         internal const string _tempTablePrefix = "__temp";
 
         public SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions options = null)

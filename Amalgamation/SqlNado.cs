@@ -450,7 +450,7 @@ namespace SqlNado
             public override bool CanSeek => true;
             public override bool CanWrite => Blob.Mode == SQLiteBlobOpenMode.ReadWrite;
             public override long Length => Blob.Size;
-            public override long Position { get => _position; set => Seek(Position, SeekOrigin.Begin); }
+            public override long Position { get => _position; set => Seek(value, SeekOrigin.Begin); }
 
             public override void Flush()
             {
@@ -1096,7 +1096,7 @@ namespace SqlNado
             CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback));
         }
 
-        private class CollationSink
+        private sealed class CollationSink
         {
             public IComparer<string> Comparer;
             public xCompare Callback;
@@ -1318,7 +1318,7 @@ namespace SqlNado
             public IEnumerator<SQLiteToken> Enumerator => _enumerators[Address];
         }
 
-        private class NativeTokenizer : SQLiteTokenizer
+        private sealed class NativeTokenizer : SQLiteTokenizer
         {
             private readonly xDestroy _destroyFn;
             private readonly xClose _closeFn;
@@ -1478,7 +1478,7 @@ namespace SqlNado
             CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback, null, null));
         }
 
-        private class ScalarFunctionSink
+        private sealed class ScalarFunctionSink
         {
             public Action<SQLiteFunctionContext> Function;
             public SQLiteDatabase Database;
@@ -2625,7 +2625,7 @@ namespace SqlNado
             return pool.Get();
         }
 
-        private class StatementPool
+        private sealed class StatementPool
         {
             internal ConcurrentBag<StatementPoolEntry> _statements = new ConcurrentBag<StatementPoolEntry>();
 
@@ -2704,7 +2704,7 @@ namespace SqlNado
             }
         }
 
-        private class StatementPoolEntry
+        private sealed class StatementPoolEntry
         {
             public SQLiteStatement Statement;
             public DateTime CreationDate;
@@ -5095,7 +5095,11 @@ namespace SqlNado
     {
         private readonly List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
         private readonly List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
+
+#pragma warning disable S2245
         private static readonly Random _random = new Random(Environment.TickCount);
+#pragma warning restore S2245
+        
         internal const string _tempTablePrefix = "__temp";
 
         public SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions options = null)
@@ -6375,7 +6379,7 @@ namespace SqlNado
             }
         }
 
-        private class QueryProvider : IQueryProvider
+        private sealed class QueryProvider : IQueryProvider
         {
             private readonly SQLiteQuery<T> _query;
             private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance);
@@ -7002,7 +7006,7 @@ namespace SqlNado
         }
 
         // from https://github.com/mattwar/iqtoolkit
-        private class PartialEvaluator
+        private sealed class PartialEvaluator
         {
             public static Expression Eval(Expression expression) => Eval(expression, null, null);
             public static Expression Eval(Expression expression, Func<Expression, bool> fnCanBeEvaluated) => Eval(expression, fnCanBeEvaluated, null);
@@ -7017,7 +7021,7 @@ namespace SqlNado
 
             private static bool CanBeEvaluatedLocally(Expression expression) => expression.NodeType != ExpressionType.Parameter;
 
-            private class SubtreeEvaluator : ExpressionVisitor
+            private sealed class SubtreeEvaluator : ExpressionVisitor
             {
                 private readonly HashSet<Expression> _candidates;
                 private readonly Func<ConstantExpression, Expression> _evalFunc;
@@ -7122,7 +7126,7 @@ namespace SqlNado
                 private static Type GetNonNullableType(Type type) => IsNullableType(type) ? type.GetGenericArguments()[0] : type;
             }
 
-            private class Nominator : ExpressionVisitor
+            private sealed class Nominator : ExpressionVisitor
             {
                 private readonly Func<Expression, bool> _fnCanBeEvaluated;
                 private readonly HashSet<Expression> _candidates;
@@ -7292,7 +7296,7 @@ namespace SqlNado
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         public IEnumerator<KeyValuePair<string, object>> GetEnumerator() => new Enumerator(this);
 
-        private class Enumerator : IEnumerator<KeyValuePair<string, object>>
+        private sealed class Enumerator : IEnumerator<KeyValuePair<string, object>>
         {
             private readonly SQLiteRow _row;
             private int _index = -1;
@@ -8044,7 +8048,7 @@ namespace SqlNado
             }
         }
 
-        private class ColumnNameComparer : IEqualityComparer<SQLiteColumn>
+        private sealed class ColumnNameComparer : IEqualityComparer<SQLiteColumn>
         {
             public int GetHashCode(SQLiteColumn obj) => obj.GetHashCode();
             public bool Equals(SQLiteColumn x, SQLiteColumn y) => x?.Name.EqualsIgnoreCase(y?.Name) == true;
@@ -8641,10 +8645,12 @@ namespace SqlNado.Utilities
             if (text == null)
                 throw new ArgumentNullException(nameof(text));
 
+#pragma warning disable S4790
             using (var md5 = MD5.Create())
             {
                 return new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(text)));
             }
+#pragma warning restore S4790
         }
 
         public static decimal ToDecimal(this byte[] bytes)
@@ -10061,7 +10067,7 @@ namespace SqlNado.Utilities
             return value1.Equals(value2);
         }
 
-        private class ObjectComparer : IEqualityComparer<object>
+        private sealed class ObjectComparer : IEqualityComparer<object>
         {
             private readonly DictionaryObject _dob;
 
@@ -10438,7 +10444,7 @@ namespace SqlNado.Utilities
             return exception.HResult == ERROR_SHARING_VIOLATION;
         }
 
-        private class CultureStringComparer : StringComparer
+        private sealed class CultureStringComparer : StringComparer
         {
             private readonly CompareInfo _compareInfo;
             private readonly CompareOptions _options;
@@ -11165,7 +11171,7 @@ namespace SqlNado.Utilities
 
         private static string CreateTempFilePath() => Path.Combine(Path.GetTempPath(), "__pd" + Guid.NewGuid().ToString("N")) + ".db";
 
-        private class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
+        private sealed class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<TypedEntry> _enumerator;
             private readonly PersistentDictionary<Tk, Tv> _dic;
@@ -11192,7 +11198,7 @@ namespace SqlNado.Utilities
             public void Reset() => _enumerator.Reset();
         }
 
-        private class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
+        private sealed class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<Entry> _enumerator;
             private readonly PersistentDictionary<Tk, Tv> _dic;
@@ -11227,7 +11233,7 @@ namespace SqlNado.Utilities
             ByteArray,
         }
 
-        private class TypedEntry : Entry
+        private sealed class TypedEntry : Entry
         {
             public new string Value { get; set; }
             public string TypeName { get; set; }
@@ -11697,7 +11703,7 @@ namespace SqlNado.Utilities
         }
 
         // we need this because the console textwriter does WriteLine by its own...
-        private class ConsoleModeTextWriter : TextWriter
+        private sealed class ConsoleModeTextWriter : TextWriter
         {
             private readonly int _maximumWidth;
             private int _column;

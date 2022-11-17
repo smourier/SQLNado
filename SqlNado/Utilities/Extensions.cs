@@ -92,7 +92,7 @@ namespace SqlNado.Utilities
             return exception.HResult == ERROR_SHARING_VIOLATION;
         }
 
-        private class CultureStringComparer : StringComparer
+        private sealed class CultureStringComparer : StringComparer
         {
             private readonly CompareInfo _compareInfo;
             private readonly CompareOptions _options;

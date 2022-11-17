@@ -251,7 +251,7 @@ namespace SqlNado
             CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback));
         }
 
-        private class CollationSink
+        private sealed class CollationSink
         {
             public IComparer<string> Comparer;
             public xCompare Callback;
@@ -473,7 +473,7 @@ namespace SqlNado
             public IEnumerator<SQLiteToken> Enumerator => _enumerators[Address];
         }
 
-        private class NativeTokenizer : SQLiteTokenizer
+        private sealed class NativeTokenizer : SQLiteTokenizer
         {
             private readonly xDestroy _destroyFn;
             private readonly xClose _closeFn;
@@ -633,7 +633,7 @@ namespace SqlNado
             CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback, null, null));
         }
 
-        private class ScalarFunctionSink
+        private sealed class ScalarFunctionSink
         {
             public Action<SQLiteFunctionContext> Function;
             public SQLiteDatabase Database;
@@ -1780,7 +1780,7 @@ namespace SqlNado
             return pool.Get();
         }
 
-        private class StatementPool
+        private sealed class StatementPool
         {
             internal ConcurrentBag<StatementPoolEntry> _statements = new ConcurrentBag<StatementPoolEntry>();
 
@@ -1859,7 +1859,7 @@ namespace SqlNado
             }
         }
 
-        private class StatementPoolEntry
+        private sealed class StatementPoolEntry
         {
             public SQLiteStatement Statement;
             public DateTime CreationDate;

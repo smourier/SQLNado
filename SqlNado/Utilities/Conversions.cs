@@ -54,10 +54,12 @@ namespace SqlNado.Utilities
             if (text == null)
                 throw new ArgumentNullException(nameof(text));
 
+#pragma warning disable S4790
             using (var md5 = MD5.Create())
             {
                 return new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(text)));
             }
+#pragma warning restore S4790
         }
 
         public static decimal ToDecimal(this byte[] bytes)

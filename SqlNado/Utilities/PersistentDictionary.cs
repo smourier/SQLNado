@@ -410,7 +410,7 @@ namespace SqlNado.Utilities
 
         private static string CreateTempFilePath() => Path.Combine(Path.GetTempPath(), "__pd" + Guid.NewGuid().ToString("N")) + ".db";
 
-        private class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
+        private sealed class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<TypedEntry> _enumerator;
             private readonly PersistentDictionary<Tk, Tv> _dic;
@@ -437,7 +437,7 @@ namespace SqlNado.Utilities
             public void Reset() => _enumerator.Reset();
         }
 
-        private class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
+        private sealed class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<Entry> _enumerator;
             private readonly PersistentDictionary<Tk, Tv> _dic;
@@ -472,7 +472,7 @@ namespace SqlNado.Utilities
             ByteArray,
         }
 
-        private class TypedEntry : Entry
+        private sealed class TypedEntry : Entry
         {
             public new string Value { get; set; }
             public string TypeName { get; set; }

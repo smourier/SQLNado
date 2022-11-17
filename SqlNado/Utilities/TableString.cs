@@ -228,7 +228,7 @@ namespace SqlNado.Utilities
         }
 
         // we need this because the console textwriter does WriteLine by its own...
-        private class ConsoleModeTextWriter : TextWriter
+        private sealed class ConsoleModeTextWriter : TextWriter
         {
             private readonly int _maximumWidth;
             private int _column;

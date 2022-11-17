@@ -34,7 +34,7 @@ namespace SqlNado.Tests
         }
 
         [SQLiteTable(Name = "Customer")]
-        private class Customer1
+        private sealed class Customer1
         {
             public int Id { get; set; }
             public string Name { get; set; }

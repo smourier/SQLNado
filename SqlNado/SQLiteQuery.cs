@@ -65,7 +65,7 @@ namespace SqlNado
             }
         }
 
-        private class QueryProvider : IQueryProvider
+        private sealed class QueryProvider : IQueryProvider
         {
             private readonly SQLiteQuery<T> _query;
             private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance);

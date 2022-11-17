@@ -551,7 +551,7 @@ namespace SqlNado
         }
 
         // from https://github.com/mattwar/iqtoolkit
-        private class PartialEvaluator
+        private sealed class PartialEvaluator
         {
             public static Expression Eval(Expression expression) => Eval(expression, null, null);
             public static Expression Eval(Expression expression, Func<Expression, bool> fnCanBeEvaluated) => Eval(expression, fnCanBeEvaluated, null);
@@ -566,7 +566,7 @@ namespace SqlNado
 
             private static bool CanBeEvaluatedLocally(Expression expression) => expression.NodeType != ExpressionType.Parameter;
 
-            private class SubtreeEvaluator : ExpressionVisitor
+            private sealed class SubtreeEvaluator : ExpressionVisitor
             {
                 private readonly HashSet<Expression> _candidates;
                 private readonly Func<ConstantExpression, Expression> _evalFunc;
@@ -671,7 +671,7 @@ namespace SqlNado
                 private static Type GetNonNullableType(Type type) => IsNullableType(type) ? type.GetGenericArguments()[0] : type;
             }
 
-            private class Nominator : ExpressionVisitor
+            private sealed class Nominator : ExpressionVisitor
             {
                 private readonly Func<Expression, bool> _fnCanBeEvaluated;
                 private readonly HashSet<Expression> _candidates;

@@ -185,7 +185,7 @@ namespace SqlNado
             }
         }
 
-        private class ColumnNameComparer : IEqualityComparer<SQLiteColumn>
+        private sealed class ColumnNameComparer : IEqualityComparer<SQLiteColumn>
         {
             public int GetHashCode(SQLiteColumn obj) => obj.GetHashCode();
             public bool Equals(SQLiteColumn x, SQLiteColumn y) => x?.Name.EqualsIgnoreCase(y?.Name) == true;
