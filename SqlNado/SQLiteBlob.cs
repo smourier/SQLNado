@@ -12,16 +12,16 @@ namespace SqlNado
         public SQLiteBlob(SQLiteDatabase database, IntPtr handle, string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode)
         {
             if (database == null)
-                throw new ArgumentNullException(null, nameof(database));
+                throw new ArgumentNullException(nameof(database));
 
             if (handle == IntPtr.Zero)
                 throw new ArgumentException(null, nameof(handle));
 
             if (tableName == null)
-                throw new ArgumentNullException(null, nameof(tableName));
+                throw new ArgumentNullException(nameof(tableName));
 
             if (columnName == null)
-                throw new ArgumentNullException(null, nameof(columnName));
+                throw new ArgumentNullException(nameof(columnName));
 
             Database = database;
             _handle = handle;

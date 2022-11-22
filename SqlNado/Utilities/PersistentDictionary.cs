@@ -12,7 +12,7 @@ namespace SqlNado.Utilities
     public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
     {
         private SQLiteDatabase _database;
-        private bool _disposedValue = false;
+        private bool _disposedValue;
         private readonly SQLiteLoadOptions _loadKeysOptions;
         private readonly SQLiteLoadOptions _loadTypedValuesOptions;
         private readonly SQLiteLoadOptions _loadValuesOptions;
@@ -97,45 +97,6 @@ namespace SqlNado.Utilities
 
         public override string ToString() => _database?.FilePath;
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    // dispose managed state (managed objects).
-                    var db = Interlocked.Exchange(ref _database, null);
-                    if (db != null)
-                    {
-                        db.Dispose();
-                        if (DeleteOnDispose)
-                        {
-                            Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
-                        }
-                    }
-                }
-
-                // free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // set large fields to null.
-
-                _disposedValue = true;
-            }
-        }
-
-
-        // override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~PersistentDictionary()
-        // {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
-
-        // This code added to correctly implement the disposable pattern.
-#pragma warning disable CA1063 // Implement IDisposable Correctly
-        public void Dispose() =>
-#pragma warning restore CA1063 // Implement IDisposable Correctly
-                              // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);// uncomment the following line if the finalizer is overridden above.// GC.SuppressFinalize(this);
 
         public virtual void Clear()
         {
@@ -487,6 +448,37 @@ namespace SqlNado.Utilities
                 Value = value;
                 TypeName = typeName;
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    // dispose managed state (managed objects)
+                    var db = Interlocked.Exchange(ref _database, null);
+                    if (db != null)
+                    {
+                        db.Dispose();
+                        if (DeleteOnDispose)
+                        {
+                            Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                        }
+                    }
+                }
+
+                // free unmanaged resources (unmanaged objects) and override finalizer
+                // set large fields to null
+                _disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

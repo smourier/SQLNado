@@ -525,13 +525,10 @@ namespace SqlNado.Utilities
                         header.Add(cell);
                         cell.ComputeText();
 
-                        int size = cell.DesiredColumnWith;
-                        if (size != int.MaxValue)
+                        var size = cell.DesiredColumnWith;
+                        if (size != int.MaxValue && hp > 0)
                         {
-                            if (hp > 0)
-                            {
-                                size += hp;
-                            }
+                            size += hp;
                         }
 
                         if (size > desiredPaddedColumnWidths[i])
@@ -545,19 +542,16 @@ namespace SqlNado.Utilities
                     continue;
 
                 var cells = new TableStringCell[desiredPaddedColumnWidths.Length];
-                for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                 {
-                    object value = Columns[i].GetValueFunc(Columns[i], row);
+                    var value = Columns[i].GetValueFunc(Columns[i], row);
                     cells[i] = CreateCell(Columns[i], value);
                     cells[i].ComputeText();
 
-                    int size = cells[i].DesiredColumnWith;
-                    if (size != int.MaxValue)
+                    var size = cells[i].DesiredColumnWith;
+                    if (size != int.MaxValue && hp > 0)
                     {
-                        if (hp > 0)
-                        {
-                            size += hp;
-                        }
+                        size += hp;
                     }
 
                     if (size > desiredPaddedColumnWidths[i])

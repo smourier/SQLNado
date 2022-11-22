@@ -54,7 +54,7 @@ namespace SqlNado
 {
     public interface ISQLiteLogger
     {
-        void Log(TraceLevel level, object value, string methodName);
+        void Log(TraceLevel level, object value, string methodName = null);
     }
 }
 
@@ -339,16 +339,16 @@ namespace SqlNado
         public SQLiteBlob(SQLiteDatabase database, IntPtr handle, string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode)
         {
             if (database == null)
-                throw new ArgumentNullException(null, nameof(database));
+                throw new ArgumentNullException(nameof(database));
 
             if (handle == IntPtr.Zero)
                 throw new ArgumentException(null, nameof(handle));
 
             if (tableName == null)
-                throw new ArgumentNullException(null, nameof(tableName));
+                throw new ArgumentNullException(nameof(tableName));
 
             if (columnName == null)
-                throw new ArgumentNullException(null, nameof(columnName));
+                throw new ArgumentNullException(nameof(columnName));
 
             Database = database;
             _handle = handle;
@@ -1787,13 +1787,10 @@ namespace SqlNado
             if (_bindTypes.TryGetValue(type, out var bindType) && bindType != null)
                 return bindType;
 
-            if (type.IsEnum)
+            if (type.IsEnum && !BindOptions.EnumAsString)
             {
-                if (!BindOptions.EnumAsString)
-                {
-                    var et = GetEnumBindType(type);
-                    return _bindTypes.AddOrUpdate(type, et, (k, o) => et);
-                }
+                var et = GetEnumBindType(type);
+                return _bindTypes.AddOrUpdate(type, et, (k, o) => et);
             }
 
             foreach (var kv in _bindTypes)
@@ -2359,12 +2356,9 @@ namespace SqlNado
             {
                 for (var i = 0; i < keys.Length; i++)
                 {
-                    if (keys[i] != null && !pk[i].ClrType.IsAssignableFrom(keys[i].GetType()))
+                    if (keys[i] != null && !pk[i].ClrType.IsAssignableFrom(keys[i].GetType()) && TryChangeType(keys[i], pk[i].ClrType, out object k))
                     {
-                        if (TryChangeType(keys[i], pk[i].ClrType, out object k))
-                        {
-                            keys[i] = k;
-                        }
+                        keys[i] = k;
                     }
                 }
             }
@@ -2558,10 +2552,10 @@ namespace SqlNado
         public virtual void ResizeBlob(string tableName, string columnName, long rowId, int size)
         {
             if (tableName == null)
-                throw new ArgumentNullException(null, nameof(tableName));
+                throw new ArgumentNullException(nameof(tableName));
 
             if (columnName == null)
-                throw new ArgumentNullException(null, nameof(columnName));
+                throw new ArgumentNullException(nameof(columnName));
 
             var sql = "UPDATE " + SQLiteStatement.EscapeName(tableName) + " SET " + SQLiteStatement.EscapeName(columnName) + "=? WHERE rowid=" + rowId;
             ExecuteNonQuery(sql, new SQLiteZeroBlob { Size = size });
@@ -2571,10 +2565,10 @@ namespace SqlNado
         public virtual SQLiteBlob OpenBlob(string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode)
         {
             if (tableName == null)
-                throw new ArgumentNullException(null, nameof(tableName));
+                throw new ArgumentNullException(nameof(tableName));
 
             if (columnName == null)
-                throw new ArgumentNullException(null, nameof(columnName));
+                throw new ArgumentNullException(nameof(columnName));
 
             CheckError(_sqlite3_blob_open(CheckDisposed(), "main", tableName, columnName, rowId, (int)mode, out var handle));
             var blob = CreateBlob(handle, tableName, columnName, rowId, mode);
@@ -2678,14 +2672,11 @@ namespace SqlNado
             public SQLiteStatement Get()
             {
                 var entry = _statements.FirstOrDefault(s => s.Statement._locked == 0);
-                if (entry != null)
+                if (entry != null && Interlocked.CompareExchange(ref entry.Statement._locked, 1, 0) != 0)
                 {
-                    if (Interlocked.CompareExchange(ref entry.Statement._locked, 1, 0) != 0)
-                    {
-                        // between the moment we got one and the moment we tried to lock it,
-                        // another thread got it. In this case, we'll just create a new one...
-                        entry = null;
-                    }
+                    // between the moment we got one and the moment we tried to lock it,
+                    // another thread got it. In this case, we'll just create a new one...
+                    entry = null;
                 }
 
                 if (entry == null)
@@ -3602,8 +3593,8 @@ namespace SqlNado
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
-        internal static sqlite3_result_blob _sqlite3_result_blob;
+        private delegate void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
+        private static sqlite3_result_blob _sqlite3_result_blob;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -3653,6 +3644,7 @@ namespace SqlNado
         internal delegate void sqlite3_result_zeroblob(IntPtr ctx, int size);
         internal static sqlite3_result_zeroblob _sqlite3_result_zeroblob;
 
+        [Flags]
         private enum SQLiteTextEncoding
         {
             SQLITE_UTF8 = 1,                /* IMP: R-37514-35566 */
@@ -3668,77 +3660,77 @@ namespace SqlNado
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate int sqlite3_threadsafe();
-        internal static sqlite3_threadsafe _sqlite3_threadsafe;
+        private delegate int sqlite3_threadsafe();
+        private static sqlite3_threadsafe _sqlite3_threadsafe;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_enable_shared_cache(int i);
-        internal static sqlite3_enable_shared_cache _sqlite3_enable_shared_cache;
+        private delegate SQLiteErrorCode sqlite3_enable_shared_cache(int i);
+        private static sqlite3_enable_shared_cache _sqlite3_enable_shared_cache;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
-        internal static sqlite3_config_0 _sqlite3_config_0;
+        private delegate SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
+        private static sqlite3_config_0 _sqlite3_config_0;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
-        internal static sqlite3_config_1 _sqlite3_config_1;
+        private delegate SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
+        private static sqlite3_config_1 _sqlite3_config_1;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
-        internal static sqlite3_config_2 _sqlite3_config_2;
+        private delegate SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
+        private static sqlite3_config_2 _sqlite3_config_2;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
-        internal static sqlite3_config_3 _sqlite3_config_3;
+        private delegate SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
+        private static sqlite3_config_3 _sqlite3_config_3;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
-        internal static sqlite3_config_4 _sqlite3_config_4;
+        private delegate SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
+        private static sqlite3_config_4 _sqlite3_config_4;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
-        internal static sqlite3_db_config_0 _sqlite3_db_config_0;
+        private delegate SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
+        private static sqlite3_db_config_0 _sqlite3_db_config_0;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
-        internal static sqlite3_db_config_1 _sqlite3_db_config_1;
+        private delegate SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
+        private static sqlite3_db_config_1 _sqlite3_db_config_1;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string s);
-        internal static sqlite3_db_config_2 _sqlite3_db_config_2;
+        private delegate SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string s);
+        private static sqlite3_db_config_2 _sqlite3_db_config_2;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
-        internal static sqlite3_enable_load_extension _sqlite3_enable_load_extension;
+        private delegate SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
+        private static sqlite3_enable_load_extension _sqlite3_enable_load_extension;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_load_extension(IntPtr db,
+        private delegate SQLiteErrorCode sqlite3_load_extension(IntPtr db,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zProc,
             out IntPtr pzErrMsg);
-        internal static sqlite3_load_extension _sqlite3_load_extension;
+        private static sqlite3_load_extension _sqlite3_load_extension;
 
         internal class Utf8Marshaler : ICustomMarshaler
         {
@@ -3749,47 +3741,47 @@ namespace SqlNado
             public static ICustomMarshaler GetInstance(string cookie) => Instance;
 #pragma warning restore IDE0060 // Remove unused parameter
 
-            public void CleanUpManagedData(object managedObj)
+            public void CleanUpManagedData(object ManagedObj)
             {
                 // nothing to do
             }
 
-            public void CleanUpNativeData(IntPtr nativeData)
+            public void CleanUpNativeData(IntPtr pNativeData)
             {
-                if (nativeData != IntPtr.Zero)
+                if (pNativeData != IntPtr.Zero)
                 {
-                    Marshal.FreeCoTaskMem(nativeData);
+                    Marshal.FreeCoTaskMem(pNativeData);
                 }
             }
 
             public int GetNativeDataSize() => -1;
 
-            public IntPtr MarshalManagedToNative(object managedObj)
+            public IntPtr MarshalManagedToNative(object ManagedObj)
             {
-                if (managedObj == null)
+                if (ManagedObj == null)
                     return IntPtr.Zero;
 
                 // add a terminating zero
-                var bytes = Encoding.UTF8.GetBytes((string)managedObj + '\0');
+                var bytes = Encoding.UTF8.GetBytes((string)ManagedObj + '\0');
                 var ptr = Marshal.AllocCoTaskMem(bytes.Length);
                 Marshal.Copy(bytes, 0, ptr, bytes.Length);
                 return ptr;
             }
 
-            public object MarshalNativeToManaged(IntPtr nativeData)
+            public object MarshalNativeToManaged(IntPtr pNativeData)
             {
-                if (nativeData == IntPtr.Zero)
+                if (pNativeData == IntPtr.Zero)
                     return null;
 
                 // look for the terminating zero
                 var i = 0;
-                while (Marshal.ReadByte(nativeData, i) != 0)
+                while (Marshal.ReadByte(pNativeData, i) != 0)
                 {
                     i++;
                 }
 
                 var bytes = new byte[i];
-                Marshal.Copy(nativeData, bytes, 0, bytes.Length);
+                Marshal.Copy(pNativeData, bytes, 0, bytes.Length);
                 return Encoding.UTF8.GetString(bytes);
             }
         }
@@ -4887,14 +4879,11 @@ namespace SqlNado
             }
             else
             {
-                if ((options & SQLiteCreateSqlOptions.ForAlterColumn) == SQLiteCreateSqlOptions.ForAlterColumn)
+                if ((options & SQLiteCreateSqlOptions.ForAlterColumn) == SQLiteCreateSqlOptions.ForAlterColumn && !IsNullable)
                 {
-                    if (!IsNullable)
-                    {
-                        // we *must* define a default value or "Cannot add a NOT NULL column with default value NULL".
-                        object defaultValue = Activator.CreateInstance(ClrType);
-                        sql += " DEFAULT " + ToLiteral(defaultValue);
-                    }
+                    // we *must* define a default value or "Cannot add a NOT NULL column with default value NULL".
+                    object defaultValue = Activator.CreateInstance(ClrType);
+                    sql += " DEFAULT " + ToLiteral(defaultValue);
                 }
             }
 
@@ -5312,12 +5301,9 @@ namespace SqlNado
                 }
             }
 
-            if (instance is ISQLiteObject so)
+            if (instance is ISQLiteObject so && so.Database == null)
             {
-                if (so.Database == null)
-                {
-                    so.Database = Database;
-                }
+                so.Database = Database;
             }
             InitializeAutomaticColumns(instance);
             return instance;
@@ -5648,11 +5634,8 @@ namespace SqlNado
                 SQLiteOnErrorAction onError(SQLiteError e)
                 {
                     // this can happen in multi-threaded scenarios, update didn't work, then someone inserted, and now insert does not work. try update again
-                    if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT)
-                    {
-                        if (tryUpdate)
-                            return SQLiteOnErrorAction.Break;
-                    }
+                    if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT && tryUpdate)
+                        return SQLiteOnErrorAction.Break;
 
                     return SQLiteOnErrorAction.Unhandled;
                 }
@@ -5851,12 +5834,9 @@ namespace SqlNado
         {
             var name = Type.Name;
             var typeAtt = Type.GetCustomAttribute<SQLiteTableAttribute>();
-            if (typeAtt != null)
+            if (typeAtt != null && !string.IsNullOrWhiteSpace(typeAtt.Name))
             {
-                if (!string.IsNullOrWhiteSpace(typeAtt.Name))
-                {
-                    name = typeAtt.Name;
-                }
+                name = typeAtt.Name;
             }
 
             var table = CreateObjectTable(name);
@@ -6140,14 +6120,8 @@ namespace SqlNado
             if (property.PropertyType != typeof(string))
             {
                 var et = Conversions.GetEnumeratedType(property.PropertyType);
-                if (et != null)
-                {
-                    if (et != typeof(byte))
-                    {
-                        if (att == null || !att._ignore.HasValue || att._ignore.Value)
-                            return null;
-                    }
-                }
+                if (et != null && et != typeof(byte) && (att == null || !att._ignore.HasValue || att._ignore.Value))
+                    return null;
             }
 
             if (att != null && att.Ignore)
@@ -6183,19 +6157,15 @@ namespace SqlNado
                 }
                 else
                 {
-                    if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df)
+                    if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df && IsComputedDefaultValue(df))
                     {
-                        // https://www.sqlite.org/lang_createtable.html
-                        if (IsComputedDefaultValue(df))
-                        {
-                            att.DataType = nameof(SQLiteColumnType.TEXT);
-                            // we need to force this column type options
-                            att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
-                            if (att.BindOptions == null)
-                                throw new InvalidOperationException();
+                        att.DataType = nameof(SQLiteColumnType.TEXT);
+                        // we need to force this column type options
+                        att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
+                        if (att.BindOptions == null)
+                            throw new InvalidOperationException();
 
-                            att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
-                        }
+                        att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
                     }
                 }
 
@@ -6538,95 +6508,95 @@ namespace SqlNado
             return expression;
         }
 
-        protected override Expression VisitMethodCall(MethodCallExpression callExpression)
+        protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (callExpression.Method.DeclaringType == typeof(Queryable))
+            if (node.Method.DeclaringType == typeof(Queryable))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Queryable.Where):
                         Writer.Write("SELECT * FROM (");
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(") AS T WHERE ");
-                        var lambda = (LambdaExpression)StripQuotes(callExpression.Arguments[1]);
+                        var lambda = (LambdaExpression)StripQuotes(node.Arguments[1]);
                         Visit(lambda.Body);
-                        return callExpression;
+                        return node;
 
                     case nameof(Queryable.OrderBy):
                     case nameof(Queryable.OrderByDescending):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(" ORDER BY ");
-                        Visit(callExpression.Arguments[1]);
-                        if (string.Equals(callExpression.Method.Name, nameof(Queryable.OrderByDescending), StringComparison.Ordinal))
+                        Visit(node.Arguments[1]);
+                        if (string.Equals(node.Method.Name, nameof(Queryable.OrderByDescending), StringComparison.Ordinal))
                         {
                             Writer.Write(" DESC");
                         }
-                        return callExpression;
+                        return node;
 
                     case nameof(Queryable.ThenBy):
                     case nameof(Queryable.ThenByDescending):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(", ");
-                        Visit(callExpression.Arguments[1]);
-                        if (string.Equals(callExpression.Method.Name, nameof(Queryable.ThenByDescending), StringComparison.Ordinal))
+                        Visit(node.Arguments[1]);
+                        if (string.Equals(node.Method.Name, nameof(Queryable.ThenByDescending), StringComparison.Ordinal))
                         {
                             Writer.Write(" DESC");
                         }
-                        return callExpression;
+                        return node;
 
                     case nameof(Queryable.First):
                     case nameof(Queryable.FirstOrDefault):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Take = 1;
-                        return callExpression;
+                        return node;
 
                     case nameof(Queryable.Take):
-                        Visit(callExpression.Arguments[0]);
-                        Take = (int)((ConstantExpression)callExpression.Arguments[1]).Value;
-                        return callExpression;
+                        Visit(node.Arguments[0]);
+                        Take = (int)((ConstantExpression)node.Arguments[1]).Value;
+                        return node;
 
                     case nameof(Queryable.Skip):
-                        Visit(callExpression.Arguments[0]);
-                        Skip = (int)((ConstantExpression)callExpression.Arguments[1]).Value;
-                        return callExpression;
+                        Visit(node.Arguments[0]);
+                        Skip = (int)((ConstantExpression)node.Arguments[1]).Value;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(Conversions))
+            if (node.Method.DeclaringType == typeof(Conversions))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Conversions.EqualsIgnoreCase):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(" = ");
-                        Visit(callExpression.Arguments[1]);
+                        Visit(node.Arguments[1]);
                         Writer.Write(" COLLATE " + nameof(StringComparer.OrdinalIgnoreCase));
-                        return callExpression;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(string))
+            if (node.Method.DeclaringType == typeof(string))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(string.StartsWith):
                     case nameof(string.EndsWith):
                     case nameof(string.Contains):
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(" LIKE ");
 
-                        var sub = SubTranslate(callExpression.Arguments[0]);
+                        var sub = SubTranslate(node.Arguments[0]);
                         if (IsQuoted(sub))
                         {
                             Writer.Write('\'');
-                            if (string.Equals(callExpression.Method.Name, nameof(string.EndsWith), StringComparison.Ordinal) ||
-                                string.Equals(callExpression.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
+                            if (string.Equals(node.Method.Name, nameof(string.EndsWith), StringComparison.Ordinal) ||
+                                string.Equals(node.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
                             {
                                 Writer.Write('%');
                             }
                             Writer.Write(sub.Substring(1, sub.Length - 2));
-                            if (string.Equals(callExpression.Method.Name, nameof(string.StartsWith), StringComparison.Ordinal) ||
-                                string.Equals(callExpression.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
+                            if (string.Equals(node.Method.Name, nameof(string.StartsWith), StringComparison.Ordinal) ||
+                                string.Equals(node.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
                             {
                                 Writer.Write('%');
                             }
@@ -6637,37 +6607,37 @@ namespace SqlNado
                             Writer.Write(sub);
                         }
 
-                        if (callExpression.Arguments.Count > 1 &&
-                            callExpression.Arguments[1] is ConstantExpression ce1 &&
+                        if (node.Arguments.Count > 1 &&
+                            node.Arguments[1] is ConstantExpression ce1 &&
                             ce1.Value is StringComparison sc1)
                         {
                             Writer.Write(" COLLATE ");
                             Writer.Write(sc1.ToString());
                         }
-                        return callExpression;
+                        return node;
 
                     case nameof(string.ToLower):
                         Writer.Write("lower(");
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(')');
-                        return callExpression;
+                        return node;
 
                     case nameof(string.ToUpper):
                         Writer.Write("upper(");
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(')');
-                        return callExpression;
+                        return node;
 
                     case nameof(string.IndexOf):
-                        if (callExpression.Arguments.Count > 1 &&
-                            callExpression.Arguments[1] is ConstantExpression ce2 &&
+                        if (node.Arguments.Count > 1 &&
+                            node.Arguments[1] is ConstantExpression ce2 &&
                             ce2.Value is StringComparison sc2)
                         {
                             Database.EnsureQuerySupportFunctions();
                             Writer.Write("(instr(");
-                            Visit(callExpression.Object);
+                            Visit(node.Object);
                             Writer.Write(',');
-                            Visit(callExpression.Arguments[0]);
+                            Visit(node.Arguments[0]);
                             Writer.Write(',');
                             Writer.Write((int)sc2);
                             Writer.Write(")");
@@ -6676,150 +6646,150 @@ namespace SqlNado
                         else
                         {
                             Writer.Write("(instr(");
-                            Visit(callExpression.Object);
+                            Visit(node.Object);
                             Writer.Write(',');
-                            Visit(callExpression.Arguments[0]);
+                            Visit(node.Arguments[0]);
                             Writer.Write(")");
                             Writer.Write("-1)"); // SQLite is 1-based
                         }
-                        return callExpression;
+                        return node;
 
                     case nameof(string.Substring):
                         Writer.Write("substr(");
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(",(");
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write("+1)"); // SQLite is 1-based
-                        if (callExpression.Arguments.Count > 1)
+                        if (node.Arguments.Count > 1)
                         {
                             Writer.Write(',');
-                            Visit(callExpression.Arguments[1]);
+                            Visit(node.Arguments[1]);
                         }
                         Writer.Write(')');
-                        return callExpression;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(Enum))
+            if (node.Method.DeclaringType == typeof(Enum))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Enum.HasFlag):
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(" & ");
-                        Visit(callExpression.Arguments[0]);
-                        return callExpression;
+                        Visit(node.Arguments[0]);
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(Convert))
+            if (node.Method.DeclaringType == typeof(Convert))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Convert.IsDBNull):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(" IS NULL");
-                        return callExpression;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(object))
+            if (node.Method.DeclaringType == typeof(object))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(object.Equals):
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(" = ");
-                        Visit(callExpression.Arguments[0]);
-                        return callExpression;
+                        Visit(node.Arguments[0]);
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(Math))
+            if (node.Method.DeclaringType == typeof(Math))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Math.Abs):
                         Writer.Write("abs(");
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(')');
-                        return callExpression;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(QueryExtensions))
+            if (node.Method.DeclaringType == typeof(QueryExtensions))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(QueryExtensions.Contains):
-                        if (callExpression.Arguments.Count > 2 &&
-                            callExpression.Arguments[2] is ConstantExpression ce3 &&
+                        if (node.Arguments.Count > 2 &&
+                            node.Arguments[2] is ConstantExpression ce3 &&
                             ce3.Value is StringComparison sc3)
                         {
                             Database.EnsureQuerySupportFunctions();
                             Writer.Write("(instr(");
-                            Visit(callExpression.Arguments[0]);
+                            Visit(node.Arguments[0]);
                             Writer.Write(',');
-                            Visit(callExpression.Arguments[1]);
+                            Visit(node.Arguments[1]);
                             Writer.Write(',');
                             Writer.Write((int)sc3);
                             Writer.Write(")");
                             Writer.Write(">0)"); // SQLite is 1-based
                         }
-                        return callExpression;
+                        return node;
                 }
             }
 
             // kinda hack: generic ToString handling
-            if (string.Equals(callExpression.Method.Name, nameof(ToString), StringComparison.Ordinal) &&
-                callExpression.Method.GetParameters().Length == 0)
+            if (string.Equals(node.Method.Name, nameof(ToString), StringComparison.Ordinal) &&
+                node.Method.GetParameters().Length == 0)
             {
-                Visit(callExpression.Object);
-                return callExpression;
+                Visit(node.Object);
+                return node;
             }
 
-            throw new SqlNadoException(BuildNotSupported("The method '" + callExpression.Method.Name + "' of type '" + callExpression.Method.DeclaringType.FullName + "'"));
+            throw new SqlNadoException(BuildNotSupported("The method '" + node.Method.Name + "' of type '" + node.Method.DeclaringType.FullName + "'"));
         }
 
         private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'", StringComparison.Ordinal) && s.EndsWith("'", StringComparison.Ordinal);
 
-        protected override Expression VisitUnary(UnaryExpression unaryExpression)
+        protected override Expression VisitUnary(UnaryExpression node)
         {
-            switch (unaryExpression.NodeType)
+            switch (node.NodeType)
             {
                 case ExpressionType.Not:
                     Writer.Write(" NOT (");
-                    Visit(unaryExpression.Operand);
+                    Visit(node.Operand);
                     Writer.Write(")");
                     break;
 
                 case ExpressionType.ArrayLength:
                     Writer.Write(" length(");
-                    Visit(unaryExpression.Operand);
+                    Visit(node.Operand);
                     Writer.Write(")");
                     break;
 
                 case ExpressionType.Quote:
-                    Visit(unaryExpression.Operand);
+                    Visit(node.Operand);
                     break;
 
                 // just let go. hopefully it should be ok with sqlite
                 case ExpressionType.Convert:
-                    Visit(unaryExpression.Operand);
+                    Visit(node.Operand);
                     break;
 
                 default:
-                    throw new SqlNadoException(BuildNotSupported("The unary operator '" + unaryExpression.NodeType + "'"));
+                    throw new SqlNadoException(BuildNotSupported("The unary operator '" + node.NodeType + "'"));
 
             }
-            return unaryExpression;
+            return node;
         }
 
-        protected override Expression VisitBinary(BinaryExpression binaryExpression)
+        protected override Expression VisitBinary(BinaryExpression node)
         {
             Writer.Write("(");
-            Visit(binaryExpression.Left);
-            switch (binaryExpression.NodeType)
+            Visit(node.Left);
+            switch (node.NodeType)
             {
                 case ExpressionType.Add:
                 case ExpressionType.AddChecked:
@@ -6902,28 +6872,28 @@ namespace SqlNado
                     break;
 
                 default:
-                    throw new SqlNadoException(BuildNotSupported("The binary operator '" + binaryExpression.NodeType + "'"));
+                    throw new SqlNadoException(BuildNotSupported("The binary operator '" + node.NodeType + "'"));
             }
 
-            Visit(binaryExpression.Right);
+            Visit(node.Right);
             Writer.Write(")");
-            return binaryExpression;
+            return node;
         }
 
-        protected override Expression VisitConstant(ConstantExpression constant)
+        protected override Expression VisitConstant(ConstantExpression node)
         {
-            if (constant.Value is IQueryable queryable)
+            if (node.Value is IQueryable queryable)
             {
                 var table = Database.GetObjectTable(queryable.ElementType);
                 Writer.Write(table.EscapedName);
             }
-            else if (constant.Value == null)
+            else if (node.Value == null)
             {
                 Writer.Write("NULL");
             }
             else
             {
-                var value = Database.CoerceValueForBind(constant.Value, BindOptions);
+                var value = Database.CoerceValueForBind(node.Value, BindOptions);
                 switch (Type.GetTypeCode(value.GetType()))
                 {
                     case TypeCode.Boolean:
@@ -6939,11 +6909,7 @@ namespace SqlNado
 
                     case TypeCode.String:
                         var s = (string)value;
-                        if (s != null)
-                        {
-                            s = s.Replace("'", "''");
-                        }
-
+                        s = s.Replace("'", "''");
                         Writer.Write('\'');
                         Writer.Write(s);
                         Writer.Write('\'');
@@ -6962,20 +6928,20 @@ namespace SqlNado
                             break;
                         }
 
-                        throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + constant.Value + "' of type '" + constant.Value.GetType().FullName + "') for '" + value + "'"));
+                        throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + node.Value + "' of type '" + node.Value.GetType().FullName + "') for '" + value + "'"));
                 }
             }
-            return constant;
+            return node;
         }
 
-        protected override Expression VisitMember(MemberExpression memberExpression)
+        protected override Expression VisitMember(MemberExpression node)
         {
-            if (memberExpression.Expression != null)
+            if (node.Expression != null)
             {
-                if (memberExpression.Expression.NodeType == ExpressionType.Parameter)
+                if (node.Expression.NodeType == ExpressionType.Parameter)
                 {
-                    var table = Database.GetObjectTable(memberExpression.Expression.Type);
-                    var col = table.GetColumn(memberExpression.Member.Name);
+                    var table = Database.GetObjectTable(node.Expression.Type);
+                    var col = table.GetColumn(node.Member.Name);
                     if (col != null)
                     {
                         // we don't use double-quoted escaped column name here
@@ -6985,24 +6951,21 @@ namespace SqlNado
                     }
                     else
                     {
-                        Writer.Write(memberExpression.Member.Name);
+                        Writer.Write(node.Member.Name);
                     }
-                    return memberExpression;
+                    return node;
                 }
 
-                if (memberExpression.Member != null && memberExpression.Member.DeclaringType == typeof(string))
+                if (node.Member != null && node.Member.DeclaringType == typeof(string) && string.Equals(node.Member.Name, nameof(string.Length), StringComparison.Ordinal))
                 {
-                    if (string.Equals(memberExpression.Member.Name, nameof(string.Length), StringComparison.Ordinal))
-                    {
-                        Writer.Write(" length(");
-                        Visit(memberExpression.Expression);
-                        Writer.Write(')');
-                        return memberExpression;
-                    }
+                    Writer.Write(" length(");
+                    Visit(node.Expression);
+                    Writer.Write(')');
+                    return node;
                 }
             }
 
-            throw new SqlNadoException(BuildNotSupported("The member '" + memberExpression.Member.Name + "'"));
+            throw new SqlNadoException(BuildNotSupported("The member '" + node.Member.Name + "'"));
         }
 
         // from https://github.com/mattwar/iqtoolkit
@@ -7016,7 +6979,7 @@ namespace SqlNado
                 {
                     fnCanBeEvaluated = CanBeEvaluatedLocally;
                 }
-                return SubtreeEvaluator.Eval(Nominator.Nominate(fnCanBeEvaluated, expression), fnPostEval, expression);
+                return SubtreeEvaluator.DoEval(Nominator.Nominate(fnCanBeEvaluated, expression), fnPostEval, expression);
             }
 
             private static bool CanBeEvaluatedLocally(Expression expression) => expression.NodeType != ExpressionType.Parameter;
@@ -7032,17 +6995,17 @@ namespace SqlNado
                     _evalFunc = evalFunc;
                 }
 
-                internal static Expression Eval(HashSet<Expression> candidates, Func<ConstantExpression, Expression> onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
+                internal static Expression DoEval(HashSet<Expression> candidates, Func<ConstantExpression, Expression> onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
 
-                public override Expression Visit(Expression expression)
+                public override Expression Visit(Expression node)
                 {
-                    if (expression == null)
+                    if (node == null)
                         return null;
 
-                    if (_candidates.Contains(expression))
-                        return Evaluate(expression);
+                    if (_candidates.Contains(node))
+                        return Evaluate(node);
 
-                    return base.Visit(expression);
+                    return base.Visit(node);
                 }
 
                 private Expression PostEval(ConstantExpression constant)
@@ -7145,20 +7108,20 @@ namespace SqlNado
                     return nominator._candidates;
                 }
 
-                protected override Expression VisitConstant(ConstantExpression c) => base.VisitConstant(c);
+                protected override Expression VisitConstant(ConstantExpression node) => base.VisitConstant(node);
 
-                public override Expression Visit(Expression expression)
+                public override Expression Visit(Expression node)
                 {
-                    if (expression != null)
+                    if (node != null)
                     {
                         var saveCannotBeEvaluated = _cannotBeEvaluated;
                         _cannotBeEvaluated = false;
-                        base.Visit(expression);
+                        base.Visit(node);
                         if (!_cannotBeEvaluated)
                         {
-                            if (_fnCanBeEvaluated(expression))
+                            if (_fnCanBeEvaluated(node))
                             {
-                                _candidates.Add(expression);
+                                _candidates.Add(node);
                             }
                             else
                             {
@@ -7168,7 +7131,7 @@ namespace SqlNado
 
                         _cannotBeEvaluated |= saveCannotBeEvaluated;
                     }
-                    return expression;
+                    return node;
                 }
             }
         }
@@ -7318,7 +7281,11 @@ namespace SqlNado
                 return false;
             }
 
-            public void Dispose() { }
+            public void Dispose()
+            {
+                // nothing to do
+            }
+
             public void Reset() => _index = 0;
             object IEnumerator.Current => Current;
         }
@@ -7375,6 +7342,8 @@ namespace SqlNado
 
 namespace SqlNado
 {
+#pragma warning disable S3971
+#pragma warning disable S3881
 #pragma warning disable CA1063 // Implement IDisposable Correctly
     public class SQLiteStatement : IDisposable
 #pragma warning restore CA1063 // Implement IDisposable Correctly
@@ -7854,6 +7823,8 @@ namespace SqlNado
         ~SQLiteStatement() => RealDispose();
 #pragma warning restore CA1063 // Implement IDisposable Correctly
     }
+#pragma warning restore S3881
+#pragma warning restore S3971
 }
 
 namespace SqlNado
@@ -8747,7 +8718,9 @@ namespace SqlNado.Utilities
             var sb = new StringBuilder(count * 2);
             for (int i = offset; i < (offset + count); i++)
             {
+#pragma warning disable S3457
                 sb.AppendFormat(CultureInfo.InvariantCulture, "X2", bytes[i]);
+#pragma warning restore S3457
             }
             return sb.ToString();
         }
@@ -9036,17 +9009,9 @@ namespace SqlNado.Utilities
                     return true;
                 }
 
-                if (IntPtr.Size == 8)
+                if (IntPtr.Size == 8 && TryChangeType(input, provider, out long l))
                 {
-                    if (TryChangeType(input, provider, out long l))
-                    {
-                        value = new IntPtr(l);
-                        return true;
-                    }
-                }
-                else if (TryChangeType(input, provider, out int i))
-                {
-                    value = new IntPtr(i);
+                    value = new IntPtr(l);
                     return true;
                 }
                 return false;
@@ -9391,17 +9356,14 @@ namespace SqlNado.Utilities
                 }
             }
 
-            if (conversionType == typeof(decimal))
+            if (conversionType == typeof(decimal) && inputType == typeof(byte[]))
             {
-                if (inputType == typeof(byte[]))
-                {
-                    var bytes = (byte[])input;
-                    if (bytes.Length != 16)
-                        return false;
+                var bytes = (byte[])input;
+                if (bytes.Length != 16)
+                    return false;
 
-                    value = ToDecimal(bytes);
-                    return true;
-                }
+                value = ToDecimal(bytes);
+                return true;
             }
 
             if (conversionType == typeof(DateTime))
@@ -9440,43 +9402,34 @@ namespace SqlNado.Utilities
                 }
             }
 
-            if (conversionType == typeof(char))
+            if (conversionType == typeof(char) && inputType == typeof(byte[]))
             {
-                if (inputType == typeof(byte[]))
-                {
-                    var bytes = (byte[])input;
-                    if (bytes.Length != 2)
-                        return false;
-
-                    value = BitConverter.ToChar(bytes, 0);
-                    return true;
-                }
+                var bytes = (byte[])input;
+                if (bytes.Length != 2)
+                    return false;
+                
+                value = BitConverter.ToChar(bytes, 0);
+                return true;
             }
 
-            if (conversionType == typeof(float))
+            if (conversionType == typeof(float) && inputType == typeof(byte[]))
             {
-                if (inputType == typeof(byte[]))
-                {
-                    var bytes = (byte[])input;
-                    if (bytes.Length != 4)
-                        return false;
+                var bytes = (byte[])input;
+                if (bytes.Length != 4)
+                    return false;
 
-                    value = BitConverter.ToSingle(bytes, 0);
-                    return true;
-                }
+                value = BitConverter.ToSingle(bytes, 0);
+                return true;
             }
 
-            if (conversionType == typeof(double))
+            if (conversionType == typeof(double) && inputType == typeof(byte[]))
             {
-                if (inputType == typeof(byte[]))
-                {
-                    var bytes = (byte[])input;
-                    if (bytes.Length != 8)
-                        return false;
-
-                    value = BitConverter.ToDouble(bytes, 0);
-                    return true;
-                }
+                var bytes = (byte[])input;
+                if (bytes.Length != 8)
+                    return false;
+                
+                value = BitConverter.ToDouble(bytes, 0);
+                return true;
             }
 
             if (conversionType == typeof(DateTimeOffset))
@@ -9819,13 +9772,10 @@ namespace SqlNado.Utilities
                 return false;
             }
 
-            if (stringInput.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            if (stringInput.StartsWith("0x", StringComparison.OrdinalIgnoreCase) && ulong.TryParse(stringInput.Substring(2), NumberStyles.HexNumber, CultureInfo.CurrentCulture, out ulong ulx))
             {
-                if (ulong.TryParse(stringInput.Substring(2), NumberStyles.HexNumber, CultureInfo.CurrentCulture, out ulong ulx))
-                {
-                    value = ToEnum(ulx.ToString(CultureInfo.CurrentCulture), type);
-                    return true;
-                }
+                value = ToEnum(ulx.ToString(CultureInfo.CurrentCulture), type);
+                return true;
             }
 
             var names = Enum.GetNames(type);
@@ -10188,29 +10138,26 @@ namespace SqlNado.Utilities
             if (forceChanged || (onChanged && ReferenceEquals(finalProp, newProp)))
             {
                 bool rollbacked = false;
-                if (rollbackOnError)
+                if (rollbackOnError && (DictionaryObjectGetErrors(name)?.Cast<object>().Any()).GetValueOrDefault())
                 {
-                    if ((DictionaryObjectGetErrors(name)?.Cast<object>().Any()).GetValueOrDefault())
+                    var rolled = DictionaryObjectRollbackProperty(options, name, oldProp, newProp);
+                    if (rolled == null)
                     {
-                        var rolled = DictionaryObjectRollbackProperty(options, name, oldProp, newProp);
-                        if (rolled == null)
-                        {
-                            rolled = oldProp;
-                        }
-
-                        if (rolled == null)
-                        {
-                            DictionaryObjectProperties.TryRemove(name, out DictionaryObjectProperty dop);
-                        }
-                        else
-                        {
-                            DictionaryObjectProperties.AddOrUpdate(name, rolled, (k, o) => rolled);
-                        }
-
-                        var e = new DictionaryObjectPropertyRollbackEventArgs(name, rolled, value);
-                        OnPropertyRollback(this, e);
-                        rollbacked = true;
+                        rolled = oldProp;
                     }
+
+                    if (rolled == null)
+                    {
+                        DictionaryObjectProperties.TryRemove(name, out DictionaryObjectProperty dop);
+                    }
+                    else
+                    {
+                        DictionaryObjectProperties.AddOrUpdate(name, rolled, (k, o) => rolled);
+                    }
+
+                    var e = new DictionaryObjectPropertyRollbackEventArgs(name, rolled, value);
+                    OnPropertyRollback(this, e);
+                    rollbacked = true;
                 }
 
                 if (!rollbacked)
@@ -10773,7 +10720,7 @@ namespace SqlNado.Utilities
     public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
     {
         private SQLiteDatabase _database;
-        private bool _disposedValue = false;
+        private bool _disposedValue;
         private readonly SQLiteLoadOptions _loadKeysOptions;
         private readonly SQLiteLoadOptions _loadTypedValuesOptions;
         private readonly SQLiteLoadOptions _loadValuesOptions;
@@ -10858,45 +10805,6 @@ namespace SqlNado.Utilities
 
         public override string ToString() => _database?.FilePath;
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    // dispose managed state (managed objects).
-                    var db = Interlocked.Exchange(ref _database, null);
-                    if (db != null)
-                    {
-                        db.Dispose();
-                        if (DeleteOnDispose)
-                        {
-                            Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
-                        }
-                    }
-                }
-
-                // free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // set large fields to null.
-
-                _disposedValue = true;
-            }
-        }
-
-
-        // override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~PersistentDictionary()
-        // {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
-
-        // This code added to correctly implement the disposable pattern.
-#pragma warning disable CA1063 // Implement IDisposable Correctly
-        public void Dispose() =>
-#pragma warning restore CA1063 // Implement IDisposable Correctly
-                              // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);// uncomment the following line if the finalizer is overridden above.// GC.SuppressFinalize(this);
 
         public virtual void Clear()
         {
@@ -11248,6 +11156,37 @@ namespace SqlNado.Utilities
                 Value = value;
                 TypeName = typeName;
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    // dispose managed state (managed objects)
+                    var db = Interlocked.Exchange(ref _database, null);
+                    if (db != null)
+                    {
+                        db.Dispose();
+                        if (DeleteOnDispose)
+                        {
+                            Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                        }
+                    }
+                }
+
+                // free unmanaged resources (unmanaged objects) and override finalizer
+                // set large fields to null
+                _disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
@@ -12000,13 +11939,10 @@ namespace SqlNado.Utilities
                         header.Add(cell);
                         cell.ComputeText();
 
-                        int size = cell.DesiredColumnWith;
-                        if (size != int.MaxValue)
+                        var size = cell.DesiredColumnWith;
+                        if (size != int.MaxValue && hp > 0)
                         {
-                            if (hp > 0)
-                            {
-                                size += hp;
-                            }
+                            size += hp;
                         }
 
                         if (size > desiredPaddedColumnWidths[i])
@@ -12020,19 +11956,16 @@ namespace SqlNado.Utilities
                     continue;
 
                 var cells = new TableStringCell[desiredPaddedColumnWidths.Length];
-                for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                 {
-                    object value = Columns[i].GetValueFunc(Columns[i], row);
+                    var value = Columns[i].GetValueFunc(Columns[i], row);
                     cells[i] = CreateCell(Columns[i], value);
                     cells[i].ComputeText();
 
-                    int size = cells[i].DesiredColumnWith;
-                    if (size != int.MaxValue)
+                    var size = cells[i].DesiredColumnWith;
+                    if (size != int.MaxValue && hp > 0)
                     {
-                        if (hp > 0)
-                        {
-                            size += hp;
-                        }
+                        size += hp;
                     }
 
                     if (size > desiredPaddedColumnWidths[i])

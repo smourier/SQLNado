@@ -37,12 +37,9 @@ namespace SqlNado
         {
             var name = Type.Name;
             var typeAtt = Type.GetCustomAttribute<SQLiteTableAttribute>();
-            if (typeAtt != null)
+            if (typeAtt != null && !string.IsNullOrWhiteSpace(typeAtt.Name))
             {
-                if (!string.IsNullOrWhiteSpace(typeAtt.Name))
-                {
-                    name = typeAtt.Name;
-                }
+                name = typeAtt.Name;
             }
 
             var table = CreateObjectTable(name);
@@ -326,14 +323,8 @@ namespace SqlNado
             if (property.PropertyType != typeof(string))
             {
                 var et = Conversions.GetEnumeratedType(property.PropertyType);
-                if (et != null)
-                {
-                    if (et != typeof(byte))
-                    {
-                        if (att == null || !att._ignore.HasValue || att._ignore.Value)
-                            return null;
-                    }
-                }
+                if (et != null && et != typeof(byte) && (att == null || !att._ignore.HasValue || att._ignore.Value))
+                    return null;
             }
 
             if (att != null && att.Ignore)
@@ -369,19 +360,15 @@ namespace SqlNado
                 }
                 else
                 {
-                    if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df)
+                    if (att.HasDefaultValue && att.IsDefaultValueIntrinsic && att.DefaultValue is string df && IsComputedDefaultValue(df))
                     {
-                        // https://www.sqlite.org/lang_createtable.html
-                        if (IsComputedDefaultValue(df))
-                        {
-                            att.DataType = nameof(SQLiteColumnType.TEXT);
-                            // we need to force this column type options
-                            att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
-                            if (att.BindOptions == null)
-                                throw new InvalidOperationException();
+                        att.DataType = nameof(SQLiteColumnType.TEXT);
+                        // we need to force this column type options
+                        att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
+                        if (att.BindOptions == null)
+                            throw new InvalidOperationException();
 
-                            att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
-                        }
+                        att.BindOptions.DateTimeFormat = SQLiteDateTimeFormat.SQLiteIso8601;
                     }
                 }
 

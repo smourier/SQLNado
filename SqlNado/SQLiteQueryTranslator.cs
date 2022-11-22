@@ -83,95 +83,95 @@ namespace SqlNado
             return expression;
         }
 
-        protected override Expression VisitMethodCall(MethodCallExpression callExpression)
+        protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (callExpression.Method.DeclaringType == typeof(Queryable))
+            if (node.Method.DeclaringType == typeof(Queryable))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Queryable.Where):
                         Writer.Write("SELECT * FROM (");
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(") AS T WHERE ");
-                        var lambda = (LambdaExpression)StripQuotes(callExpression.Arguments[1]);
+                        var lambda = (LambdaExpression)StripQuotes(node.Arguments[1]);
                         Visit(lambda.Body);
-                        return callExpression;
+                        return node;
 
                     case nameof(Queryable.OrderBy):
                     case nameof(Queryable.OrderByDescending):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(" ORDER BY ");
-                        Visit(callExpression.Arguments[1]);
-                        if (string.Equals(callExpression.Method.Name, nameof(Queryable.OrderByDescending), StringComparison.Ordinal))
+                        Visit(node.Arguments[1]);
+                        if (string.Equals(node.Method.Name, nameof(Queryable.OrderByDescending), StringComparison.Ordinal))
                         {
                             Writer.Write(" DESC");
                         }
-                        return callExpression;
+                        return node;
 
                     case nameof(Queryable.ThenBy):
                     case nameof(Queryable.ThenByDescending):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(", ");
-                        Visit(callExpression.Arguments[1]);
-                        if (string.Equals(callExpression.Method.Name, nameof(Queryable.ThenByDescending), StringComparison.Ordinal))
+                        Visit(node.Arguments[1]);
+                        if (string.Equals(node.Method.Name, nameof(Queryable.ThenByDescending), StringComparison.Ordinal))
                         {
                             Writer.Write(" DESC");
                         }
-                        return callExpression;
+                        return node;
 
                     case nameof(Queryable.First):
                     case nameof(Queryable.FirstOrDefault):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Take = 1;
-                        return callExpression;
+                        return node;
 
                     case nameof(Queryable.Take):
-                        Visit(callExpression.Arguments[0]);
-                        Take = (int)((ConstantExpression)callExpression.Arguments[1]).Value;
-                        return callExpression;
+                        Visit(node.Arguments[0]);
+                        Take = (int)((ConstantExpression)node.Arguments[1]).Value;
+                        return node;
 
                     case nameof(Queryable.Skip):
-                        Visit(callExpression.Arguments[0]);
-                        Skip = (int)((ConstantExpression)callExpression.Arguments[1]).Value;
-                        return callExpression;
+                        Visit(node.Arguments[0]);
+                        Skip = (int)((ConstantExpression)node.Arguments[1]).Value;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(Conversions))
+            if (node.Method.DeclaringType == typeof(Conversions))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Conversions.EqualsIgnoreCase):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(" = ");
-                        Visit(callExpression.Arguments[1]);
+                        Visit(node.Arguments[1]);
                         Writer.Write(" COLLATE " + nameof(StringComparer.OrdinalIgnoreCase));
-                        return callExpression;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(string))
+            if (node.Method.DeclaringType == typeof(string))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(string.StartsWith):
                     case nameof(string.EndsWith):
                     case nameof(string.Contains):
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(" LIKE ");
 
-                        var sub = SubTranslate(callExpression.Arguments[0]);
+                        var sub = SubTranslate(node.Arguments[0]);
                         if (IsQuoted(sub))
                         {
                             Writer.Write('\'');
-                            if (string.Equals(callExpression.Method.Name, nameof(string.EndsWith), StringComparison.Ordinal) ||
-                                string.Equals(callExpression.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
+                            if (string.Equals(node.Method.Name, nameof(string.EndsWith), StringComparison.Ordinal) ||
+                                string.Equals(node.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
                             {
                                 Writer.Write('%');
                             }
                             Writer.Write(sub.Substring(1, sub.Length - 2));
-                            if (string.Equals(callExpression.Method.Name, nameof(string.StartsWith), StringComparison.Ordinal) ||
-                                string.Equals(callExpression.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
+                            if (string.Equals(node.Method.Name, nameof(string.StartsWith), StringComparison.Ordinal) ||
+                                string.Equals(node.Method.Name, nameof(string.Contains), StringComparison.Ordinal))
                             {
                                 Writer.Write('%');
                             }
@@ -182,37 +182,37 @@ namespace SqlNado
                             Writer.Write(sub);
                         }
 
-                        if (callExpression.Arguments.Count > 1 &&
-                            callExpression.Arguments[1] is ConstantExpression ce1 &&
+                        if (node.Arguments.Count > 1 &&
+                            node.Arguments[1] is ConstantExpression ce1 &&
                             ce1.Value is StringComparison sc1)
                         {
                             Writer.Write(" COLLATE ");
                             Writer.Write(sc1.ToString());
                         }
-                        return callExpression;
+                        return node;
 
                     case nameof(string.ToLower):
                         Writer.Write("lower(");
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(')');
-                        return callExpression;
+                        return node;
 
                     case nameof(string.ToUpper):
                         Writer.Write("upper(");
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(')');
-                        return callExpression;
+                        return node;
 
                     case nameof(string.IndexOf):
-                        if (callExpression.Arguments.Count > 1 &&
-                            callExpression.Arguments[1] is ConstantExpression ce2 &&
+                        if (node.Arguments.Count > 1 &&
+                            node.Arguments[1] is ConstantExpression ce2 &&
                             ce2.Value is StringComparison sc2)
                         {
                             Database.EnsureQuerySupportFunctions();
                             Writer.Write("(instr(");
-                            Visit(callExpression.Object);
+                            Visit(node.Object);
                             Writer.Write(',');
-                            Visit(callExpression.Arguments[0]);
+                            Visit(node.Arguments[0]);
                             Writer.Write(',');
                             Writer.Write((int)sc2);
                             Writer.Write(")");
@@ -221,150 +221,150 @@ namespace SqlNado
                         else
                         {
                             Writer.Write("(instr(");
-                            Visit(callExpression.Object);
+                            Visit(node.Object);
                             Writer.Write(',');
-                            Visit(callExpression.Arguments[0]);
+                            Visit(node.Arguments[0]);
                             Writer.Write(")");
                             Writer.Write("-1)"); // SQLite is 1-based
                         }
-                        return callExpression;
+                        return node;
 
                     case nameof(string.Substring):
                         Writer.Write("substr(");
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(",(");
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write("+1)"); // SQLite is 1-based
-                        if (callExpression.Arguments.Count > 1)
+                        if (node.Arguments.Count > 1)
                         {
                             Writer.Write(',');
-                            Visit(callExpression.Arguments[1]);
+                            Visit(node.Arguments[1]);
                         }
                         Writer.Write(')');
-                        return callExpression;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(Enum))
+            if (node.Method.DeclaringType == typeof(Enum))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Enum.HasFlag):
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(" & ");
-                        Visit(callExpression.Arguments[0]);
-                        return callExpression;
+                        Visit(node.Arguments[0]);
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(Convert))
+            if (node.Method.DeclaringType == typeof(Convert))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Convert.IsDBNull):
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(" IS NULL");
-                        return callExpression;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(object))
+            if (node.Method.DeclaringType == typeof(object))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(object.Equals):
-                        Visit(callExpression.Object);
+                        Visit(node.Object);
                         Writer.Write(" = ");
-                        Visit(callExpression.Arguments[0]);
-                        return callExpression;
+                        Visit(node.Arguments[0]);
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(Math))
+            if (node.Method.DeclaringType == typeof(Math))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(Math.Abs):
                         Writer.Write("abs(");
-                        Visit(callExpression.Arguments[0]);
+                        Visit(node.Arguments[0]);
                         Writer.Write(')');
-                        return callExpression;
+                        return node;
                 }
             }
 
-            if (callExpression.Method.DeclaringType == typeof(QueryExtensions))
+            if (node.Method.DeclaringType == typeof(QueryExtensions))
             {
-                switch (callExpression.Method.Name)
+                switch (node.Method.Name)
                 {
                     case nameof(QueryExtensions.Contains):
-                        if (callExpression.Arguments.Count > 2 &&
-                            callExpression.Arguments[2] is ConstantExpression ce3 &&
+                        if (node.Arguments.Count > 2 &&
+                            node.Arguments[2] is ConstantExpression ce3 &&
                             ce3.Value is StringComparison sc3)
                         {
                             Database.EnsureQuerySupportFunctions();
                             Writer.Write("(instr(");
-                            Visit(callExpression.Arguments[0]);
+                            Visit(node.Arguments[0]);
                             Writer.Write(',');
-                            Visit(callExpression.Arguments[1]);
+                            Visit(node.Arguments[1]);
                             Writer.Write(',');
                             Writer.Write((int)sc3);
                             Writer.Write(")");
                             Writer.Write(">0)"); // SQLite is 1-based
                         }
-                        return callExpression;
+                        return node;
                 }
             }
 
             // kinda hack: generic ToString handling
-            if (string.Equals(callExpression.Method.Name, nameof(ToString), StringComparison.Ordinal) &&
-                callExpression.Method.GetParameters().Length == 0)
+            if (string.Equals(node.Method.Name, nameof(ToString), StringComparison.Ordinal) &&
+                node.Method.GetParameters().Length == 0)
             {
-                Visit(callExpression.Object);
-                return callExpression;
+                Visit(node.Object);
+                return node;
             }
 
-            throw new SqlNadoException(BuildNotSupported("The method '" + callExpression.Method.Name + "' of type '" + callExpression.Method.DeclaringType.FullName + "'"));
+            throw new SqlNadoException(BuildNotSupported("The method '" + node.Method.Name + "' of type '" + node.Method.DeclaringType.FullName + "'"));
         }
 
         private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'", StringComparison.Ordinal) && s.EndsWith("'", StringComparison.Ordinal);
 
-        protected override Expression VisitUnary(UnaryExpression unaryExpression)
+        protected override Expression VisitUnary(UnaryExpression node)
         {
-            switch (unaryExpression.NodeType)
+            switch (node.NodeType)
             {
                 case ExpressionType.Not:
                     Writer.Write(" NOT (");
-                    Visit(unaryExpression.Operand);
+                    Visit(node.Operand);
                     Writer.Write(")");
                     break;
 
                 case ExpressionType.ArrayLength:
                     Writer.Write(" length(");
-                    Visit(unaryExpression.Operand);
+                    Visit(node.Operand);
                     Writer.Write(")");
                     break;
 
                 case ExpressionType.Quote:
-                    Visit(unaryExpression.Operand);
+                    Visit(node.Operand);
                     break;
 
                 // just let go. hopefully it should be ok with sqlite
                 case ExpressionType.Convert:
-                    Visit(unaryExpression.Operand);
+                    Visit(node.Operand);
                     break;
 
                 default:
-                    throw new SqlNadoException(BuildNotSupported("The unary operator '" + unaryExpression.NodeType + "'"));
+                    throw new SqlNadoException(BuildNotSupported("The unary operator '" + node.NodeType + "'"));
 
             }
-            return unaryExpression;
+            return node;
         }
 
-        protected override Expression VisitBinary(BinaryExpression binaryExpression)
+        protected override Expression VisitBinary(BinaryExpression node)
         {
             Writer.Write("(");
-            Visit(binaryExpression.Left);
-            switch (binaryExpression.NodeType)
+            Visit(node.Left);
+            switch (node.NodeType)
             {
                 case ExpressionType.Add:
                 case ExpressionType.AddChecked:
@@ -447,28 +447,28 @@ namespace SqlNado
                     break;
 
                 default:
-                    throw new SqlNadoException(BuildNotSupported("The binary operator '" + binaryExpression.NodeType + "'"));
+                    throw new SqlNadoException(BuildNotSupported("The binary operator '" + node.NodeType + "'"));
             }
 
-            Visit(binaryExpression.Right);
+            Visit(node.Right);
             Writer.Write(")");
-            return binaryExpression;
+            return node;
         }
 
-        protected override Expression VisitConstant(ConstantExpression constant)
+        protected override Expression VisitConstant(ConstantExpression node)
         {
-            if (constant.Value is IQueryable queryable)
+            if (node.Value is IQueryable queryable)
             {
                 var table = Database.GetObjectTable(queryable.ElementType);
                 Writer.Write(table.EscapedName);
             }
-            else if (constant.Value == null)
+            else if (node.Value == null)
             {
                 Writer.Write("NULL");
             }
             else
             {
-                var value = Database.CoerceValueForBind(constant.Value, BindOptions);
+                var value = Database.CoerceValueForBind(node.Value, BindOptions);
                 switch (Type.GetTypeCode(value.GetType()))
                 {
                     case TypeCode.Boolean:
@@ -484,11 +484,7 @@ namespace SqlNado
 
                     case TypeCode.String:
                         var s = (string)value;
-                        if (s != null)
-                        {
-                            s = s.Replace("'", "''");
-                        }
-
+                        s = s.Replace("'", "''");
                         Writer.Write('\'');
                         Writer.Write(s);
                         Writer.Write('\'');
@@ -507,20 +503,20 @@ namespace SqlNado
                             break;
                         }
 
-                        throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + constant.Value + "' of type '" + constant.Value.GetType().FullName + "') for '" + value + "'"));
+                        throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + node.Value + "' of type '" + node.Value.GetType().FullName + "') for '" + value + "'"));
                 }
             }
-            return constant;
+            return node;
         }
 
-        protected override Expression VisitMember(MemberExpression memberExpression)
+        protected override Expression VisitMember(MemberExpression node)
         {
-            if (memberExpression.Expression != null)
+            if (node.Expression != null)
             {
-                if (memberExpression.Expression.NodeType == ExpressionType.Parameter)
+                if (node.Expression.NodeType == ExpressionType.Parameter)
                 {
-                    var table = Database.GetObjectTable(memberExpression.Expression.Type);
-                    var col = table.GetColumn(memberExpression.Member.Name);
+                    var table = Database.GetObjectTable(node.Expression.Type);
+                    var col = table.GetColumn(node.Member.Name);
                     if (col != null)
                     {
                         // we don't use double-quoted escaped column name here
@@ -530,24 +526,21 @@ namespace SqlNado
                     }
                     else
                     {
-                        Writer.Write(memberExpression.Member.Name);
+                        Writer.Write(node.Member.Name);
                     }
-                    return memberExpression;
+                    return node;
                 }
 
-                if (memberExpression.Member != null && memberExpression.Member.DeclaringType == typeof(string))
+                if (node.Member != null && node.Member.DeclaringType == typeof(string) && string.Equals(node.Member.Name, nameof(string.Length), StringComparison.Ordinal))
                 {
-                    if (string.Equals(memberExpression.Member.Name, nameof(string.Length), StringComparison.Ordinal))
-                    {
-                        Writer.Write(" length(");
-                        Visit(memberExpression.Expression);
-                        Writer.Write(')');
-                        return memberExpression;
-                    }
+                    Writer.Write(" length(");
+                    Visit(node.Expression);
+                    Writer.Write(')');
+                    return node;
                 }
             }
 
-            throw new SqlNadoException(BuildNotSupported("The member '" + memberExpression.Member.Name + "'"));
+            throw new SqlNadoException(BuildNotSupported("The member '" + node.Member.Name + "'"));
         }
 
         // from https://github.com/mattwar/iqtoolkit
@@ -561,7 +554,7 @@ namespace SqlNado
                 {
                     fnCanBeEvaluated = CanBeEvaluatedLocally;
                 }
-                return SubtreeEvaluator.Eval(Nominator.Nominate(fnCanBeEvaluated, expression), fnPostEval, expression);
+                return SubtreeEvaluator.DoEval(Nominator.Nominate(fnCanBeEvaluated, expression), fnPostEval, expression);
             }
 
             private static bool CanBeEvaluatedLocally(Expression expression) => expression.NodeType != ExpressionType.Parameter;
@@ -577,17 +570,17 @@ namespace SqlNado
                     _evalFunc = evalFunc;
                 }
 
-                internal static Expression Eval(HashSet<Expression> candidates, Func<ConstantExpression, Expression> onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
+                internal static Expression DoEval(HashSet<Expression> candidates, Func<ConstantExpression, Expression> onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
 
-                public override Expression Visit(Expression expression)
+                public override Expression Visit(Expression node)
                 {
-                    if (expression == null)
+                    if (node == null)
                         return null;
 
-                    if (_candidates.Contains(expression))
-                        return Evaluate(expression);
+                    if (_candidates.Contains(node))
+                        return Evaluate(node);
 
-                    return base.Visit(expression);
+                    return base.Visit(node);
                 }
 
                 private Expression PostEval(ConstantExpression constant)
@@ -690,20 +683,20 @@ namespace SqlNado
                     return nominator._candidates;
                 }
 
-                protected override Expression VisitConstant(ConstantExpression c) => base.VisitConstant(c);
+                protected override Expression VisitConstant(ConstantExpression node) => base.VisitConstant(node);
 
-                public override Expression Visit(Expression expression)
+                public override Expression Visit(Expression node)
                 {
-                    if (expression != null)
+                    if (node != null)
                     {
                         var saveCannotBeEvaluated = _cannotBeEvaluated;
                         _cannotBeEvaluated = false;
-                        base.Visit(expression);
+                        base.Visit(node);
                         if (!_cannotBeEvaluated)
                         {
-                            if (_fnCanBeEvaluated(expression))
+                            if (_fnCanBeEvaluated(node))
                             {
-                                _candidates.Add(expression);
+                                _candidates.Add(node);
                             }
                             else
                             {
@@ -713,7 +706,7 @@ namespace SqlNado
 
                         _cannotBeEvaluated |= saveCannotBeEvaluated;
                     }
-                    return expression;
+                    return node;
                 }
             }
         }

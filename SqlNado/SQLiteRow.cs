@@ -147,7 +147,11 @@ namespace SqlNado
                 return false;
             }
 
-            public void Dispose() { }
+            public void Dispose()
+            {
+                // nothing to do
+            }
+
             public void Reset() => _index = 0;
             object IEnumerator.Current => Current;
         }

@@ -942,13 +942,10 @@ namespace SqlNado
             if (_bindTypes.TryGetValue(type, out var bindType) && bindType != null)
                 return bindType;
 
-            if (type.IsEnum)
+            if (type.IsEnum && !BindOptions.EnumAsString)
             {
-                if (!BindOptions.EnumAsString)
-                {
-                    var et = GetEnumBindType(type);
-                    return _bindTypes.AddOrUpdate(type, et, (k, o) => et);
-                }
+                var et = GetEnumBindType(type);
+                return _bindTypes.AddOrUpdate(type, et, (k, o) => et);
             }
 
             foreach (var kv in _bindTypes)
@@ -1514,12 +1511,9 @@ namespace SqlNado
             {
                 for (var i = 0; i < keys.Length; i++)
                 {
-                    if (keys[i] != null && !pk[i].ClrType.IsAssignableFrom(keys[i].GetType()))
+                    if (keys[i] != null && !pk[i].ClrType.IsAssignableFrom(keys[i].GetType()) && TryChangeType(keys[i], pk[i].ClrType, out object k))
                     {
-                        if (TryChangeType(keys[i], pk[i].ClrType, out object k))
-                        {
-                            keys[i] = k;
-                        }
+                        keys[i] = k;
                     }
                 }
             }
@@ -1713,10 +1707,10 @@ namespace SqlNado
         public virtual void ResizeBlob(string tableName, string columnName, long rowId, int size)
         {
             if (tableName == null)
-                throw new ArgumentNullException(null, nameof(tableName));
+                throw new ArgumentNullException(nameof(tableName));
 
             if (columnName == null)
-                throw new ArgumentNullException(null, nameof(columnName));
+                throw new ArgumentNullException(nameof(columnName));
 
             var sql = "UPDATE " + SQLiteStatement.EscapeName(tableName) + " SET " + SQLiteStatement.EscapeName(columnName) + "=? WHERE rowid=" + rowId;
             ExecuteNonQuery(sql, new SQLiteZeroBlob { Size = size });
@@ -1726,10 +1720,10 @@ namespace SqlNado
         public virtual SQLiteBlob OpenBlob(string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode)
         {
             if (tableName == null)
-                throw new ArgumentNullException(null, nameof(tableName));
+                throw new ArgumentNullException(nameof(tableName));
 
             if (columnName == null)
-                throw new ArgumentNullException(null, nameof(columnName));
+                throw new ArgumentNullException(nameof(columnName));
 
             CheckError(_sqlite3_blob_open(CheckDisposed(), "main", tableName, columnName, rowId, (int)mode, out var handle));
             var blob = CreateBlob(handle, tableName, columnName, rowId, mode);
@@ -1833,14 +1827,11 @@ namespace SqlNado
             public SQLiteStatement Get()
             {
                 var entry = _statements.FirstOrDefault(s => s.Statement._locked == 0);
-                if (entry != null)
+                if (entry != null && Interlocked.CompareExchange(ref entry.Statement._locked, 1, 0) != 0)
                 {
-                    if (Interlocked.CompareExchange(ref entry.Statement._locked, 1, 0) != 0)
-                    {
-                        // between the moment we got one and the moment we tried to lock it,
-                        // another thread got it. In this case, we'll just create a new one...
-                        entry = null;
-                    }
+                    // between the moment we got one and the moment we tried to lock it,
+                    // another thread got it. In this case, we'll just create a new one...
+                    entry = null;
                 }
 
                 if (entry == null)
@@ -2757,8 +2748,8 @@ namespace SqlNado
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
-        internal static sqlite3_result_blob _sqlite3_result_blob;
+        private delegate void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
+        private static sqlite3_result_blob _sqlite3_result_blob;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -2808,6 +2799,7 @@ namespace SqlNado
         internal delegate void sqlite3_result_zeroblob(IntPtr ctx, int size);
         internal static sqlite3_result_zeroblob _sqlite3_result_zeroblob;
 
+        [Flags]
         private enum SQLiteTextEncoding
         {
             SQLITE_UTF8 = 1,                /* IMP: R-37514-35566 */
@@ -2823,77 +2815,77 @@ namespace SqlNado
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate int sqlite3_threadsafe();
-        internal static sqlite3_threadsafe _sqlite3_threadsafe;
+        private delegate int sqlite3_threadsafe();
+        private static sqlite3_threadsafe _sqlite3_threadsafe;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_enable_shared_cache(int i);
-        internal static sqlite3_enable_shared_cache _sqlite3_enable_shared_cache;
+        private delegate SQLiteErrorCode sqlite3_enable_shared_cache(int i);
+        private static sqlite3_enable_shared_cache _sqlite3_enable_shared_cache;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
-        internal static sqlite3_config_0 _sqlite3_config_0;
+        private delegate SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
+        private static sqlite3_config_0 _sqlite3_config_0;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
-        internal static sqlite3_config_1 _sqlite3_config_1;
+        private delegate SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
+        private static sqlite3_config_1 _sqlite3_config_1;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
-        internal static sqlite3_config_2 _sqlite3_config_2;
+        private delegate SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
+        private static sqlite3_config_2 _sqlite3_config_2;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
-        internal static sqlite3_config_3 _sqlite3_config_3;
+        private delegate SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
+        private static sqlite3_config_3 _sqlite3_config_3;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
-        internal static sqlite3_config_4 _sqlite3_config_4;
+        private delegate SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
+        private static sqlite3_config_4 _sqlite3_config_4;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
-        internal static sqlite3_db_config_0 _sqlite3_db_config_0;
+        private delegate SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
+        private static sqlite3_db_config_0 _sqlite3_db_config_0;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
-        internal static sqlite3_db_config_1 _sqlite3_db_config_1;
+        private delegate SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
+        private static sqlite3_db_config_1 _sqlite3_db_config_1;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string s);
-        internal static sqlite3_db_config_2 _sqlite3_db_config_2;
+        private delegate SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string s);
+        private static sqlite3_db_config_2 _sqlite3_db_config_2;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
-        internal static sqlite3_enable_load_extension _sqlite3_enable_load_extension;
+        private delegate SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
+        private static sqlite3_enable_load_extension _sqlite3_enable_load_extension;
 
 #if !WINSQLITE
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 #endif
-        internal delegate SQLiteErrorCode sqlite3_load_extension(IntPtr db,
+        private delegate SQLiteErrorCode sqlite3_load_extension(IntPtr db,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zProc,
             out IntPtr pzErrMsg);
-        internal static sqlite3_load_extension _sqlite3_load_extension;
+        private static sqlite3_load_extension _sqlite3_load_extension;
 
         internal class Utf8Marshaler : ICustomMarshaler
         {
@@ -2904,47 +2896,47 @@ namespace SqlNado
             public static ICustomMarshaler GetInstance(string cookie) => Instance;
 #pragma warning restore IDE0060 // Remove unused parameter
 
-            public void CleanUpManagedData(object managedObj)
+            public void CleanUpManagedData(object ManagedObj)
             {
                 // nothing to do
             }
 
-            public void CleanUpNativeData(IntPtr nativeData)
+            public void CleanUpNativeData(IntPtr pNativeData)
             {
-                if (nativeData != IntPtr.Zero)
+                if (pNativeData != IntPtr.Zero)
                 {
-                    Marshal.FreeCoTaskMem(nativeData);
+                    Marshal.FreeCoTaskMem(pNativeData);
                 }
             }
 
             public int GetNativeDataSize() => -1;
 
-            public IntPtr MarshalManagedToNative(object managedObj)
+            public IntPtr MarshalManagedToNative(object ManagedObj)
             {
-                if (managedObj == null)
+                if (ManagedObj == null)
                     return IntPtr.Zero;
 
                 // add a terminating zero
-                var bytes = Encoding.UTF8.GetBytes((string)managedObj + '\0');
+                var bytes = Encoding.UTF8.GetBytes((string)ManagedObj + '\0');
                 var ptr = Marshal.AllocCoTaskMem(bytes.Length);
                 Marshal.Copy(bytes, 0, ptr, bytes.Length);
                 return ptr;
             }
 
-            public object MarshalNativeToManaged(IntPtr nativeData)
+            public object MarshalNativeToManaged(IntPtr pNativeData)
             {
-                if (nativeData == IntPtr.Zero)
+                if (pNativeData == IntPtr.Zero)
                     return null;
 
                 // look for the terminating zero
                 var i = 0;
-                while (Marshal.ReadByte(nativeData, i) != 0)
+                while (Marshal.ReadByte(pNativeData, i) != 0)
                 {
                     i++;
                 }
 
                 var bytes = new byte[i];
-                Marshal.Copy(nativeData, bytes, 0, bytes.Length);
+                Marshal.Copy(pNativeData, bytes, 0, bytes.Length);
                 return Encoding.UTF8.GetString(bytes);
             }
         }

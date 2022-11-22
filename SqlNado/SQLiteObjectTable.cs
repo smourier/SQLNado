@@ -227,12 +227,9 @@ namespace SqlNado
                 }
             }
 
-            if (instance is ISQLiteObject so)
+            if (instance is ISQLiteObject so && so.Database == null)
             {
-                if (so.Database == null)
-                {
-                    so.Database = Database;
-                }
+                so.Database = Database;
             }
             InitializeAutomaticColumns(instance);
             return instance;
@@ -563,11 +560,8 @@ namespace SqlNado
                 SQLiteOnErrorAction onError(SQLiteError e)
                 {
                     // this can happen in multi-threaded scenarios, update didn't work, then someone inserted, and now insert does not work. try update again
-                    if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT)
-                    {
-                        if (tryUpdate)
-                            return SQLiteOnErrorAction.Break;
-                    }
+                    if (e.Code == SQLiteErrorCode.SQLITE_CONSTRAINT && tryUpdate)
+                        return SQLiteOnErrorAction.Break;
 
                     return SQLiteOnErrorAction.Unhandled;
                 }

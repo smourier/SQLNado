@@ -208,29 +208,26 @@ namespace SqlNado.Utilities
             if (forceChanged || (onChanged && ReferenceEquals(finalProp, newProp)))
             {
                 bool rollbacked = false;
-                if (rollbackOnError)
+                if (rollbackOnError && (DictionaryObjectGetErrors(name)?.Cast<object>().Any()).GetValueOrDefault())
                 {
-                    if ((DictionaryObjectGetErrors(name)?.Cast<object>().Any()).GetValueOrDefault())
+                    var rolled = DictionaryObjectRollbackProperty(options, name, oldProp, newProp);
+                    if (rolled == null)
                     {
-                        var rolled = DictionaryObjectRollbackProperty(options, name, oldProp, newProp);
-                        if (rolled == null)
-                        {
-                            rolled = oldProp;
-                        }
-
-                        if (rolled == null)
-                        {
-                            DictionaryObjectProperties.TryRemove(name, out DictionaryObjectProperty dop);
-                        }
-                        else
-                        {
-                            DictionaryObjectProperties.AddOrUpdate(name, rolled, (k, o) => rolled);
-                        }
-
-                        var e = new DictionaryObjectPropertyRollbackEventArgs(name, rolled, value);
-                        OnPropertyRollback(this, e);
-                        rollbacked = true;
+                        rolled = oldProp;
                     }
+
+                    if (rolled == null)
+                    {
+                        DictionaryObjectProperties.TryRemove(name, out DictionaryObjectProperty dop);
+                    }
+                    else
+                    {
+                        DictionaryObjectProperties.AddOrUpdate(name, rolled, (k, o) => rolled);
+                    }
+
+                    var e = new DictionaryObjectPropertyRollbackEventArgs(name, rolled, value);
+                    OnPropertyRollback(this, e);
+                    rollbacked = true;
                 }
 
                 if (!rollbacked)

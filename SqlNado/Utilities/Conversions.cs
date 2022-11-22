@@ -156,7 +156,9 @@ namespace SqlNado.Utilities
             var sb = new StringBuilder(count * 2);
             for (int i = offset; i < (offset + count); i++)
             {
+#pragma warning disable S3457
                 sb.AppendFormat(CultureInfo.InvariantCulture, "X2", bytes[i]);
+#pragma warning restore S3457
             }
             return sb.ToString();
         }
@@ -445,17 +447,9 @@ namespace SqlNado.Utilities
                     return true;
                 }
 
-                if (IntPtr.Size == 8)
+                if (IntPtr.Size == 8 && TryChangeType(input, provider, out long l))
                 {
-                    if (TryChangeType(input, provider, out long l))
-                    {
-                        value = new IntPtr(l);
-                        return true;
-                    }
-                }
-                else if (TryChangeType(input, provider, out int i))
-                {
-                    value = new IntPtr(i);
+                    value = new IntPtr(l);
                     return true;
                 }
                 return false;
@@ -800,17 +794,14 @@ namespace SqlNado.Utilities
                 }
             }
 
-            if (conversionType == typeof(decimal))
+            if (conversionType == typeof(decimal) && inputType == typeof(byte[]))
             {
-                if (inputType == typeof(byte[]))
-                {
-                    var bytes = (byte[])input;
-                    if (bytes.Length != 16)
-                        return false;
+                var bytes = (byte[])input;
+                if (bytes.Length != 16)
+                    return false;
 
-                    value = ToDecimal(bytes);
-                    return true;
-                }
+                value = ToDecimal(bytes);
+                return true;
             }
 
             if (conversionType == typeof(DateTime))
@@ -849,43 +840,34 @@ namespace SqlNado.Utilities
                 }
             }
 
-            if (conversionType == typeof(char))
+            if (conversionType == typeof(char) && inputType == typeof(byte[]))
             {
-                if (inputType == typeof(byte[]))
-                {
-                    var bytes = (byte[])input;
-                    if (bytes.Length != 2)
-                        return false;
-
-                    value = BitConverter.ToChar(bytes, 0);
-                    return true;
-                }
+                var bytes = (byte[])input;
+                if (bytes.Length != 2)
+                    return false;
+                
+                value = BitConverter.ToChar(bytes, 0);
+                return true;
             }
 
-            if (conversionType == typeof(float))
+            if (conversionType == typeof(float) && inputType == typeof(byte[]))
             {
-                if (inputType == typeof(byte[]))
-                {
-                    var bytes = (byte[])input;
-                    if (bytes.Length != 4)
-                        return false;
+                var bytes = (byte[])input;
+                if (bytes.Length != 4)
+                    return false;
 
-                    value = BitConverter.ToSingle(bytes, 0);
-                    return true;
-                }
+                value = BitConverter.ToSingle(bytes, 0);
+                return true;
             }
 
-            if (conversionType == typeof(double))
+            if (conversionType == typeof(double) && inputType == typeof(byte[]))
             {
-                if (inputType == typeof(byte[]))
-                {
-                    var bytes = (byte[])input;
-                    if (bytes.Length != 8)
-                        return false;
-
-                    value = BitConverter.ToDouble(bytes, 0);
-                    return true;
-                }
+                var bytes = (byte[])input;
+                if (bytes.Length != 8)
+                    return false;
+                
+                value = BitConverter.ToDouble(bytes, 0);
+                return true;
             }
 
             if (conversionType == typeof(DateTimeOffset))
@@ -1228,13 +1210,10 @@ namespace SqlNado.Utilities
                 return false;
             }
 
-            if (stringInput.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            if (stringInput.StartsWith("0x", StringComparison.OrdinalIgnoreCase) && ulong.TryParse(stringInput.Substring(2), NumberStyles.HexNumber, CultureInfo.CurrentCulture, out ulong ulx))
             {
-                if (ulong.TryParse(stringInput.Substring(2), NumberStyles.HexNumber, CultureInfo.CurrentCulture, out ulong ulx))
-                {
-                    value = ToEnum(ulx.ToString(CultureInfo.CurrentCulture), type);
-                    return true;
-                }
+                value = ToEnum(ulx.ToString(CultureInfo.CurrentCulture), type);
+                return true;
             }
 
             var names = Enum.GetNames(type);

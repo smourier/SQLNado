@@ -275,14 +275,11 @@ namespace SqlNado
             }
             else
             {
-                if ((options & SQLiteCreateSqlOptions.ForAlterColumn) == SQLiteCreateSqlOptions.ForAlterColumn)
+                if ((options & SQLiteCreateSqlOptions.ForAlterColumn) == SQLiteCreateSqlOptions.ForAlterColumn && !IsNullable)
                 {
-                    if (!IsNullable)
-                    {
-                        // we *must* define a default value or "Cannot add a NOT NULL column with default value NULL".
-                        object defaultValue = Activator.CreateInstance(ClrType);
-                        sql += " DEFAULT " + ToLiteral(defaultValue);
-                    }
+                    // we *must* define a default value or "Cannot add a NOT NULL column with default value NULL".
+                    object defaultValue = Activator.CreateInstance(ClrType);
+                    sql += " DEFAULT " + ToLiteral(defaultValue);
                 }
             }
 

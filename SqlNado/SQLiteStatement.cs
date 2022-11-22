@@ -9,6 +9,8 @@ using SqlNado.Utilities;
 
 namespace SqlNado
 {
+#pragma warning disable S3971
+#pragma warning disable S3881
 #pragma warning disable CA1063 // Implement IDisposable Correctly
     public class SQLiteStatement : IDisposable
 #pragma warning restore CA1063 // Implement IDisposable Correctly
@@ -488,4 +490,6 @@ namespace SqlNado
         ~SQLiteStatement() => RealDispose();
 #pragma warning restore CA1063 // Implement IDisposable Correctly
     }
+#pragma warning restore S3881
+#pragma warning restore S3971
 }
