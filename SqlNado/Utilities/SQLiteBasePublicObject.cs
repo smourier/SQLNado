@@ -18,7 +18,7 @@ namespace SqlNado.Utilities
         public ConcurrentDictionary<string, DictionaryObjectProperty> Properties => DictionaryObjectProperties;
 
         [SQLiteColumn(Ignore = true)]
-        public bool HasChanged => ChangedProperties.Count > 0;
+        public bool HasChanged => !ChangedProperties.IsEmpty;
 
         [SQLiteColumn(Ignore = true)]
         public bool HasErrors => DictionaryObjectHasErrors;

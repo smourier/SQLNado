@@ -121,7 +121,7 @@ namespace SqlNado.Utilities
         {
             try
             {
-                var width = Console.WindowWidth;
+                _ = Console.WindowWidth;
                 return true;
             }
             catch
@@ -218,15 +218,6 @@ namespace SqlNado.Utilities
             }
         }
 
-        public virtual string Write(IEnumerable enumerable)
-        {
-            using (var sw = new StringWriter())
-            {
-                Write(sw, enumerable);
-                return sw.ToString();
-            }
-        }
-
         // we need this because the console textwriter does WriteLine by its own...
         private sealed class ConsoleModeTextWriter : TextWriter
         {
@@ -244,24 +235,6 @@ namespace SqlNado.Utilities
             public TextWriter Writer { get; }
 
             public override Encoding Encoding => Writer.Encoding;
-            public override void Flush() => base.Flush();
-            public override void Close() => base.Close();
-
-            public override void Write(char value)
-            {
-                Writer.Write(value);
-                _column++;
-                if (_column == _maximumWidth)
-                {
-                    _lastWasNewLine = true;
-                    Line++;
-                    _column = 0;
-                }
-                else
-                {
-                    _lastWasNewLine = false;
-                }
-            }
 
             public override void WriteLine()
             {
@@ -279,6 +252,22 @@ namespace SqlNado.Utilities
             {
                 Write(value);
                 WriteLine();
+            }
+
+            public override void Write(char value)
+            {
+                Writer.Write(value);
+                _column++;
+                if (_column == _maximumWidth)
+                {
+                    _lastWasNewLine = true;
+                    Line++;
+                    _column = 0;
+                }
+                else
+                {
+                    _lastWasNewLine = false;
+                }
             }
 
             public override void Write(string value)
@@ -308,6 +297,15 @@ namespace SqlNado.Utilities
             }
         }
 
+        public virtual string Write(IEnumerable enumerable)
+        {
+            using (var sw = new StringWriter())
+            {
+                Write(sw, enumerable);
+                return sw.ToString();
+            }
+        }
+
         public virtual void Write(TextWriter writer, IEnumerable enumerable)
         {
             if (writer == null)
@@ -327,9 +325,11 @@ namespace SqlNado.Utilities
             TextWriter wr;
             if (Indent > 0)
             {
-                var itw = new IndentedTextWriter(cw, IndentTabString);
-                itw.Indent = Indent;
-                for (int i = 0; i < Indent; i++)
+                var itw = new IndentedTextWriter(cw, IndentTabString)
+                {
+                    Indent = Indent
+                };
+                for (var i = 0; i < Indent; i++)
                 {
                     cw.Write(IndentTabString);
                 }
@@ -342,7 +342,7 @@ namespace SqlNado.Utilities
 
             var rows = new List<TableStringCell[]>();
             var headerCells = new List<TableStringCell>();
-            int columnsCount = ComputeColumnWidths(writer, enumerable, headerCells, rows);
+            var columnsCount = ComputeColumnWidths(writer, enumerable, headerCells, rows);
             if (columnsCount == 0) // no valid columns
                 return;
 
@@ -358,7 +358,7 @@ namespace SqlNado.Utilities
                 emptyLine.Append(VerticalCharacter);
             }
 
-            for (int i = 0; i < columnsCount; i++)
+            for (var i = 0; i < columnsCount; i++)
             {
                 if (i > 0)
                 {
@@ -384,7 +384,7 @@ namespace SqlNado.Utilities
 
             if (CellPadding != null)
             {
-                for (int l = 0; l < CellPadding.Top; l++)
+                for (var l = 0; l < CellPadding.Top; l++)
                 {
                     wr.WriteLine(emptyLine);
                 }
@@ -394,7 +394,7 @@ namespace SqlNado.Utilities
             string rightPadding = CellPadding != null ? new string(' ', CellPadding.Right) : null;
 
             wr.Write(VerticalCharacter);
-            for (int i = 0; i < columnsCount; i++)
+            for (var i = 0; i < columnsCount; i++)
             {
                 if (leftPadding != null && Columns[i].IsHorizontallyPadded)
                 {
@@ -414,7 +414,7 @@ namespace SqlNado.Utilities
 
             if (CellPadding != null)
             {
-                for (int l = 0; l < CellPadding.Bottom; l++)
+                for (var l = 0; l < CellPadding.Bottom; l++)
                 {
                     wr.WriteLine(emptyLine);
                 }
@@ -426,17 +426,17 @@ namespace SqlNado.Utilities
 
                 if (CellPadding != null)
                 {
-                    for (int l = 0; l < CellPadding.Top; l++)
+                    for (var l = 0; l < CellPadding.Top; l++)
                     {
                         wr.WriteLine(emptyLine);
                     }
                 }
 
-                int cellsMaxHeight = 0;
-                for (int height = 0; height < MaximumRowHeight; height++)
+                var cellsMaxHeight = 0;
+                for (var height = 0; height < MaximumRowHeight; height++)
                 {
                     wr.Write(VerticalCharacter);
-                    for (int i = 0; i < columnsCount; i++)
+                    for (var i = 0; i < columnsCount; i++)
                     {
                         if (leftPadding != null && Columns[i].IsHorizontallyPadded)
                         {
@@ -476,7 +476,7 @@ namespace SqlNado.Utilities
 
                 if (CellPadding != null)
                 {
-                    for (int l = 0; l < CellPadding.Bottom; l++)
+                    for (var l = 0; l < CellPadding.Bottom; l++)
                     {
                         wr.WriteLine(emptyLine);
                     }
@@ -519,7 +519,7 @@ namespace SqlNado.Utilities
                     desiredPaddedColumnWidths = new int[Math.Min(Columns.Count, MaximumNumberOfColumns)];
 
                     // compute header rows
-                    for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                    for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                     {
                         var cell = CreateCell(Columns[i], Columns[i]);
                         header.Add(cell);
@@ -568,7 +568,7 @@ namespace SqlNado.Utilities
 
             if (MaximumWidth <= 0)
             {
-                for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                 {
                     Columns[i].WidthWithPadding = desiredPaddedColumnWidths[i];
                     Columns[i].WidthWithoutPadding = Columns[i].WidthWithPadding - hp;
@@ -576,14 +576,14 @@ namespace SqlNado.Utilities
             }
             else
             {
-                for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                 {
                     Columns[i].DesiredPaddedWidth = desiredPaddedColumnWidths[i];
                     Columns[i].WidthWithoutPadding = Columns[i].WidthWithPadding - hp;
                 }
 
-                int borderWidth = _columnBorderWidth + desiredPaddedColumnWidths.Length * _columnBorderWidth;
-                int maxWidth = MaximumWidth - Indent - borderWidth;
+                var borderWidth = _columnBorderWidth + desiredPaddedColumnWidths.Length * _columnBorderWidth;
+                var maxWidth = MaximumWidth - Indent - borderWidth;
 
                 // this is a small trick. When we may be outputing to the console with another textwriter, 
                 // just remove one to avoid the auto WriteLine effect from the console
@@ -591,16 +591,16 @@ namespace SqlNado.Utilities
                 {
                     maxWidth--;
                 }
-                int desiredWidth = desiredPaddedColumnWidths.Sum();
+                
+                var desiredWidth = desiredPaddedColumnWidths.Sum();
                 if (desiredWidth > maxWidth)
                 {
                     if (CanReduceCellPadding)
                     {
-                        int diff = desiredWidth - maxWidth;
-                        int paddingSize = desiredPaddedColumnWidths.Length * hp;
+                        var diff = desiredWidth - maxWidth;
 
                         // remove padding from last column to first
-                        for (int i = desiredPaddedColumnWidths.Length - 1; i >= 0; i--)
+                        for (var i = desiredPaddedColumnWidths.Length - 1; i >= 0; i--)
                         {
                             Columns[i].IsHorizontallyPadded = false;
                             diff -= hp;
@@ -609,15 +609,15 @@ namespace SqlNado.Utilities
                         }
                     }
 
-                    int availableWidth = maxWidth;
+                    var availableWidth = maxWidth;
                     do
                     {
                         var uncomputedColumns = Columns.Take(desiredPaddedColumnWidths.Length).Where(c => c.WidthWithPadding < 0).ToArray();
                         if (uncomputedColumns.Length == 0)
                             break;
 
-                        int avgWidth = availableWidth / uncomputedColumns.Length;
-                        int computed = 0;
+                        var avgWidth = availableWidth / uncomputedColumns.Length;
+                        var computed = 0;
                         foreach (var column in uncomputedColumns)
                         {
                             if (desiredPaddedColumnWidths[column.Index] <= avgWidth)
@@ -652,14 +652,14 @@ namespace SqlNado.Utilities
 
                     // now, because of roundings and unpaddings, we may have some leftovers to distribute
                     // do that in a round robbin fashion for all columns that need it
-                    int totalWidth = Columns.Take(desiredPaddedColumnWidths.Length).Sum(c => c.WidthWithPadding);
+                    var totalWidth = Columns.Take(desiredPaddedColumnWidths.Length).Sum(c => c.WidthWithPadding);
                     if (totalWidth < maxWidth)
                     {
                         var columns = Columns.Take(desiredPaddedColumnWidths.Length).Where(c => c.WidthWithPadding < c.DesiredPaddedWidth).OrderBy(c => c.WidthWithPadding).ToArray();
                         if (columns.Length > 0) // we shoull always pass here, but...
                         {
-                            int index = 0;
-                            for (int i = 0; i < maxWidth - totalWidth; i++)
+                            var index = 0;
+                            for (var i = 0; i < maxWidth - totalWidth; i++)
                             {
                                 Columns[index].WidthWithPadding++;
                                 Columns[index].WidthWithoutPadding++;
@@ -674,7 +674,7 @@ namespace SqlNado.Utilities
                 }
                 else
                 {
-                    for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                    for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                     {
                         Columns[i].WidthWithPadding = desiredPaddedColumnWidths[i];
                         Columns[i].WidthWithoutPadding = Columns[i].WidthWithPadding - hp;
@@ -731,7 +731,7 @@ namespace SqlNado.Utilities
             {
                 if (first is Array array)
                 {
-                    for (int i = 0; i < array.Length; i++)
+                    for (var i = 0; i < array.Length; i++)
                     {
                         AddColumn(new ArrayItemTableStringColumn(this, i));
                     }
@@ -996,7 +996,7 @@ namespace SqlNado.Utilities
                 if (Text == null)
                     return 0;
 
-                int pos = Text.IndexOfAny(new[] { '\r', '\n' });
+                var pos = Text.IndexOfAny(new[] { '\r', '\n' });
                 if (pos >= 0)
                 {
                     _split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
@@ -1047,7 +1047,7 @@ namespace SqlNado.Utilities
                 return text;
 
             var escaped = new char[text.Length];
-            for (int i = 0; i < text.Length; i++)
+            for (var i = 0; i < text.Length; i++)
             {
                 escaped[i] = Column.Table.ToPrintable(text[i]);
             }
@@ -1085,14 +1085,14 @@ namespace SqlNado.Utilities
             {
                 var split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 var lines = new List<string>();
-                int segmentWidth = Column.WidthWithoutPadding - 1; // keep 1 char to display NewLineReplacement
-                for (int i = 0; i < split.Length; i++)
+                var segmentWidth = Column.WidthWithoutPadding - 1; // keep 1 char to display NewLineReplacement
+                for (var i = 0; i < split.Length; i++)
                 {
                     var line = split[i];
 
                     if (Column.Table.CellWrap)
                     {
-                        int pos = 0;
+                        var pos = 0;
                         do
                         {
                             if (pos + segmentWidth >= line.Length || (split.Length == 1 && split[0].Length <= Column.WidthWithoutPadding))
@@ -1168,15 +1168,15 @@ namespace SqlNado.Utilities
                     break;
 
                 case TableStringAlignment.Center:
-                    int spaces = Column.WidthWithoutPadding - (text != null ? text.Length : 0);
+                    var spaces = Column.WidthWithoutPadding - (text != null ? text.Length : 0);
                     if (spaces == 0)
                     {
                         str = text;
                     }
                     else
                     {
-                        int left = spaces - spaces / 2;
-                        int right = spaces - left;
+                        var left = spaces - spaces / 2;
+                        var right = spaces - left;
                         str = new string(' ', left) + text + new string(' ', right);
                     }
                     break;
@@ -1226,7 +1226,7 @@ namespace SqlNado.Utilities
         public override void ComputeText()
         {
             var bytes = Value;
-            int max = Column.Table.MaximumByteArrayDisplayCount;
+            var max = Column.Table.MaximumByteArrayDisplayCount;
 
             if (bytes.Length == 0)
             {
@@ -1298,7 +1298,7 @@ namespace SqlNado.Utilities
             get
             {
                 var list = new List<Tuple<object, object>>();
-                int i = 0;
+                var i = 0;
                 var array = Object as Array;
                 if (Object != null && !(Object is string))
                 {
@@ -1412,7 +1412,7 @@ namespace SqlNado.Utilities
             get
             {
                 var list = new List<Tuple<object, object>>();
-                int i = 0;
+                var i = 0;
                 if (Object != null && !(Object is string))
                 {
                     foreach (var field in Object.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
@@ -1421,7 +1421,7 @@ namespace SqlNado.Utilities
                         if (browsable != null && !browsable.Browsable)
                             continue;
 
-                        object value = GetValue(field, Object, ThrowOnPropertyGetError);
+                        var value = GetValue(field, Object, ThrowOnPropertyGetError);
                         list.Add(new Tuple<object, object>(field.Name, value));
                         i++;
                     }
@@ -1556,15 +1556,19 @@ namespace SqlNado.Utilities
 
         public static string ToTableString<T>(this IEnumerable<T> enumerable, int indent)
         {
-            var ts = new TableString();
-            ts.Indent = indent;
+            var ts = new TableString
+            {
+                Indent = indent
+            };
             return ts.Write(enumerable);
         }
 
         public static string ToTableString(this IEnumerable enumerable, int indent)
         {
-            var ts = new TableString();
-            ts.Indent = indent;
+            var ts = new TableString
+            {
+                Indent = indent
+            };
             return ts.Write(enumerable);
         }
 
@@ -1573,15 +1577,19 @@ namespace SqlNado.Utilities
 
         public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer, int indent)
         {
-            var ts = new TableString();
-            ts.Indent = indent;
+            var ts = new TableString
+            {
+                Indent = indent
+            };
             ts.Write(writer, enumerable);
         }
 
         public static void ToTableString(this IEnumerable enumerable, TextWriter writer, int indent)
         {
-            var ts = new TableString();
-            ts.Indent = indent;
+            var ts = new TableString
+            {
+                Indent = indent
+            };
             ts.Write(writer, enumerable);
         }
 

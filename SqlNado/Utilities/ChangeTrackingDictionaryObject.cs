@@ -8,7 +8,7 @@ namespace SqlNado.Utilities
 
         protected virtual ConcurrentDictionary<string, DictionaryObjectProperty> DictionaryObjectChangedProperties => _changedProperties;
 
-        protected bool DictionaryObjectHasChanged => _changedProperties.Count > 0;
+        protected bool DictionaryObjectHasChanged => !_changedProperties.IsEmpty;
 
         protected virtual void DictionaryObjectCommitChanges() => DictionaryObjectChangedProperties.Clear();
 

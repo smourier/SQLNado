@@ -9,7 +9,7 @@ using SqlNado.Utilities;
 
 namespace SqlNado
 {
-    public class SQLiteQuery<T> : IQueryable<T>, IEnumerable<T>, IOrderedQueryable<T>
+    public class SQLiteQuery<T> : IOrderedQueryable<T>
     {
         private readonly QueryProvider _provider;
         private readonly Expression _expression;

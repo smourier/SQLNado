@@ -35,11 +35,6 @@ namespace SqlNado
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
 
-        static SQLiteDatabase()
-        {
-            UseWindowsRuntime = true;
-        }
-
         public SQLiteDatabase(string filePath)
             : this(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
         {
@@ -243,8 +238,10 @@ namespace SqlNado
                 return;
             }
 
-            var sink = new CollationSink();
-            sink.Comparer = comparer;
+            var sink = new CollationSink
+            {
+                Comparer = comparer
+            };
             _collationSinks[name] = sink;
 
             // note we only support UTF-16 encoding so we have only ptr > str marshaling
@@ -373,9 +370,11 @@ namespace SqlNado
                     return SQLiteErrorCode.SQLITE_ERROR;
                 }
 
-                var te = new TokenEnumerator();
-                te.Tokenizer = IntPtr.Zero;
-                te.Address = Marshal.AllocCoTaskMem(Marshal.SizeOf<TokenEnumerator>());
+                var te = new TokenEnumerator
+                {
+                    Tokenizer = IntPtr.Zero,
+                    Address = Marshal.AllocCoTaskMem(Marshal.SizeOf<TokenEnumerator>())
+                };
                 TokenEnumerator._enumerators[te.Address] = enumerator;
                 Marshal.StructureToPtr(te, te.Address, false);
                 ppCursor = te.Address;
@@ -624,10 +623,12 @@ namespace SqlNado
                 return;
             }
 
-            var sink = new ScalarFunctionSink();
-            sink.Database = this;
-            sink.Function = function;
-            sink.Name = name;
+            var sink = new ScalarFunctionSink
+            {
+                Database = this,
+                Function = function,
+                Name = name
+            };
             _functionSinks[key] = sink;
 
             CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback, null, null));
@@ -1062,6 +1063,33 @@ namespace SqlNado
             return ExecuteScalar("SELECT count(*) FROM " + table.EscapedName, 0);
         }
 
+        public virtual bool Save(object obj, SQLiteSaveOptions options = null)
+        {
+            if (obj == null)
+                return false;
+
+            if (options == null)
+            {
+                options = CreateSaveOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
+                options.SynchronizeSchema = true;
+                options.SynchronizeIndices = true;
+            }
+
+            var table = GetObjectTable(obj.GetType(), options.BuildTableOptions);
+            if (table == null)
+                throw new InvalidOperationException();
+
+            if (options.SynchronizeSchema)
+            {
+                table.SynchronizeSchema(options);
+            }
+
+            return table.Save(obj, options);
+        }
+
         public virtual int Save<T>(IEnumerable<T> enumerable, SQLiteSaveOptions options = null) => Save((IEnumerable)enumerable, options);
         public virtual int Save(IEnumerable enumerable, SQLiteSaveOptions options = null)
         {
@@ -1248,33 +1276,6 @@ namespace SqlNado
         public virtual void Commit() => ExecuteNonQuery("COMMIT");
         public virtual void Rollback() => ExecuteNonQuery("ROLLBACK");
 
-        public virtual bool Save(object obj, SQLiteSaveOptions options = null)
-        {
-            if (obj == null)
-                return false;
-
-            if (options == null)
-            {
-                options = CreateSaveOptions();
-                if (options == null)
-                    throw new InvalidOperationException();
-
-                options.SynchronizeSchema = true;
-                options.SynchronizeIndices = true;
-            }
-
-            var table = GetObjectTable(obj.GetType(), options.BuildTableOptions);
-            if (table == null)
-                throw new InvalidOperationException();
-
-            if (options.SynchronizeSchema)
-            {
-                table.SynchronizeSchema(options);
-            }
-
-            return table.Save(obj, options);
-        }
-
         public virtual IEnumerable<T> LoadByForeignKey<T>(object instance, SQLiteLoadForeignKeyOptions options = null)
         {
             if (instance == null)
@@ -1351,6 +1352,8 @@ namespace SqlNado
             return LoadRows(sql);
         }
 
+        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options = null) => Load<T>(null, options);
+        public IEnumerable<object> LoadAll(Type objectType) => Load(objectType, null, null, null);
         public IEnumerable<T> LoadAll<T>(int maximumRows)
         {
             var options = CreateLoadOptions();
@@ -1361,7 +1364,85 @@ namespace SqlNado
             return Load<T>(null, options);
         }
 
-        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options = null) => Load<T>(null, options);
+        public IEnumerable<object> Load(Type objectType, string sql, params object[] args) => Load(objectType, sql, null, args);
+        public virtual IEnumerable<object> Load(Type objectType, string sql, SQLiteLoadOptions options, params object[] args)
+        {
+            if (objectType == null)
+                throw new ArgumentNullException(nameof(objectType));
+
+            var table = GetObjectTable(objectType);
+            if (table == null)
+                yield break;
+
+            if (table.LoadAction == null)
+                throw new SqlNadoException("0024: Table '" + table.Name + "' does not define a LoadAction.");
+
+            if (sql == null)
+            {
+                sql = "SELECT ";
+                if (options?.RemoveDuplicates == true)
+                {
+                    sql += "DISTINCT ";
+                }
+
+                sql += table.BuildColumnsStatement() + " FROM " + table.EscapedName;
+            }
+
+            options = options ?? CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
+            if (options.TestTableExists && !TableExists(objectType))
+                yield break;
+
+            using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
+            {
+                var index = 0;
+                do
+                {
+                    var code = _sqlite3_step(statement.Handle);
+                    if (code == SQLiteErrorCode.SQLITE_DONE)
+                    {
+                        index++;
+                        Log(TraceLevel.Verbose, "Step done at index " + index);
+                        break;
+                    }
+
+                    if (code == SQLiteErrorCode.SQLITE_ROW)
+                    {
+                        var obj = table.Load(objectType, statement, options);
+                        if (obj != null)
+                            yield return obj;
+
+                        index++;
+                        continue;
+                    }
+
+                    var errorHandler = options.ErrorHandler;
+                    if (errorHandler != null)
+                    {
+                        var error = new SQLiteError(statement, index, code);
+                        var action = errorHandler(error);
+                        index = error.Index;
+                        code = error.Code;
+                        if (action == SQLiteOnErrorAction.Break)
+                            break;
+
+                        if (action == SQLiteOnErrorAction.Continue)
+                        {
+                            index++;
+                            continue;
+                        }
+
+                        // else throw
+                    }
+
+                    CheckError(code, sql: sql);
+                }
+                while (true);
+            }
+        }
+
         public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
         public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions options, params object[] args)
         {
@@ -1561,86 +1642,6 @@ namespace SqlNado
         public virtual SQLiteQuery<T> Query<T>() => new SQLiteQuery<T>(this);
         public virtual SQLiteQuery<T> Query<T>(Expression expression) => new SQLiteQuery<T>(this, expression);
 
-        public IEnumerable<object> LoadAll(Type objectType) => Load(objectType, null, null, null);
-        public IEnumerable<object> Load(Type objectType, string sql, params object[] args) => Load(objectType, sql, null, args);
-        public virtual IEnumerable<object> Load(Type objectType, string sql, SQLiteLoadOptions options, params object[] args)
-        {
-            if (objectType == null)
-                throw new ArgumentNullException(nameof(objectType));
-
-            var table = GetObjectTable(objectType);
-            if (table == null)
-                yield break;
-
-            if (table.LoadAction == null)
-                throw new SqlNadoException("0024: Table '" + table.Name + "' does not define a LoadAction.");
-
-            if (sql == null)
-            {
-                sql = "SELECT ";
-                if (options?.RemoveDuplicates == true)
-                {
-                    sql += "DISTINCT ";
-                }
-
-                sql += table.BuildColumnsStatement() + " FROM " + table.EscapedName;
-            }
-
-            options = options ?? CreateLoadOptions();
-            if (options == null)
-                throw new InvalidOperationException();
-
-            if (options.TestTableExists && !TableExists(objectType))
-                yield break;
-
-            using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
-            {
-                var index = 0;
-                do
-                {
-                    var code = _sqlite3_step(statement.Handle);
-                    if (code == SQLiteErrorCode.SQLITE_DONE)
-                    {
-                        index++;
-                        Log(TraceLevel.Verbose, "Step done at index " + index);
-                        break;
-                    }
-
-                    if (code == SQLiteErrorCode.SQLITE_ROW)
-                    {
-                        var obj = table.Load(objectType, statement, options);
-                        if (obj != null)
-                            yield return obj;
-
-                        index++;
-                        continue;
-                    }
-
-                    var errorHandler = options.ErrorHandler;
-                    if (errorHandler != null)
-                    {
-                        var error = new SQLiteError(statement, index, code);
-                        var action = errorHandler(error);
-                        index = error.Index;
-                        code = error.Code;
-                        if (action == SQLiteOnErrorAction.Break)
-                            break;
-
-                        if (action == SQLiteOnErrorAction.Continue)
-                        {
-                            index++;
-                            continue;
-                        }
-
-                        // else throw
-                    }
-
-                    CheckError(code, sql: sql);
-                }
-                while (true);
-            }
-        }
-
         public T CreateObjectInstance<T>(SQLiteLoadOptions options = null) => (T)CreateObjectInstance(typeof(T), options);
         public virtual object CreateObjectInstance(Type objectType, SQLiteLoadOptions options = null)
         {
@@ -1836,9 +1837,11 @@ namespace SqlNado
 
                 if (entry == null)
                 {
-                    entry = new StatementPoolEntry();
-                    entry.CreationDate = DateTime.Now;
-                    entry.Statement = CreateFunc(Sql);
+                    entry = new StatementPoolEntry
+                    {
+                        CreationDate = DateTime.Now,
+                        Statement = CreateFunc(Sql)
+                    };
                     entry.Statement._realDispose = false;
                     entry.Statement._locked = 1;
                     _statements.Add(entry);
@@ -2799,6 +2802,7 @@ namespace SqlNado
         internal delegate void sqlite3_result_zeroblob(IntPtr ctx, int size);
         internal static sqlite3_result_zeroblob _sqlite3_result_zeroblob;
 
+#pragma warning disable S2342
         [Flags]
         private enum SQLiteTextEncoding
         {
@@ -2810,6 +2814,7 @@ namespace SqlNado
             SQLITE_UTF16_ALIGNED = 8,       /* sqlite3_create_collation only */
             SQLITE_DETERMINISTIC = 0x800,    // function will always return the same result given the same inputs within a single SQL statement
         }
+#pragma warning restore S2342
 
         // https://sqlite.org/c3ref/threadsafe.html
 #if !WINSQLITE

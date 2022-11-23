@@ -67,8 +67,10 @@ namespace SqlNado
 
             using (var writer = new StringWriter())
             {
-                var translator = new SQLiteQueryTranslator(Database, writer);
-                translator.BindOptions = BindOptions;
+                var translator = new SQLiteQueryTranslator(Database, writer)
+                {
+                    BindOptions = BindOptions
+                };
                 translator.Visit(expression);
                 return writer.ToString();
             }
@@ -682,8 +684,6 @@ namespace SqlNado
                     nominator.Visit(expression);
                     return nominator._candidates;
                 }
-
-                protected override Expression VisitConstant(ConstantExpression node) => base.VisitConstant(node);
 
                 public override Expression Visit(Expression node)
                 {

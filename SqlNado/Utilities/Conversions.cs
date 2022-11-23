@@ -1270,6 +1270,21 @@ namespace SqlNado.Utilities
             return true;
         }
 
+        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key) => GetNullifiedValue(dictionary, key, null);
+        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key, string defaultValue)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            if (dictionary == null)
+                return defaultValue;
+
+            if (!dictionary.TryGetValue(key, out string str))
+                return defaultValue;
+
+            return str.Nullify();
+        }
+
         public static T GetValue<T>(this IDictionary<string, object> dictionary, string key, T defaultValue)
         {
             if (key == null)
@@ -1296,21 +1311,6 @@ namespace SqlNado.Utilities
                 return defaultValue;
 
             return ChangeType(o, defaultValue, provider);
-        }
-
-        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key) => GetNullifiedValue(dictionary, key, null);
-        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key, string defaultValue)
-        {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
-
-            if (dictionary == null)
-                return defaultValue;
-
-            if (!dictionary.TryGetValue(key, out string str))
-                return defaultValue;
-
-            return str.Nullify();
         }
 
         public static T GetValue<T>(this IDictionary<string, string> dictionary, string key, T defaultValue)

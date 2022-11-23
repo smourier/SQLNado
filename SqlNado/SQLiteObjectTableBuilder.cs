@@ -162,7 +162,6 @@ namespace SqlNado
                 var list = index.Value;
                 for (var i = 0; i < list.Count; i++)
                 {
-                    SQLiteColumnAttribute col = list[i].Item1;
                     SQLiteIndexAttribute idx = list[i].Item2;
                     if (idx.Order == SQLiteIndexAttribute.DefaultOrder)
                     {

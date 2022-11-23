@@ -24,20 +24,28 @@ namespace SqlNado.Utilities
 
             filePath = filePath ?? CreateTempFilePath();
 
-            _database = new SQLiteDatabase(filePath, options);
-            _database.EnableStatementsCache = true;
-            _database.JournalMode = SQLiteJournalMode.Off;
-            _database.SynchronousMode = SQLiteSynchronousMode.Off;
-            _database.LockingMode = SQLiteLockingMode.Exclusive;
+            _database = new SQLiteDatabase(filePath, options)
+            {
+                EnableStatementsCache = true,
+                JournalMode = SQLiteJournalMode.Off,
+                SynchronousMode = SQLiteSynchronousMode.Off,
+                LockingMode = SQLiteLockingMode.Exclusive
+            };
 
-            _loadKeysOptions = new SQLiteLoadOptions(_database);
-            _loadKeysOptions.GetInstanceFunc = (t, s, o) => s.GetColumnString(0);
+            _loadKeysOptions = new SQLiteLoadOptions(_database)
+            {
+                GetInstanceFunc = (t, s, o) => s.GetColumnString(0)
+            };
 
-            _loadTypedValuesOptions = new SQLiteLoadOptions(_database);
-            _loadTypedValuesOptions.GetInstanceFunc = (t, s, o) => new Tuple<string, string>(s.GetColumnString(0), s.GetColumnString(1));
+            _loadTypedValuesOptions = new SQLiteLoadOptions(_database)
+            {
+                GetInstanceFunc = (t, s, o) => new Tuple<string, string>(s.GetColumnString(0), s.GetColumnString(1))
+            };
 
-            _loadValuesOptions = new SQLiteLoadOptions(_database);
-            _loadValuesOptions.GetInstanceFunc = (t, s, o) => s.GetColumnValue(0);
+            _loadValuesOptions = new SQLiteLoadOptions(_database)
+            {
+                GetInstanceFunc = (t, s, o) => s.GetColumnValue(0)
+            };
 
             if (IsTypedValue)
             {
@@ -69,7 +77,7 @@ namespace SqlNado.Utilities
             get
             {
                 string tableName = IsTypedValue ? nameof(TypedEntry) : nameof(Entry);
-                var db = CheckDisposed();
+                _ = CheckDisposed();
                 var keys = CheckDisposed().Load<Tk>("SELECT " + nameof(Entry.Key) + " FROM " + tableName, _loadKeysOptions).ToArray();
                 return keys;
             }
@@ -401,12 +409,10 @@ namespace SqlNado.Utilities
         private sealed class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<Entry> _enumerator;
-            private readonly PersistentDictionary<Tk, Tv> _dic;
 
             public EntryEnumerator(PersistentDictionary<Tk, Tv> dic)
             {
-                _dic = dic;
-                _enumerator = _dic.CheckDisposed().LoadAll<Entry>().GetEnumerator();
+                _enumerator = dic.CheckDisposed().LoadAll<Entry>().GetEnumerator();
             }
 
             public KeyValuePair<Tk, Tv> Current => new KeyValuePair<Tk, Tv>(_enumerator.Current.Key, _enumerator.Current.Value);

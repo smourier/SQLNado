@@ -636,7 +636,6 @@ namespace SqlNado
                 return 0;
 
             var deleted = existing.Columns.ToList();
-            var existingColumns = deleted.Select(c => c.EscapedName).ToArray();
             var added = new List<SQLiteObjectColumn>();
             var changed = new List<SQLiteObjectColumn>();
 

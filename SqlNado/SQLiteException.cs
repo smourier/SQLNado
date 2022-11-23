@@ -18,23 +18,9 @@ namespace SqlNado
         }
 
         internal SQLiteException(SQLiteErrorCode code, string message)
-            : base(AddMessage(code, message))
+            : base(GetMessage(code, message))
         {
             Code = code;
-        }
-
-        private static string AddMessage(SQLiteErrorCode code, string message)
-        {
-            var msg = GetMessage(code);
-            if (!string.IsNullOrEmpty(message))
-            {
-                msg += " " + char.ToUpperInvariant(message[0]) + message.Substring(1);
-                if (!msg.EndsWith(".", StringComparison.Ordinal))
-                {
-                    msg += ".";
-                }
-            }
-            return msg;
         }
 
         public SQLiteException(string message)
@@ -58,6 +44,20 @@ namespace SqlNado
         }
 
         public SQLiteErrorCode Code { get; }
+
+        private static string GetMessage(SQLiteErrorCode code, string message)
+        {
+            var msg = GetMessage(code);
+            if (!string.IsNullOrEmpty(message))
+            {
+                msg += " " + char.ToUpperInvariant(message[0]) + message.Substring(1);
+                if (!msg.EndsWith(".", StringComparison.Ordinal))
+                {
+                    msg += ".";
+                }
+            }
+            return msg;
+        }
 
         public static string GetMessage(SQLiteErrorCode code)
         {

@@ -880,11 +880,6 @@ namespace SqlNado
 
         public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
 
-        static SQLiteDatabase()
-        {
-            UseWindowsRuntime = true;
-        }
-
         public SQLiteDatabase(string filePath)
             : this(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
         {
@@ -1088,8 +1083,10 @@ namespace SqlNado
                 return;
             }
 
-            var sink = new CollationSink();
-            sink.Comparer = comparer;
+            var sink = new CollationSink
+            {
+                Comparer = comparer
+            };
             _collationSinks[name] = sink;
 
             // note we only support UTF-16 encoding so we have only ptr > str marshaling
@@ -1218,9 +1215,11 @@ namespace SqlNado
                     return SQLiteErrorCode.SQLITE_ERROR;
                 }
 
-                var te = new TokenEnumerator();
-                te.Tokenizer = IntPtr.Zero;
-                te.Address = Marshal.AllocCoTaskMem(Marshal.SizeOf<TokenEnumerator>());
+                var te = new TokenEnumerator
+                {
+                    Tokenizer = IntPtr.Zero,
+                    Address = Marshal.AllocCoTaskMem(Marshal.SizeOf<TokenEnumerator>())
+                };
                 TokenEnumerator._enumerators[te.Address] = enumerator;
                 Marshal.StructureToPtr(te, te.Address, false);
                 ppCursor = te.Address;
@@ -1469,10 +1468,12 @@ namespace SqlNado
                 return;
             }
 
-            var sink = new ScalarFunctionSink();
-            sink.Database = this;
-            sink.Function = function;
-            sink.Name = name;
+            var sink = new ScalarFunctionSink
+            {
+                Database = this,
+                Function = function,
+                Name = name
+            };
             _functionSinks[key] = sink;
 
             CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback, null, null));
@@ -1907,6 +1908,33 @@ namespace SqlNado
             return ExecuteScalar("SELECT count(*) FROM " + table.EscapedName, 0);
         }
 
+        public virtual bool Save(object obj, SQLiteSaveOptions options = null)
+        {
+            if (obj == null)
+                return false;
+
+            if (options == null)
+            {
+                options = CreateSaveOptions();
+                if (options == null)
+                    throw new InvalidOperationException();
+
+                options.SynchronizeSchema = true;
+                options.SynchronizeIndices = true;
+            }
+
+            var table = GetObjectTable(obj.GetType(), options.BuildTableOptions);
+            if (table == null)
+                throw new InvalidOperationException();
+
+            if (options.SynchronizeSchema)
+            {
+                table.SynchronizeSchema(options);
+            }
+
+            return table.Save(obj, options);
+        }
+
         public virtual int Save<T>(IEnumerable<T> enumerable, SQLiteSaveOptions options = null) => Save((IEnumerable)enumerable, options);
         public virtual int Save(IEnumerable enumerable, SQLiteSaveOptions options = null)
         {
@@ -2093,33 +2121,6 @@ namespace SqlNado
         public virtual void Commit() => ExecuteNonQuery("COMMIT");
         public virtual void Rollback() => ExecuteNonQuery("ROLLBACK");
 
-        public virtual bool Save(object obj, SQLiteSaveOptions options = null)
-        {
-            if (obj == null)
-                return false;
-
-            if (options == null)
-            {
-                options = CreateSaveOptions();
-                if (options == null)
-                    throw new InvalidOperationException();
-
-                options.SynchronizeSchema = true;
-                options.SynchronizeIndices = true;
-            }
-
-            var table = GetObjectTable(obj.GetType(), options.BuildTableOptions);
-            if (table == null)
-                throw new InvalidOperationException();
-
-            if (options.SynchronizeSchema)
-            {
-                table.SynchronizeSchema(options);
-            }
-
-            return table.Save(obj, options);
-        }
-
         public virtual IEnumerable<T> LoadByForeignKey<T>(object instance, SQLiteLoadForeignKeyOptions options = null)
         {
             if (instance == null)
@@ -2196,6 +2197,8 @@ namespace SqlNado
             return LoadRows(sql);
         }
 
+        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options = null) => Load<T>(null, options);
+        public IEnumerable<object> LoadAll(Type objectType) => Load(objectType, null, null, null);
         public IEnumerable<T> LoadAll<T>(int maximumRows)
         {
             var options = CreateLoadOptions();
@@ -2206,7 +2209,85 @@ namespace SqlNado
             return Load<T>(null, options);
         }
 
-        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options = null) => Load<T>(null, options);
+        public IEnumerable<object> Load(Type objectType, string sql, params object[] args) => Load(objectType, sql, null, args);
+        public virtual IEnumerable<object> Load(Type objectType, string sql, SQLiteLoadOptions options, params object[] args)
+        {
+            if (objectType == null)
+                throw new ArgumentNullException(nameof(objectType));
+
+            var table = GetObjectTable(objectType);
+            if (table == null)
+                yield break;
+
+            if (table.LoadAction == null)
+                throw new SqlNadoException("0024: Table '" + table.Name + "' does not define a LoadAction.");
+
+            if (sql == null)
+            {
+                sql = "SELECT ";
+                if (options?.RemoveDuplicates == true)
+                {
+                    sql += "DISTINCT ";
+                }
+
+                sql += table.BuildColumnsStatement() + " FROM " + table.EscapedName;
+            }
+
+            options = options ?? CreateLoadOptions();
+            if (options == null)
+                throw new InvalidOperationException();
+
+            if (options.TestTableExists && !TableExists(objectType))
+                yield break;
+
+            using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
+            {
+                var index = 0;
+                do
+                {
+                    var code = _sqlite3_step(statement.Handle);
+                    if (code == SQLiteErrorCode.SQLITE_DONE)
+                    {
+                        index++;
+                        Log(TraceLevel.Verbose, "Step done at index " + index);
+                        break;
+                    }
+
+                    if (code == SQLiteErrorCode.SQLITE_ROW)
+                    {
+                        var obj = table.Load(objectType, statement, options);
+                        if (obj != null)
+                            yield return obj;
+
+                        index++;
+                        continue;
+                    }
+
+                    var errorHandler = options.ErrorHandler;
+                    if (errorHandler != null)
+                    {
+                        var error = new SQLiteError(statement, index, code);
+                        var action = errorHandler(error);
+                        index = error.Index;
+                        code = error.Code;
+                        if (action == SQLiteOnErrorAction.Break)
+                            break;
+
+                        if (action == SQLiteOnErrorAction.Continue)
+                        {
+                            index++;
+                            continue;
+                        }
+
+                        // else throw
+                    }
+
+                    CheckError(code, sql: sql);
+                }
+                while (true);
+            }
+        }
+
         public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
         public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions options, params object[] args)
         {
@@ -2406,86 +2487,6 @@ namespace SqlNado
         public virtual SQLiteQuery<T> Query<T>() => new SQLiteQuery<T>(this);
         public virtual SQLiteQuery<T> Query<T>(Expression expression) => new SQLiteQuery<T>(this, expression);
 
-        public IEnumerable<object> LoadAll(Type objectType) => Load(objectType, null, null, null);
-        public IEnumerable<object> Load(Type objectType, string sql, params object[] args) => Load(objectType, sql, null, args);
-        public virtual IEnumerable<object> Load(Type objectType, string sql, SQLiteLoadOptions options, params object[] args)
-        {
-            if (objectType == null)
-                throw new ArgumentNullException(nameof(objectType));
-
-            var table = GetObjectTable(objectType);
-            if (table == null)
-                yield break;
-
-            if (table.LoadAction == null)
-                throw new SqlNadoException("0024: Table '" + table.Name + "' does not define a LoadAction.");
-
-            if (sql == null)
-            {
-                sql = "SELECT ";
-                if (options?.RemoveDuplicates == true)
-                {
-                    sql += "DISTINCT ";
-                }
-
-                sql += table.BuildColumnsStatement() + " FROM " + table.EscapedName;
-            }
-
-            options = options ?? CreateLoadOptions();
-            if (options == null)
-                throw new InvalidOperationException();
-
-            if (options.TestTableExists && !TableExists(objectType))
-                yield break;
-
-            using (var statement = PrepareStatement(sql, options.ErrorHandler, args))
-            {
-                var index = 0;
-                do
-                {
-                    var code = _sqlite3_step(statement.Handle);
-                    if (code == SQLiteErrorCode.SQLITE_DONE)
-                    {
-                        index++;
-                        Log(TraceLevel.Verbose, "Step done at index " + index);
-                        break;
-                    }
-
-                    if (code == SQLiteErrorCode.SQLITE_ROW)
-                    {
-                        var obj = table.Load(objectType, statement, options);
-                        if (obj != null)
-                            yield return obj;
-
-                        index++;
-                        continue;
-                    }
-
-                    var errorHandler = options.ErrorHandler;
-                    if (errorHandler != null)
-                    {
-                        var error = new SQLiteError(statement, index, code);
-                        var action = errorHandler(error);
-                        index = error.Index;
-                        code = error.Code;
-                        if (action == SQLiteOnErrorAction.Break)
-                            break;
-
-                        if (action == SQLiteOnErrorAction.Continue)
-                        {
-                            index++;
-                            continue;
-                        }
-
-                        // else throw
-                    }
-
-                    CheckError(code, sql: sql);
-                }
-                while (true);
-            }
-        }
-
         public T CreateObjectInstance<T>(SQLiteLoadOptions options = null) => (T)CreateObjectInstance(typeof(T), options);
         public virtual object CreateObjectInstance(Type objectType, SQLiteLoadOptions options = null)
         {
@@ -2681,9 +2682,11 @@ namespace SqlNado
 
                 if (entry == null)
                 {
-                    entry = new StatementPoolEntry();
-                    entry.CreationDate = DateTime.Now;
-                    entry.Statement = CreateFunc(Sql);
+                    entry = new StatementPoolEntry
+                    {
+                        CreationDate = DateTime.Now,
+                        Statement = CreateFunc(Sql)
+                    };
                     entry.Statement._realDispose = false;
                     entry.Statement._locked = 1;
                     _statements.Add(entry);
@@ -3644,6 +3647,7 @@ namespace SqlNado
         internal delegate void sqlite3_result_zeroblob(IntPtr ctx, int size);
         internal static sqlite3_result_zeroblob _sqlite3_result_zeroblob;
 
+#pragma warning disable S2342
         [Flags]
         private enum SQLiteTextEncoding
         {
@@ -3655,6 +3659,7 @@ namespace SqlNado
             SQLITE_UTF16_ALIGNED = 8,       /* sqlite3_create_collation only */
             SQLITE_DETERMINISTIC = 0x800,    // function will always return the same result given the same inputs within a single SQL statement
         }
+#pragma warning restore S2342
 
         // https://sqlite.org/c3ref/threadsafe.html
 #if !WINSQLITE
@@ -4028,23 +4033,9 @@ namespace SqlNado
         }
 
         internal SQLiteException(SQLiteErrorCode code, string message)
-            : base(AddMessage(code, message))
+            : base(GetMessage(code, message))
         {
             Code = code;
-        }
-
-        private static string AddMessage(SQLiteErrorCode code, string message)
-        {
-            var msg = GetMessage(code);
-            if (!string.IsNullOrEmpty(message))
-            {
-                msg += " " + char.ToUpperInvariant(message[0]) + message.Substring(1);
-                if (!msg.EndsWith(".", StringComparison.Ordinal))
-                {
-                    msg += ".";
-                }
-            }
-            return msg;
         }
 
         public SQLiteException(string message)
@@ -4068,6 +4059,20 @@ namespace SqlNado
         }
 
         public SQLiteErrorCode Code { get; }
+
+        private static string GetMessage(SQLiteErrorCode code, string message)
+        {
+            var msg = GetMessage(code);
+            if (!string.IsNullOrEmpty(message))
+            {
+                msg += " " + char.ToUpperInvariant(message[0]) + message.Substring(1);
+                if (!msg.EndsWith(".", StringComparison.Ordinal))
+                {
+                    msg += ".";
+                }
+            }
+            return msg;
+        }
 
         public static string GetMessage(SQLiteErrorCode code)
         {
@@ -5710,7 +5715,6 @@ namespace SqlNado
                 return 0;
 
             var deleted = existing.Columns.ToList();
-            var existingColumns = deleted.Select(c => c.EscapedName).ToArray();
             var added = new List<SQLiteObjectColumn>();
             var changed = new List<SQLiteObjectColumn>();
 
@@ -5959,7 +5963,6 @@ namespace SqlNado
                 var list = index.Value;
                 for (var i = 0; i < list.Count; i++)
                 {
-                    SQLiteColumnAttribute col = list[i].Item1;
                     SQLiteIndexAttribute idx = list[i].Item2;
                     if (idx.Order == SQLiteIndexAttribute.DefaultOrder)
                     {
@@ -6293,7 +6296,7 @@ namespace SqlNado
 
 namespace SqlNado
 {
-    public class SQLiteQuery<T> : IQueryable<T>, IEnumerable<T>, IOrderedQueryable<T>
+    public class SQLiteQuery<T> : IOrderedQueryable<T>
     {
         private readonly QueryProvider _provider;
         private readonly Expression _expression;
@@ -6492,8 +6495,10 @@ namespace SqlNado
 
             using (var writer = new StringWriter())
             {
-                var translator = new SQLiteQueryTranslator(Database, writer);
-                translator.BindOptions = BindOptions;
+                var translator = new SQLiteQueryTranslator(Database, writer)
+                {
+                    BindOptions = BindOptions
+                };
                 translator.Visit(expression);
                 return writer.ToString();
             }
@@ -7107,8 +7112,6 @@ namespace SqlNado
                     nominator.Visit(expression);
                     return nominator._candidates;
                 }
-
-                protected override Expression VisitConstant(ConstantExpression node) => base.VisitConstant(node);
 
                 public override Expression Visit(Expression node)
                 {
@@ -8480,7 +8483,7 @@ namespace SqlNado.Utilities
 
         protected virtual ConcurrentDictionary<string, DictionaryObjectProperty> DictionaryObjectChangedProperties => _changedProperties;
 
-        protected bool DictionaryObjectHasChanged => _changedProperties.Count > 0;
+        protected bool DictionaryObjectHasChanged => !_changedProperties.IsEmpty;
 
         protected virtual void DictionaryObjectCommitChanges() => DictionaryObjectChangedProperties.Clear();
 
@@ -8553,7 +8556,7 @@ namespace SqlNado.Utilities
                     return;
             }
 
-            string tid = AddThreadId ? "[" + Thread.CurrentThread.ManagedThreadId + "]:" : null;
+            string tid = AddThreadId ? "[" + Environment.CurrentManagedThreadId + "]:" : null;
 
             if (!string.IsNullOrWhiteSpace(methodName))
             {
@@ -9832,6 +9835,21 @@ namespace SqlNado.Utilities
             return true;
         }
 
+        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key) => GetNullifiedValue(dictionary, key, null);
+        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key, string defaultValue)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            if (dictionary == null)
+                return defaultValue;
+
+            if (!dictionary.TryGetValue(key, out string str))
+                return defaultValue;
+
+            return str.Nullify();
+        }
+
         public static T GetValue<T>(this IDictionary<string, object> dictionary, string key, T defaultValue)
         {
             if (key == null)
@@ -9858,21 +9876,6 @@ namespace SqlNado.Utilities
                 return defaultValue;
 
             return ChangeType(o, defaultValue, provider);
-        }
-
-        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key) => GetNullifiedValue(dictionary, key, null);
-        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key, string defaultValue)
-        {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
-
-            if (dictionary == null)
-                return defaultValue;
-
-            if (!dictionary.TryGetValue(key, out string str))
-                return defaultValue;
-
-            return str.Nullify();
         }
 
         public static T GetValue<T>(this IDictionary<string, string> dictionary, string key, T defaultValue)
@@ -10405,6 +10408,7 @@ namespace SqlNado.Utilities
                     (options & CompareOptions.OrdinalIgnoreCase) == CompareOptions.OrdinalIgnoreCase;
             }
 
+            public override bool Equals(string x, string y) => string.Equals(x, y, StringComparison.Ordinal) || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0;
             public override bool Equals(object obj)
             {
                 if (!(obj is CultureStringComparer comparer))
@@ -10415,17 +10419,6 @@ namespace SqlNado.Utilities
 
                 return _compareInfo.Equals(comparer._compareInfo) && _options == comparer._options;
             }
-
-            public override int GetHashCode()
-            {
-                int code = _compareInfo.GetHashCode();
-                if (!_ignoreCase)
-                    return code;
-
-                return ~code;
-            }
-
-            public override bool Equals(string x, string y) => (string.Equals(x, y, StringComparison.Ordinal) || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0);
 
             public override int Compare(string x, string y)
             {
@@ -10439,6 +10432,16 @@ namespace SqlNado.Utilities
                     return 1;
 
                 return _compareInfo.Compare(x, y, _options);
+            }
+
+
+            public override int GetHashCode()
+            {
+                var code = _compareInfo.GetHashCode();
+                if (!_ignoreCase)
+                    return code;
+
+                return ~code;
             }
 
             public override int GetHashCode(string obj)
@@ -10732,20 +10735,28 @@ namespace SqlNado.Utilities
 
             filePath = filePath ?? CreateTempFilePath();
 
-            _database = new SQLiteDatabase(filePath, options);
-            _database.EnableStatementsCache = true;
-            _database.JournalMode = SQLiteJournalMode.Off;
-            _database.SynchronousMode = SQLiteSynchronousMode.Off;
-            _database.LockingMode = SQLiteLockingMode.Exclusive;
+            _database = new SQLiteDatabase(filePath, options)
+            {
+                EnableStatementsCache = true,
+                JournalMode = SQLiteJournalMode.Off,
+                SynchronousMode = SQLiteSynchronousMode.Off,
+                LockingMode = SQLiteLockingMode.Exclusive
+            };
 
-            _loadKeysOptions = new SQLiteLoadOptions(_database);
-            _loadKeysOptions.GetInstanceFunc = (t, s, o) => s.GetColumnString(0);
+            _loadKeysOptions = new SQLiteLoadOptions(_database)
+            {
+                GetInstanceFunc = (t, s, o) => s.GetColumnString(0)
+            };
 
-            _loadTypedValuesOptions = new SQLiteLoadOptions(_database);
-            _loadTypedValuesOptions.GetInstanceFunc = (t, s, o) => new Tuple<string, string>(s.GetColumnString(0), s.GetColumnString(1));
+            _loadTypedValuesOptions = new SQLiteLoadOptions(_database)
+            {
+                GetInstanceFunc = (t, s, o) => new Tuple<string, string>(s.GetColumnString(0), s.GetColumnString(1))
+            };
 
-            _loadValuesOptions = new SQLiteLoadOptions(_database);
-            _loadValuesOptions.GetInstanceFunc = (t, s, o) => s.GetColumnValue(0);
+            _loadValuesOptions = new SQLiteLoadOptions(_database)
+            {
+                GetInstanceFunc = (t, s, o) => s.GetColumnValue(0)
+            };
 
             if (IsTypedValue)
             {
@@ -10777,7 +10788,7 @@ namespace SqlNado.Utilities
             get
             {
                 string tableName = IsTypedValue ? nameof(TypedEntry) : nameof(Entry);
-                var db = CheckDisposed();
+                _ = CheckDisposed();
                 var keys = CheckDisposed().Load<Tk>("SELECT " + nameof(Entry.Key) + " FROM " + tableName, _loadKeysOptions).ToArray();
                 return keys;
             }
@@ -11109,12 +11120,10 @@ namespace SqlNado.Utilities
         private sealed class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
             private IEnumerator<Entry> _enumerator;
-            private readonly PersistentDictionary<Tk, Tv> _dic;
 
             public EntryEnumerator(PersistentDictionary<Tk, Tv> dic)
             {
-                _dic = dic;
-                _enumerator = _dic.CheckDisposed().LoadAll<Entry>().GetEnumerator();
+                _enumerator = dic.CheckDisposed().LoadAll<Entry>().GetEnumerator();
             }
 
             public KeyValuePair<Tk, Tv> Current => new KeyValuePair<Tk, Tv>(_enumerator.Current.Key, _enumerator.Current.Value);
@@ -11196,7 +11205,7 @@ namespace SqlNado.Utilities
     // functions must be supported by SQLiteQueryTranslator
     public static class QueryExtensions
     {
-        public static bool Contains(this string str, string value, StringComparison comparison) => str != null ? str.IndexOf(value, comparison) >= 0 : false;
+        public static bool Contains(this string str, string value, StringComparison comparison) => str != null && str.IndexOf(value, comparison) >= 0;
     }
 }
 
@@ -11237,7 +11246,7 @@ namespace SqlNado.Utilities
         public ConcurrentDictionary<string, DictionaryObjectProperty> Properties => DictionaryObjectProperties;
 
         [SQLiteColumn(Ignore = true)]
-        public bool HasChanged => ChangedProperties.Count > 0;
+        public bool HasChanged => !ChangedProperties.IsEmpty;
 
         [SQLiteColumn(Ignore = true)]
         public bool HasErrors => DictionaryObjectHasErrors;
@@ -11535,7 +11544,7 @@ namespace SqlNado.Utilities
         {
             try
             {
-                var width = Console.WindowWidth;
+                _ = Console.WindowWidth;
                 return true;
             }
             catch
@@ -11632,15 +11641,6 @@ namespace SqlNado.Utilities
             }
         }
 
-        public virtual string Write(IEnumerable enumerable)
-        {
-            using (var sw = new StringWriter())
-            {
-                Write(sw, enumerable);
-                return sw.ToString();
-            }
-        }
-
         // we need this because the console textwriter does WriteLine by its own...
         private sealed class ConsoleModeTextWriter : TextWriter
         {
@@ -11658,24 +11658,6 @@ namespace SqlNado.Utilities
             public TextWriter Writer { get; }
 
             public override Encoding Encoding => Writer.Encoding;
-            public override void Flush() => base.Flush();
-            public override void Close() => base.Close();
-
-            public override void Write(char value)
-            {
-                Writer.Write(value);
-                _column++;
-                if (_column == _maximumWidth)
-                {
-                    _lastWasNewLine = true;
-                    Line++;
-                    _column = 0;
-                }
-                else
-                {
-                    _lastWasNewLine = false;
-                }
-            }
 
             public override void WriteLine()
             {
@@ -11693,6 +11675,22 @@ namespace SqlNado.Utilities
             {
                 Write(value);
                 WriteLine();
+            }
+
+            public override void Write(char value)
+            {
+                Writer.Write(value);
+                _column++;
+                if (_column == _maximumWidth)
+                {
+                    _lastWasNewLine = true;
+                    Line++;
+                    _column = 0;
+                }
+                else
+                {
+                    _lastWasNewLine = false;
+                }
             }
 
             public override void Write(string value)
@@ -11722,6 +11720,15 @@ namespace SqlNado.Utilities
             }
         }
 
+        public virtual string Write(IEnumerable enumerable)
+        {
+            using (var sw = new StringWriter())
+            {
+                Write(sw, enumerable);
+                return sw.ToString();
+            }
+        }
+
         public virtual void Write(TextWriter writer, IEnumerable enumerable)
         {
             if (writer == null)
@@ -11741,9 +11748,11 @@ namespace SqlNado.Utilities
             TextWriter wr;
             if (Indent > 0)
             {
-                var itw = new IndentedTextWriter(cw, IndentTabString);
-                itw.Indent = Indent;
-                for (int i = 0; i < Indent; i++)
+                var itw = new IndentedTextWriter(cw, IndentTabString)
+                {
+                    Indent = Indent
+                };
+                for (var i = 0; i < Indent; i++)
                 {
                     cw.Write(IndentTabString);
                 }
@@ -11756,7 +11765,7 @@ namespace SqlNado.Utilities
 
             var rows = new List<TableStringCell[]>();
             var headerCells = new List<TableStringCell>();
-            int columnsCount = ComputeColumnWidths(writer, enumerable, headerCells, rows);
+            var columnsCount = ComputeColumnWidths(writer, enumerable, headerCells, rows);
             if (columnsCount == 0) // no valid columns
                 return;
 
@@ -11772,7 +11781,7 @@ namespace SqlNado.Utilities
                 emptyLine.Append(VerticalCharacter);
             }
 
-            for (int i = 0; i < columnsCount; i++)
+            for (var i = 0; i < columnsCount; i++)
             {
                 if (i > 0)
                 {
@@ -11798,7 +11807,7 @@ namespace SqlNado.Utilities
 
             if (CellPadding != null)
             {
-                for (int l = 0; l < CellPadding.Top; l++)
+                for (var l = 0; l < CellPadding.Top; l++)
                 {
                     wr.WriteLine(emptyLine);
                 }
@@ -11808,7 +11817,7 @@ namespace SqlNado.Utilities
             string rightPadding = CellPadding != null ? new string(' ', CellPadding.Right) : null;
 
             wr.Write(VerticalCharacter);
-            for (int i = 0; i < columnsCount; i++)
+            for (var i = 0; i < columnsCount; i++)
             {
                 if (leftPadding != null && Columns[i].IsHorizontallyPadded)
                 {
@@ -11828,7 +11837,7 @@ namespace SqlNado.Utilities
 
             if (CellPadding != null)
             {
-                for (int l = 0; l < CellPadding.Bottom; l++)
+                for (var l = 0; l < CellPadding.Bottom; l++)
                 {
                     wr.WriteLine(emptyLine);
                 }
@@ -11840,17 +11849,17 @@ namespace SqlNado.Utilities
 
                 if (CellPadding != null)
                 {
-                    for (int l = 0; l < CellPadding.Top; l++)
+                    for (var l = 0; l < CellPadding.Top; l++)
                     {
                         wr.WriteLine(emptyLine);
                     }
                 }
 
-                int cellsMaxHeight = 0;
-                for (int height = 0; height < MaximumRowHeight; height++)
+                var cellsMaxHeight = 0;
+                for (var height = 0; height < MaximumRowHeight; height++)
                 {
                     wr.Write(VerticalCharacter);
-                    for (int i = 0; i < columnsCount; i++)
+                    for (var i = 0; i < columnsCount; i++)
                     {
                         if (leftPadding != null && Columns[i].IsHorizontallyPadded)
                         {
@@ -11890,7 +11899,7 @@ namespace SqlNado.Utilities
 
                 if (CellPadding != null)
                 {
-                    for (int l = 0; l < CellPadding.Bottom; l++)
+                    for (var l = 0; l < CellPadding.Bottom; l++)
                     {
                         wr.WriteLine(emptyLine);
                     }
@@ -11933,7 +11942,7 @@ namespace SqlNado.Utilities
                     desiredPaddedColumnWidths = new int[Math.Min(Columns.Count, MaximumNumberOfColumns)];
 
                     // compute header rows
-                    for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                    for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                     {
                         var cell = CreateCell(Columns[i], Columns[i]);
                         header.Add(cell);
@@ -11982,7 +11991,7 @@ namespace SqlNado.Utilities
 
             if (MaximumWidth <= 0)
             {
-                for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                 {
                     Columns[i].WidthWithPadding = desiredPaddedColumnWidths[i];
                     Columns[i].WidthWithoutPadding = Columns[i].WidthWithPadding - hp;
@@ -11990,14 +11999,14 @@ namespace SqlNado.Utilities
             }
             else
             {
-                for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                 {
                     Columns[i].DesiredPaddedWidth = desiredPaddedColumnWidths[i];
                     Columns[i].WidthWithoutPadding = Columns[i].WidthWithPadding - hp;
                 }
 
-                int borderWidth = _columnBorderWidth + desiredPaddedColumnWidths.Length * _columnBorderWidth;
-                int maxWidth = MaximumWidth - Indent - borderWidth;
+                var borderWidth = _columnBorderWidth + desiredPaddedColumnWidths.Length * _columnBorderWidth;
+                var maxWidth = MaximumWidth - Indent - borderWidth;
 
                 // this is a small trick. When we may be outputing to the console with another textwriter, 
                 // just remove one to avoid the auto WriteLine effect from the console
@@ -12005,16 +12014,16 @@ namespace SqlNado.Utilities
                 {
                     maxWidth--;
                 }
-                int desiredWidth = desiredPaddedColumnWidths.Sum();
+                
+                var desiredWidth = desiredPaddedColumnWidths.Sum();
                 if (desiredWidth > maxWidth)
                 {
                     if (CanReduceCellPadding)
                     {
-                        int diff = desiredWidth - maxWidth;
-                        int paddingSize = desiredPaddedColumnWidths.Length * hp;
+                        var diff = desiredWidth - maxWidth;
 
                         // remove padding from last column to first
-                        for (int i = desiredPaddedColumnWidths.Length - 1; i >= 0; i--)
+                        for (var i = desiredPaddedColumnWidths.Length - 1; i >= 0; i--)
                         {
                             Columns[i].IsHorizontallyPadded = false;
                             diff -= hp;
@@ -12023,15 +12032,15 @@ namespace SqlNado.Utilities
                         }
                     }
 
-                    int availableWidth = maxWidth;
+                    var availableWidth = maxWidth;
                     do
                     {
                         var uncomputedColumns = Columns.Take(desiredPaddedColumnWidths.Length).Where(c => c.WidthWithPadding < 0).ToArray();
                         if (uncomputedColumns.Length == 0)
                             break;
 
-                        int avgWidth = availableWidth / uncomputedColumns.Length;
-                        int computed = 0;
+                        var avgWidth = availableWidth / uncomputedColumns.Length;
+                        var computed = 0;
                         foreach (var column in uncomputedColumns)
                         {
                             if (desiredPaddedColumnWidths[column.Index] <= avgWidth)
@@ -12066,14 +12075,14 @@ namespace SqlNado.Utilities
 
                     // now, because of roundings and unpaddings, we may have some leftovers to distribute
                     // do that in a round robbin fashion for all columns that need it
-                    int totalWidth = Columns.Take(desiredPaddedColumnWidths.Length).Sum(c => c.WidthWithPadding);
+                    var totalWidth = Columns.Take(desiredPaddedColumnWidths.Length).Sum(c => c.WidthWithPadding);
                     if (totalWidth < maxWidth)
                     {
                         var columns = Columns.Take(desiredPaddedColumnWidths.Length).Where(c => c.WidthWithPadding < c.DesiredPaddedWidth).OrderBy(c => c.WidthWithPadding).ToArray();
                         if (columns.Length > 0) // we shoull always pass here, but...
                         {
-                            int index = 0;
-                            for (int i = 0; i < maxWidth - totalWidth; i++)
+                            var index = 0;
+                            for (var i = 0; i < maxWidth - totalWidth; i++)
                             {
                                 Columns[index].WidthWithPadding++;
                                 Columns[index].WidthWithoutPadding++;
@@ -12088,7 +12097,7 @@ namespace SqlNado.Utilities
                 }
                 else
                 {
-                    for (int i = 0; i < desiredPaddedColumnWidths.Length; i++)
+                    for (var i = 0; i < desiredPaddedColumnWidths.Length; i++)
                     {
                         Columns[i].WidthWithPadding = desiredPaddedColumnWidths[i];
                         Columns[i].WidthWithoutPadding = Columns[i].WidthWithPadding - hp;
@@ -12145,7 +12154,7 @@ namespace SqlNado.Utilities
             {
                 if (first is Array array)
                 {
-                    for (int i = 0; i < array.Length; i++)
+                    for (var i = 0; i < array.Length; i++)
                     {
                         AddColumn(new ArrayItemTableStringColumn(this, i));
                     }
@@ -12410,7 +12419,7 @@ namespace SqlNado.Utilities
                 if (Text == null)
                     return 0;
 
-                int pos = Text.IndexOfAny(new[] { '\r', '\n' });
+                var pos = Text.IndexOfAny(new[] { '\r', '\n' });
                 if (pos >= 0)
                 {
                     _split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
@@ -12461,7 +12470,7 @@ namespace SqlNado.Utilities
                 return text;
 
             var escaped = new char[text.Length];
-            for (int i = 0; i < text.Length; i++)
+            for (var i = 0; i < text.Length; i++)
             {
                 escaped[i] = Column.Table.ToPrintable(text[i]);
             }
@@ -12499,14 +12508,14 @@ namespace SqlNado.Utilities
             {
                 var split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 var lines = new List<string>();
-                int segmentWidth = Column.WidthWithoutPadding - 1; // keep 1 char to display NewLineReplacement
-                for (int i = 0; i < split.Length; i++)
+                var segmentWidth = Column.WidthWithoutPadding - 1; // keep 1 char to display NewLineReplacement
+                for (var i = 0; i < split.Length; i++)
                 {
                     var line = split[i];
 
                     if (Column.Table.CellWrap)
                     {
-                        int pos = 0;
+                        var pos = 0;
                         do
                         {
                             if (pos + segmentWidth >= line.Length || (split.Length == 1 && split[0].Length <= Column.WidthWithoutPadding))
@@ -12582,15 +12591,15 @@ namespace SqlNado.Utilities
                     break;
 
                 case TableStringAlignment.Center:
-                    int spaces = Column.WidthWithoutPadding - (text != null ? text.Length : 0);
+                    var spaces = Column.WidthWithoutPadding - (text != null ? text.Length : 0);
                     if (spaces == 0)
                     {
                         str = text;
                     }
                     else
                     {
-                        int left = spaces - spaces / 2;
-                        int right = spaces - left;
+                        var left = spaces - spaces / 2;
+                        var right = spaces - left;
                         str = new string(' ', left) + text + new string(' ', right);
                     }
                     break;
@@ -12640,7 +12649,7 @@ namespace SqlNado.Utilities
         public override void ComputeText()
         {
             var bytes = Value;
-            int max = Column.Table.MaximumByteArrayDisplayCount;
+            var max = Column.Table.MaximumByteArrayDisplayCount;
 
             if (bytes.Length == 0)
             {
@@ -12712,7 +12721,7 @@ namespace SqlNado.Utilities
             get
             {
                 var list = new List<Tuple<object, object>>();
-                int i = 0;
+                var i = 0;
                 var array = Object as Array;
                 if (Object != null && !(Object is string))
                 {
@@ -12826,7 +12835,7 @@ namespace SqlNado.Utilities
             get
             {
                 var list = new List<Tuple<object, object>>();
-                int i = 0;
+                var i = 0;
                 if (Object != null && !(Object is string))
                 {
                     foreach (var field in Object.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
@@ -12835,7 +12844,7 @@ namespace SqlNado.Utilities
                         if (browsable != null && !browsable.Browsable)
                             continue;
 
-                        object value = GetValue(field, Object, ThrowOnPropertyGetError);
+                        var value = GetValue(field, Object, ThrowOnPropertyGetError);
                         list.Add(new Tuple<object, object>(field.Name, value));
                         i++;
                     }
@@ -12970,15 +12979,19 @@ namespace SqlNado.Utilities
 
         public static string ToTableString<T>(this IEnumerable<T> enumerable, int indent)
         {
-            var ts = new TableString();
-            ts.Indent = indent;
+            var ts = new TableString
+            {
+                Indent = indent
+            };
             return ts.Write(enumerable);
         }
 
         public static string ToTableString(this IEnumerable enumerable, int indent)
         {
-            var ts = new TableString();
-            ts.Indent = indent;
+            var ts = new TableString
+            {
+                Indent = indent
+            };
             return ts.Write(enumerable);
         }
 
@@ -12987,15 +13000,19 @@ namespace SqlNado.Utilities
 
         public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer, int indent)
         {
-            var ts = new TableString();
-            ts.Indent = indent;
+            var ts = new TableString
+            {
+                Indent = indent
+            };
             ts.Write(writer, enumerable);
         }
 
         public static void ToTableString(this IEnumerable enumerable, TextWriter writer, int indent)
         {
-            var ts = new TableString();
-            ts.Indent = indent;
+            var ts = new TableString
+            {
+                Indent = indent
+            };
             ts.Write(writer, enumerable);
         }
 

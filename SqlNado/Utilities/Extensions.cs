@@ -106,6 +106,7 @@ namespace SqlNado.Utilities
                     (options & CompareOptions.OrdinalIgnoreCase) == CompareOptions.OrdinalIgnoreCase;
             }
 
+            public override bool Equals(string x, string y) => string.Equals(x, y, StringComparison.Ordinal) || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0;
             public override bool Equals(object obj)
             {
                 if (!(obj is CultureStringComparer comparer))
@@ -116,17 +117,6 @@ namespace SqlNado.Utilities
 
                 return _compareInfo.Equals(comparer._compareInfo) && _options == comparer._options;
             }
-
-            public override int GetHashCode()
-            {
-                int code = _compareInfo.GetHashCode();
-                if (!_ignoreCase)
-                    return code;
-
-                return ~code;
-            }
-
-            public override bool Equals(string x, string y) => (string.Equals(x, y, StringComparison.Ordinal) || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0);
 
             public override int Compare(string x, string y)
             {
@@ -140,6 +130,16 @@ namespace SqlNado.Utilities
                     return 1;
 
                 return _compareInfo.Compare(x, y, _options);
+            }
+
+
+            public override int GetHashCode()
+            {
+                var code = _compareInfo.GetHashCode();
+                if (!_ignoreCase)
+                    return code;
+
+                return ~code;
             }
 
             public override int GetHashCode(string obj)

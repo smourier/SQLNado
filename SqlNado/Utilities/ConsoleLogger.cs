@@ -39,7 +39,7 @@ namespace SqlNado.Utilities
                     return;
             }
 
-            string tid = AddThreadId ? "[" + Thread.CurrentThread.ManagedThreadId + "]:" : null;
+            string tid = AddThreadId ? "[" + Environment.CurrentManagedThreadId + "]:" : null;
 
             if (!string.IsNullOrWhiteSpace(methodName))
             {
