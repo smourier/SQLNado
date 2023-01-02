@@ -1,1 +1,1 @@
-nuget push bin\Release\SqlNado.1.3.1.nupkg -Source https://api.nuget.org/v3/index.json
+nuget push bin\Release\SqlNado.1.3.3.nupkg -Source https://api.nuget.org/v3/index.json
