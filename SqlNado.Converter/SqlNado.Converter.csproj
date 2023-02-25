@@ -52,7 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="DatabaseSchemaReader">
-      <Version>2.7.11</Version>
+      <Version>2.7.17</Version>
     </PackageReference>
   </ItemGroup>
   <ItemGroup>

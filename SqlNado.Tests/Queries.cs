@@ -33,6 +33,28 @@ namespace SqlNado.Tests
             }
         }
 
+        [TestMethod]
+        public void TestParametric()
+        {
+            using (var db = new SQLiteDatabase(":memory:"))
+            {
+                int max = 10;
+                for (int i = 0; i < max; i++)
+                {
+                    var customer = new Customer1();
+                    customer.Id = i;
+                    customer.Name = (i % 2) == 0 ? "Even" + i : "Odd" + i;
+                    db.Save(customer);
+                }
+
+                var evens = db.Load<Customer1>("WHERE name LIKE ?", "Even%").ToArray();
+                Assert.AreEqual(5, evens.Length);
+
+                var odds = db.Load<Customer1>("WHERE name LIKE ?", "Odd%").ToArray();
+                Assert.AreEqual(5, odds.Length);
+            }
+        }
+
         [SQLiteTable(Name = "Customer")]
         private sealed class Customer1
         {
