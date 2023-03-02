@@ -11,7 +11,7 @@ namespace SqlNado.Utilities
 
     public class InteractiveShell<T> where T : SQLiteDatabase
     {
-        public ISQLiteLogger Logger { get; set; }
+        public ISQLiteLogger? Logger { get; set; }
 
         protected virtual bool HandleLine(T database, string line) => false;
         protected virtual T CreateDatabase(string filePath, SQLiteOpenOptions options) => (T)Activator.CreateInstance(typeof(T), new object[] { filePath, options });
@@ -158,7 +158,7 @@ namespace SqlNado.Utilities
                     var split = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                     if (split.Length >= 2 && split[0].EqualsIgnoreCase("table"))
                     {
-                        int starPos = split[1].IndexOf('*');
+                        var starPos = split[1].IndexOf('*');
                         if (starPos < 0)
                         {
                             TableStringExtensions.ToTableString(db.GetTable(split[1]), Console.Out);
@@ -166,7 +166,7 @@ namespace SqlNado.Utilities
                             continue;
                         }
 
-                        string query = split[1].Substring(0, starPos).Nullify();
+                        var query = split[1].Substring(0, starPos).Nullify();
                         if (query == null)
                         {
                             foreach (var table in db.Tables)
@@ -195,7 +195,7 @@ namespace SqlNado.Utilities
                             maxRows = i;
                         }
 
-                        int starPos = split[1].IndexOf('*');
+                        var starPos = split[1].IndexOf('*');
                         if (starPos < 0)
                         {
                             TableStringExtensions.ToTableString(db.GetTable(split[1])?.GetRows(maxRows), Console.Out);
@@ -203,7 +203,7 @@ namespace SqlNado.Utilities
                             continue;
                         }
 
-                        string query = split[1].Substring(0, starPos).Nullify();
+                        var query = split[1].Substring(0, starPos).Nullify();
                         if (query == null)
                         {
                             foreach (var table in db.Tables)

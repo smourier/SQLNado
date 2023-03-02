@@ -13,6 +13,6 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public virtual string CacheKey { get; set; }
+        public virtual string? CacheKey { get; set; }
     }
 }

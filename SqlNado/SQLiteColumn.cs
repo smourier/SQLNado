@@ -1,12 +1,13 @@
 ﻿using System;
 using System.ComponentModel;
+using SqlNado.Utilities;
 
 namespace SqlNado
 {
     public sealed class SQLiteColumn
     {
         private string _name;
-        private object _defaultValue;
+        private object? _defaultValue;
 
         internal SQLiteColumn(SQLiteTable table)
         {
@@ -14,6 +15,8 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(table));
 
             Table = table;
+            _name = string.Empty;
+            Type = string.Empty;
         }
 
         public SQLiteTable Table { get; }
@@ -32,12 +35,12 @@ namespace SqlNado
                 _name = value;
 
                 // collation and autoinc can only be read using this method
-                Table.Database.CheckError(SQLiteDatabase._sqlite3_table_column_metadata(Table.Database.CheckDisposed(), null, Table.Name, Name,
+                Table.Database.CheckError(SQLiteDatabase.Native.sqlite3_table_column_metadata(Table.Database.CheckDisposed(), null, Table.Name, Name,
                     out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc));
 
                 if (collation != IntPtr.Zero)
                 {
-                    Collation = (string)SQLiteDatabase.Utf8Marshaler.Instance.MarshalNativeToManaged(collation);
+                    Collation = (string?)Utf8Marshaler.Instance.MarshalNativeToManaged(collation);
                 }
 
                 AutoIncrements = autoInc != 0;
@@ -50,14 +53,14 @@ namespace SqlNado
         public bool IsNotNullable { get; internal set; }
 
         [SQLiteColumn(Name = "dflt_value")]
-        public object DefaultValue { get => _defaultValue; set => _defaultValue = SQLiteObjectColumn.FromLiteral(value); }
+        public object? DefaultValue { get => _defaultValue; set => _defaultValue = SQLiteObjectColumn.FromLiteral(value); }
 
         [Browsable(false)]
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool IsRowId { get; internal set; }
 
         [SQLiteColumn(Ignore = true)]
-        public string Collation { get; private set; }
+        public string? Collation { get; private set; }
 
         [SQLiteColumn(Ignore = true)]
         public bool AutoIncrements { get; private set; }

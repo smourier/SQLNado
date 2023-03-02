@@ -11,7 +11,7 @@ namespace SqlNado
 {
     public class SQLiteQueryTranslator : ExpressionVisitor
     {
-        private SQLiteBindOptions _bindOptions;
+        private SQLiteBindOptions? _bindOptions;
 
         public SQLiteQueryTranslator(SQLiteDatabase database, TextWriter writer)
         {
@@ -27,7 +27,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public TextWriter Writer { get; }
-        public SQLiteBindOptions BindOptions { get => _bindOptions ?? Database.BindOptions; set => _bindOptions = value; }
+        public SQLiteBindOptions? BindOptions { get => _bindOptions ?? Database.BindOptions; set => _bindOptions = value; }
         public int? Skip { get; private set; }
         public int? Take { get; private set; }
 
@@ -38,8 +38,8 @@ namespace SqlNado
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
 
-            expression = PartialEvaluator.Eval(expression);
-            Visit(expression);
+            var expr = PartialEvaluator.Eval(expression);
+            Visit(expr);
             if (Skip.HasValue || Take.HasValue)
             {
                 Writer.Write(" LIMIT ");
@@ -471,41 +471,48 @@ namespace SqlNado
             else
             {
                 var value = Database.CoerceValueForBind(node.Value, BindOptions);
-                switch (Type.GetTypeCode(value.GetType()))
+                if (value == null)
                 {
-                    case TypeCode.Boolean:
-                        Writer.Write(((bool)value) ? 1 : 0);
-                        break;
-
-                    case TypeCode.DBNull:
-                        Writer.Write("NULL");
-                        break;
-
-                    case TypeCode.Double:
-                        break;
-
-                    case TypeCode.String:
-                        var s = (string)value;
-                        s = s.Replace("'", "''");
-                        Writer.Write('\'');
-                        Writer.Write(s);
-                        Writer.Write('\'');
-                        break;
-
-                    case TypeCode.Int32:
-                    case TypeCode.Int64:
-                        Writer.Write(string.Format(CultureInfo.InvariantCulture, "{0}", value));
-                        break;
-
-                    default:
-                        if (value is byte[] bytes)
-                        {
-                            var hex = "X'" + Conversions.ToHexa(bytes) + "'";
-                            Writer.Write(hex);
+                    Writer.Write("NULL");
+                }
+                else
+                {
+                    switch (Type.GetTypeCode(value.GetType()))
+                    {
+                        case TypeCode.Boolean:
+                            Writer.Write(((bool)value) ? 1 : 0);
                             break;
-                        }
 
-                        throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + node.Value + "' of type '" + node.Value.GetType().FullName + "') for '" + value + "'"));
+                        case TypeCode.DBNull:
+                            Writer.Write("NULL");
+                            break;
+
+                        case TypeCode.Double:
+                            break;
+
+                        case TypeCode.String:
+                            var s = (string)value;
+                            s = s.Replace("'", "''");
+                            Writer.Write('\'');
+                            Writer.Write(s);
+                            Writer.Write('\'');
+                            break;
+
+                        case TypeCode.Int32:
+                        case TypeCode.Int64:
+                            Writer.Write(string.Format(CultureInfo.InvariantCulture, "{0}", value));
+                            break;
+
+                        default:
+                            if (value is byte[] bytes)
+                            {
+                                var hex = "X'" + Conversions.ToHexa(bytes) + "'";
+                                Writer.Write(hex);
+                                break;
+                            }
+
+                            throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + node.Value + "' of type '" + node.Value.GetType().FullName + "') for '" + value + "'"));
+                    }
                 }
             }
             return node;
@@ -542,15 +549,15 @@ namespace SqlNado
                 }
             }
 
-            throw new SqlNadoException(BuildNotSupported("The member '" + node.Member.Name + "'"));
+            throw new SqlNadoException(BuildNotSupported("The member '" + node.Member?.Name + "'"));
         }
 
         // from https://github.com/mattwar/iqtoolkit
         private sealed class PartialEvaluator
         {
-            public static Expression Eval(Expression expression) => Eval(expression, null, null);
-            public static Expression Eval(Expression expression, Func<Expression, bool> fnCanBeEvaluated) => Eval(expression, fnCanBeEvaluated, null);
-            public static Expression Eval(Expression expression, Func<Expression, bool> fnCanBeEvaluated, Func<ConstantExpression, Expression> fnPostEval)
+            public static Expression? Eval(Expression expression) => Eval(expression, null, null);
+            public static Expression? Eval(Expression expression, Func<Expression, bool>? fnCanBeEvaluated) => Eval(expression, fnCanBeEvaluated, null);
+            public static Expression? Eval(Expression expression, Func<Expression, bool>? fnCanBeEvaluated, Func<ConstantExpression, Expression>? fnPostEval)
             {
                 if (fnCanBeEvaluated == null)
                 {
@@ -564,17 +571,17 @@ namespace SqlNado
             private sealed class SubtreeEvaluator : ExpressionVisitor
             {
                 private readonly HashSet<Expression> _candidates;
-                private readonly Func<ConstantExpression, Expression> _evalFunc;
+                private readonly Func<ConstantExpression, Expression>? _evalFunc;
 
-                private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression> evalFunc)
+                private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression>? evalFunc)
                 {
                     _candidates = candidates;
                     _evalFunc = evalFunc;
                 }
 
-                internal static Expression DoEval(HashSet<Expression> candidates, Func<ConstantExpression, Expression> onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
+                internal static Expression? DoEval(HashSet<Expression> candidates, Func<ConstantExpression, Expression>? onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
 
-                public override Expression Visit(Expression node)
+                public override Expression? Visit(Expression node)
                 {
                     if (node == null)
                         return null;
@@ -685,7 +692,7 @@ namespace SqlNado
                     return nominator._candidates;
                 }
 
-                public override Expression Visit(Expression node)
+                public override Expression? Visit(Expression node)
                 {
                     if (node != null)
                     {

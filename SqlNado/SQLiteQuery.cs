@@ -37,7 +37,7 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public SQLiteBindOptions BindOptions { get; set; }
+        public SQLiteBindOptions? BindOptions { get; set; }
 
         protected virtual SQLiteQueryTranslator CreateTranslator(TextWriter writer) => new SQLiteQueryTranslator(Database, writer);
         public IEnumerator<T> GetEnumerator() => (_provider.ExecuteEnumerable<T>(_expression)).GetEnumerator();
@@ -99,11 +99,11 @@ namespace SqlNado
                 }
 
                 var ee = _executeEnumerable.MakeGenericMethod(elementType);
-                return (TResult)ee.Invoke(this, new object[] { sql });
+                return (TResult)ee.Invoke(this, new object?[] { sql });
             }
 
             // poor man tentative to fix queries without Where() specified
-            private static string NormalizeSelect(string sql)
+            private static string? NormalizeSelect(string? sql)
             {
                 if (sql != null && sql.Length > 2)
                 {
@@ -124,7 +124,7 @@ namespace SqlNado
                 return sql;
             }
 
-            private IEnumerable<TResult> ExecuteEnumerableWithText<TResult>(string sql)
+            private IEnumerable<TResult> ExecuteEnumerableWithText<TResult>(string? sql)
             {
                 foreach (var item in _query.Database.Load<TResult>(sql))
                 {

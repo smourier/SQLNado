@@ -23,32 +23,33 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public string FunctionName { get; }
         public SQLiteValue[] Values { get; }
-        public SQLiteBindOptions BindOptions { get; set; }
+        public SQLiteBindOptions? BindOptions { get; set; }
 
         public void SetError(SQLiteErrorCode code) => SetError(code, null);
         public void SetError(string message) => SetError(SQLiteErrorCode.SQLITE_ERROR, message);
-        public void SetError(SQLiteErrorCode code, string message)
+        public void SetError(SQLiteErrorCode code, string? message)
         {
             // note: order for setting code and message is important (1. message, 2. code)
-            if (!string.IsNullOrWhiteSpace(message))
+            if (message != null && !string.IsNullOrWhiteSpace(message))
             {
                 // note setting error or setting result with a string seems to do behave the same
-                SQLiteDatabase._sqlite3_result_error16(_handle, message, message.Length * 2);
+                SQLiteDatabase.Native.sqlite3_result_error16(_handle, message, message.Length * 2);
+                return;
             }
-            SQLiteDatabase._sqlite3_result_error_code(_handle, code);
+            SQLiteDatabase.Native.sqlite3_result_error_code(_handle, code);
         }
 
         public void SetResult(object value)
         {
             if (value == null || Convert.IsDBNull(value))
             {
-                SQLiteDatabase._sqlite3_result_null(_handle);
+                SQLiteDatabase.Native.sqlite3_result_null(_handle);
                 return;
             }
 
             if (value is SQLiteZeroBlob zb)
             {
-                SQLiteDatabase._sqlite3_result_zeroblob(_handle, zb.Size);
+                SQLiteDatabase.Native.sqlite3_result_zeroblob(_handle, zb.Size);
                 return;
             }
 
@@ -56,31 +57,31 @@ namespace SqlNado
             var cvalue = Database.CoerceValueForBind(value, bi);
             if (cvalue is int i)
             {
-                SQLiteDatabase._sqlite3_result_int(_handle, i);
+                SQLiteDatabase.Native.sqlite3_result_int(_handle, i);
                 return;
             }
 
             if (cvalue is string s)
             {
-                SQLiteDatabase._sqlite3_result_text16(_handle, s, s.Length * 2, IntPtr.Zero);
+                SQLiteDatabase.Native.sqlite3_result_text16(_handle, s, s.Length * 2, IntPtr.Zero);
                 return;
             }
 
             if (cvalue is bool b)
             {
-                SQLiteDatabase._sqlite3_result_int(_handle, b ? 1 : 0);
+                SQLiteDatabase.Native.sqlite3_result_int(_handle, b ? 1 : 0);
                 return;
             }
 
             if (cvalue is long l)
             {
-                SQLiteDatabase._sqlite3_result_int64(_handle, l);
+                SQLiteDatabase.Native.sqlite3_result_int64(_handle, l);
                 return;
             }
 
             if (cvalue is double d)
             {
-                SQLiteDatabase._sqlite3_result_double(_handle, d);
+                SQLiteDatabase.Native.sqlite3_result_double(_handle, d);
                 return;
             }
             throw new NotSupportedException();

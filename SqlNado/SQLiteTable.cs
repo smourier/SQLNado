@@ -9,7 +9,7 @@ namespace SqlNado
     [SQLiteTable(Name = "sqlite_master")]
     public sealed class SQLiteTable
     {
-        private string _sql;
+        private string? _sql;
 
         internal SQLiteTable(SQLiteDatabase database)
         {
@@ -18,6 +18,7 @@ namespace SqlNado
 
             Database = database;
             TokenizedSql = Array.Empty<string>();
+            Name = string.Empty;
         }
 
         [Browsable(false)] // remove from tablestring dumps
@@ -30,12 +31,12 @@ namespace SqlNado
         public string EscapedName => SQLiteStatement.EscapeName(Name);
         public bool IsVirtual => Module != null;
         public bool IsFts => SQLiteObjectTable.IsFtsModule(Module);
-        public string Module { get; private set; }
-        
-        public string[] ModuleArguments { get; private set; }
-        public string[] TokenizedSql { get; private set; }
+        public string? Module { get; private set; }
 
-        public string Sql
+        public string?[]? ModuleArguments { get; private set; }
+        public string?[]? TokenizedSql { get; private set; }
+
+        public string? Sql
         {
             get => _sql;
             internal set
@@ -52,13 +53,16 @@ namespace SqlNado
                 }
                 else
                 {
-                    var split = Sql.Split(' ', '\t', '\r', '\n');
+                    var split = Sql?.Split(' ', '\t', '\r', '\n');
                     TokenizedSql = split.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
                     for (var i = 0; i < TokenizedSql.Length; i++)
                     {
                         if (TokenizedSql[i].EqualsIgnoreCase("using") && (i + 1) < TokenizedSql.Length)
                         {
                             var usng = TokenizedSql[i + 1];
+                            if (usng == null)
+                                continue;
+
                             var pos = usng.IndexOf('(');
                             if (pos < 0)
                             {
@@ -78,7 +82,7 @@ namespace SqlNado
                                 {
                                     args = usng.Substring(pos + 1, end - pos - 1);
                                 }
-                                ModuleArguments = Conversions.SplitToList<string>(args, ',').ToArray();
+                                ModuleArguments = Conversions.SplitToList<string?>(args, ',').ToArray();
                             }
                         }
                     }

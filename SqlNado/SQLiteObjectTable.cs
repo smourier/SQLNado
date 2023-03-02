@@ -14,10 +14,10 @@ namespace SqlNado
 #pragma warning disable S2245
         private static readonly Random _random = new Random(Environment.TickCount);
 #pragma warning restore S2245
-        
+
         internal const string _tempTablePrefix = "__temp";
 
-        public SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions options = null)
+        public SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions? options = null)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -31,11 +31,11 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public SQLiteBuildTableOptions Options { get; }
+        public SQLiteBuildTableOptions? Options { get; }
         public string Name { get; }
-        public string Schema { get; set; } // unused in SqlNado's SQLite
-        public string Module { get; set; }
-        public string[] ModuleArguments { get; set; }
+        public string? Schema { get; set; } // unused in SqlNado's SQLite
+        public string? Module { get; set; }
+        public string?[]? ModuleArguments { get; set; }
         public virtual IReadOnlyList<SQLiteObjectColumn> Columns => _columns;
         public virtual IEnumerable<SQLiteObjectColumn> PrimaryKeyColumns => _columns.Where(c => c.IsPrimaryKey);
         public virtual IReadOnlyList<SQLiteObjectIndex> Indices => _indices;
@@ -45,12 +45,12 @@ namespace SqlNado
         public bool Exists => Database.TableExists(Name);
         public bool HasRowId => Columns.Any(c => c.IsRowId);
         public bool IsVirtual => Module != null;
-        public SQLiteTable Table => Database.GetTable(Name);
+        public SQLiteTable? Table => Database.GetTable(Name);
         public virtual bool IsFts => IsFtsModule(Module);
-        public static bool IsFtsModule(string module) => module.EqualsIgnoreCase("fts3") || module.EqualsIgnoreCase("fts4") || module.EqualsIgnoreCase("fts5");
+        public static bool IsFtsModule(string? module) => module != null && (module.EqualsIgnoreCase("fts3") || module.EqualsIgnoreCase("fts4") || module.EqualsIgnoreCase("fts5"));
 
         [Browsable(false)]
-        public virtual Action<SQLiteStatement, SQLiteLoadOptions, object> LoadAction { get; set; }
+        public virtual Action<SQLiteStatement, SQLiteLoadOptions, object?>? LoadAction { get; set; }
         public virtual bool DisableRowId { get; set; }
 
         public override string ToString() => Name;
@@ -158,12 +158,16 @@ namespace SqlNado
             var list = new List<object>();
             foreach (var col in PrimaryKeyColumns)
             {
-                list.Add(col.GetValueForBind(obj));
+                var value = col.GetValueForBind(obj);
+                if (value == null)
+                    throw new InvalidOperationException();
+
+                list.Add(value);
             }
             return list.ToArray();
         }
 
-        public virtual void SetPrimaryKey(SQLiteLoadOptions options, object instance, object[] primaryKey)
+        public virtual void SetPrimaryKey(SQLiteLoadOptions? options, object instance, object[] primaryKey)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
@@ -181,20 +185,20 @@ namespace SqlNado
             }
         }
 
-        public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions options = null)
+        public virtual T? GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions? options = null)
         {
             if (options?.GetInstanceFunc != null)
-                return (T)options.GetInstanceFunc(typeof(T), statement, options);
+                return (T?)options.GetInstanceFunc(typeof(T), statement, options);
 
-            return (T)GetInstance(typeof(T), statement, options);
+            return (T?)GetInstance(typeof(T), statement, options);
         }
 
-        public virtual object GetInstance(Type type, SQLiteStatement statement = null, SQLiteLoadOptions options = null)
+        public virtual object? GetInstance(Type type, SQLiteStatement? statement = null, SQLiteLoadOptions? options = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            object instance;
+            object? instance;
             if (options?.GetInstanceFunc != null)
             {
                 instance = options.GetInstanceFunc(type, statement, options);
@@ -235,7 +239,7 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual void InitializeAutomaticColumns(object instance)
+        public virtual void InitializeAutomaticColumns(object? instance)
         {
             if (instance == null)
                 return;
@@ -312,7 +316,7 @@ namespace SqlNado
                         }
                         else if (value is long l && l == 0)
                         {
-                            col.SetValue(null, instance, SQLiteDatabase.GetTickCount64());
+                            col.SetValue(null, instance, SQLiteDatabase.Native.GetTickCount());
                         }
                         break;
 
@@ -323,7 +327,7 @@ namespace SqlNado
                         }
                         else if (value is long)
                         {
-                            col.SetValue(null, instance, SQLiteDatabase.GetTickCount64());
+                            col.SetValue(null, instance, SQLiteDatabase.Native.GetTickCount());
                         }
                         break;
 
@@ -399,7 +403,7 @@ namespace SqlNado
             }
         }
 
-        public virtual T Load<T>(SQLiteStatement statement, SQLiteLoadOptions options = null)
+        public virtual T? Load<T>(SQLiteStatement statement, SQLiteLoadOptions? options = null)
         {
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
@@ -408,7 +412,11 @@ namespace SqlNado
             if (options == null)
                 throw new InvalidOperationException();
 
-            var instance = (T)GetInstance(typeof(T), statement, options);
+            var instance = (T?)GetInstance(typeof(T), statement, options);
+
+            if (LoadAction == null)
+                throw new SqlNadoException("0014: Table '" + Name + "' does not define a LoadAction.");
+
             if (!options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObjectEvents;
@@ -426,7 +434,7 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual object Load(Type objectType, SQLiteStatement statement, SQLiteLoadOptions options = null)
+        public virtual object? Load(Type objectType, SQLiteStatement statement, SQLiteLoadOptions? options = null)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
@@ -439,6 +447,10 @@ namespace SqlNado
                 throw new InvalidOperationException();
 
             var instance = GetInstance(objectType, statement, options);
+
+            if (LoadAction == null)
+                throw new SqlNadoException("0014: Table '" + Name + "' does not define a LoadAction.");
+
             if (!options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObjectEvents;
@@ -456,7 +468,7 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual bool Save(object instance, SQLiteSaveOptions options = null)
+        public virtual bool Save(object instance, SQLiteSaveOptions? options = null)
         {
             if (instance == null)
                 return false;
@@ -471,15 +483,15 @@ namespace SqlNado
             if (lo != null && !lo.OnSaveAction(SQLiteObjectAction.Saving, options))
                 return false;
 
-            var updateArgs = new List<object>();
-            var insertArgs = new List<object>();
+            var updateArgs = new List<object?>();
+            var insertArgs = new List<object?>();
             var pk = new List<object>();
             foreach (var col in Columns)
             {
                 if ((col.AutomaticValue || col.ComputedValue) && !col.IsPrimaryKey)
                     continue;
 
-                object value;
+                object? value;
                 if (options.GetValueForBindFunc != null)
                 {
                     value = options.GetValueForBindFunc(col, instance);
@@ -492,7 +504,7 @@ namespace SqlNado
                 if (col.HasDefaultValue && !col.IsDefaultValueIntrinsic && col.IsNullable)
                 {
                     var def = col.GetDefaultValueForBind();
-                    if (value.Equals(def))
+                    if (Equals(value, def))
                     {
                         value = null;
                     }
@@ -513,6 +525,9 @@ namespace SqlNado
 
                 if (col.IsPrimaryKey)
                 {
+                    if (value == null)
+                        throw new InvalidOperationException();
+
                     pk.Add(value);
                 }
             }
@@ -531,7 +546,7 @@ namespace SqlNado
                     // do this only on the 1st pass
                     if (retry == 0)
                     {
-                        pk.InsertRange(0, updateArgs);
+                        pk.InsertRange(0, updateArgs!);
                     }
                     count = Database.ExecuteNonQuery(sql, pk.ToArray());
                     // note the count is ok even if all values did not changed
@@ -572,7 +587,7 @@ namespace SqlNado
             return count > 0;
         }
 
-        private static string GetConflictResolutionClause(SQLiteConflictResolution res)
+        private static string? GetConflictResolutionClause(SQLiteConflictResolution res)
         {
             if (res == SQLiteConflictResolution.Abort) // default
                 return null;
@@ -580,7 +595,7 @@ namespace SqlNado
             return "OR " + res.ToString().ToUpperInvariant() + " ";
         }
 
-        public virtual void SynchronizeIndices(SQLiteSaveOptions options = null)
+        public virtual void SynchronizeIndices(SQLiteSaveOptions? options = null)
         {
             foreach (var index in Indices)
             {
@@ -588,7 +603,7 @@ namespace SqlNado
             }
         }
 
-        public virtual int SynchronizeSchema(SQLiteSaveOptions options = null)
+        public virtual int SynchronizeSchema(SQLiteSaveOptions? options = null)
         {
             if (Columns.Count == 0)
                 throw new SqlNadoException("0006: Object table '" + Name + "' has no columns.");

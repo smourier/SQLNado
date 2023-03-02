@@ -1,44 +1,48 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>1.3.3</Version>
-    <AssemblyVersion>1.3.3.0</AssemblyVersion>
-    <FileVersion>1.3.3.0</FileVersion>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>Simon Mourier</Authors>
-    <Copyright>Copyright (c) 2017-2023 Simon Mourier. All rights reserved.</Copyright>
-    <PackageProjectUrl>https://github.com/smourier/SQLNado</PackageProjectUrl>
-    <PackageLicenseUrl></PackageLicenseUrl>
-    <PackageTags>SQLite c# .net SQL winsqlite azure</PackageTags>
-    <Description>SQLNado (SQLite Not ADO) is a .NET lightweight bloat free object persistence framework based on SQLite.
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<Version>2.0.0</Version>
+		<LangVersion>9</LangVersion>
+		<AssemblyVersion>2.0.0.0</AssemblyVersion>
+		<FileVersion>2.0.0.0</FileVersion>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<Authors>Simon Mourier</Authors>
+		<Copyright>Copyright (c) 2017-2023 Simon Mourier. All rights reserved.</Copyright>
+		<PackageProjectUrl>https://github.com/smourier/SQLNado</PackageProjectUrl>
+		<PackageLicenseUrl></PackageLicenseUrl>
+		<PackageTags>SQLite c# .net SQL winsqlite azure</PackageTags>
+		<Description>
+			SQLNado (SQLite Not ADO) is a .NET lightweight bloat free object persistence framework based on SQLite.
 
-SQLNado supports all of SQLite features when using SQL commands, and also supports most of SQLite features through .NET:
+			SQLNado supports all of SQLite features when using SQL commands, and also supports most of SQLite features through .NET:
 
-* Automatic class-to-table mapping (Save, Delete, Load, LoadAll, LoadByPrimaryKey, LoadByForeignKey, etc.)
-* Automatic synchronization of schema (tables, columns) between classes and existing table
-* Designed for thread-safe operations
-* Where and OrderBy LINQ/IQueryable .NET expressions are supported (work is still in progress in this area), also with collation support
-* SQLite database schema (tables, columns, etc.) exposed to .NET
-* SQLite custom functions can be written in .NET
-* SQLite incremental BLOB I/O is exposed as a .NET Stream to avoid high memory consumption
-* SQLite collation support, including the possibility to add custom collations using .NET code
-* SQLite Full Text Search engine (FTS3/4) support, including the possibility to add custom FTS3 tokenizers using .NET code
-* Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file (supported on azure web apps).</Description>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-  </PropertyGroup>
+			* Automatic class-to-table mapping (Save, Delete, Load, LoadAll, LoadByPrimaryKey, LoadByForeignKey, etc.)
+			* Automatic synchronization of schema (tables, columns) between classes and existing table
+			* Designed for thread-safe operations
+			* Where and OrderBy LINQ/IQueryable .NET expressions are supported (work is still in progress in this area), also with collation support
+			* SQLite database schema (tables, columns, etc.) exposed to .NET
+			* SQLite custom functions can be written in .NET
+			* SQLite incremental BLOB I/O is exposed as a .NET Stream to avoid high memory consumption
+			* SQLite collation support, including the possibility to add custom collations using .NET code
+			* SQLite Full Text Search engine (FTS3/4) support, including the possibility to add custom FTS3 tokenizers using .NET code
+			* Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file (supported on azure web apps).
+		</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<DefineConstants>DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Update="sqlite3.x64.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="sqlite3.x86.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<None Update="sqlite3.x64.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Update="sqlite3.x86.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>

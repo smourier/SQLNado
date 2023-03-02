@@ -6,9 +6,9 @@ using SqlNado.Utilities;
 
 namespace SqlNado
 {
-    public class SQLiteRow : IDictionary<string, object>
+    public class SQLiteRow : IDictionary<string, object?>
     {
-        public SQLiteRow(int index, string[] names, object[] values)
+        public SQLiteRow(int index, string[] names, object?[] values)
         {
             if (names == null)
                 throw new ArgumentNullException(nameof(names));
@@ -26,7 +26,7 @@ namespace SqlNado
 
         public int Index { get; }
         public string[] Names { get; }
-        public object[] Values { get; }
+        public object?[] Values { get; }
         public int Count => Names.Length;
 
         public object this[string name]
@@ -41,14 +41,14 @@ namespace SqlNado
             }
         }
 
-        ICollection<string> IDictionary<string, object>.Keys => Names;
-        ICollection<object> IDictionary<string, object>.Values => Values;
-        bool ICollection<KeyValuePair<string, object>>.IsReadOnly => true;
+        ICollection<string> IDictionary<string, object?>.Keys => Names;
+        ICollection<object?> IDictionary<string, object?>.Values => Values;
+        bool ICollection<KeyValuePair<string, object?>>.IsReadOnly => true;
 
-        bool IDictionary<string, object>.ContainsKey(string key) => Names.Any(n => n.EqualsIgnoreCase(key));
-        object IDictionary<string, object>.this[string key] { get => this[key]; set => throw new NotSupportedException(); }
+        bool IDictionary<string, object?>.ContainsKey(string key) => Names.Any(n => n.EqualsIgnoreCase(key));
+        object? IDictionary<string, object?>.this[string key] { get => this[key]; set => throw new NotSupportedException(); }
 
-        bool ICollection<KeyValuePair<string, object>>.Contains(KeyValuePair<string, object> item)
+        bool ICollection<KeyValuePair<string, object?>>.Contains(KeyValuePair<string, object?> item)
         {
             for (var i = 0; i < Count; i++)
             {
@@ -63,13 +63,13 @@ namespace SqlNado
                     continue;
                 }
 
-                if (Values[i].Equals(item.Value))
+                if (Values[i]!.Equals(item.Value))
                     return true;
             }
             return false;
         }
 
-        void ICollection<KeyValuePair<string, object>>.CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
+        void ICollection<KeyValuePair<string, object?>>.CopyTo(KeyValuePair<string, object?>[] array, int arrayIndex)
         {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
@@ -82,21 +82,21 @@ namespace SqlNado
 
             for (var i = 0; i < Count; i++)
             {
-                array[i + arrayIndex] = new KeyValuePair<string, object>(Names[i], Values[i]);
+                array[i + arrayIndex] = new KeyValuePair<string, object?>(Names[i], Values[i]);
             }
         }
 
-        public T GetValue<T>(string name, T defaultValue)
+        public T? GetValue<T>(string name, T? defaultValue)
         {
-            if (!TryGetValue(name, out T value))
+            if (!TryGetValue(name, out T? value))
                 return defaultValue;
 
             return value;
         }
 
-        public bool TryGetValue<T>(string name, out T value)
+        public bool TryGetValue<T>(string name, out T? value)
         {
-            if (!TryGetValue(name, out object obj))
+            if (!TryGetValue(name, out object? obj))
             {
                 value = default;
                 return false;
@@ -105,7 +105,7 @@ namespace SqlNado
             return Conversions.TryChangeType(obj, out value);
         }
 
-        public bool TryGetValue(string name, out object value)
+        public bool TryGetValue(string name, out object? value)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -123,9 +123,9 @@ namespace SqlNado
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        public IEnumerator<KeyValuePair<string, object>> GetEnumerator() => new Enumerator(this);
+        public IEnumerator<KeyValuePair<string, object?>> GetEnumerator() => new Enumerator(this);
 
-        private sealed class Enumerator : IEnumerator<KeyValuePair<string, object>>
+        private sealed class Enumerator : IEnumerator<KeyValuePair<string, object?>>
         {
             private readonly SQLiteRow _row;
             private int _index = -1;
@@ -135,7 +135,7 @@ namespace SqlNado
                 _row = row;
             }
 
-            public KeyValuePair<string, object> Current => new KeyValuePair<string, object>(_row.Names[_index], _row.Values[_index]);
+            public KeyValuePair<string, object?> Current => new KeyValuePair<string, object?>(_row.Names[_index], _row.Values[_index]);
 
             public bool MoveNext()
             {
@@ -156,10 +156,10 @@ namespace SqlNado
             object IEnumerator.Current => Current;
         }
 
-        void IDictionary<string, object>.Add(string key, object value) => throw new NotSupportedException();
-        void ICollection<KeyValuePair<string, object>>.Add(KeyValuePair<string, object> item) => throw new NotSupportedException();
-        void ICollection<KeyValuePair<string, object>>.Clear() => throw new NotSupportedException();
-        bool IDictionary<string, object>.Remove(string key) => throw new NotSupportedException();
-        bool ICollection<KeyValuePair<string, object>>.Remove(KeyValuePair<string, object> item) => throw new NotSupportedException();
+        void IDictionary<string, object?>.Add(string key, object? value) => throw new NotSupportedException();
+        void ICollection<KeyValuePair<string, object?>>.Add(KeyValuePair<string, object?> item) => throw new NotSupportedException();
+        void ICollection<KeyValuePair<string, object?>>.Clear() => throw new NotSupportedException();
+        bool IDictionary<string, object?>.Remove(string key) => throw new NotSupportedException();
+        bool ICollection<KeyValuePair<string, object?>>.Remove(KeyValuePair<string, object?> item) => throw new NotSupportedException();
     }
 }

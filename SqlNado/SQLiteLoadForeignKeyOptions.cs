@@ -10,8 +10,8 @@ namespace SqlNado
         }
 
         public bool SetForeignKeyPropertyValue { get; set; }
-        public string ForeignKeyColumnName { get; set; }
-        public SQLiteObjectColumn ForeignKeyColumn { get; set; }
+        public string? ForeignKeyColumnName { get; set; }
+        public SQLiteObjectColumn? ForeignKeyColumn { get; set; }
 
         public override string ToString()
         {

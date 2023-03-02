@@ -11,7 +11,7 @@ namespace SqlNado
     {
         public SQLiteObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
-            Action<SQLiteLoadOptions, object, object> setValueAction)
+            Action<SQLiteLoadOptions, object?, object?>? setValueAction)
         {
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
@@ -46,23 +46,23 @@ namespace SqlNado
         [Browsable(false)]
         public Func<object, object> GetValueFunc { get; }
         [Browsable(false)]
-        public Action<SQLiteLoadOptions, object, object> SetValueAction { get; }
+        public Action<SQLiteLoadOptions, object?, object?>? SetValueAction { get; }
         public virtual bool IsNullable { get; set; }
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
         public virtual SQLiteDirection PrimaryKeyDirection { get; set; }
         public virtual bool IsUnique { get; set; }
-        public virtual string CheckExpression { get; set; }
+        public virtual string? CheckExpression { get; set; }
         public virtual bool AutoIncrements { get; set; }
         public bool AutomaticValue => AutoIncrements && IsRowId;
         public bool ComputedValue => HasDefaultValue && IsDefaultValueIntrinsic && SQLiteObjectTableBuilder.IsComputedDefaultValue(DefaultValue as string);
         public virtual bool HasDefaultValue { get; set; }
         public virtual bool InsertOnly { get; set; }
         public virtual bool UpdateOnly { get; set; }
-        public virtual string Collation { get; set; }
+        public virtual string? Collation { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
-        public virtual object DefaultValue { get; set; }
-        public virtual SQLiteBindOptions BindOptions { get; set; }
+        public virtual object? DefaultValue { get; set; }
+        public virtual SQLiteBindOptions? BindOptions { get; set; }
         public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
         public bool HasNonConstantDefaultValue => HasDefaultValue && IsDefaultValueIntrinsic;
         public bool IsRowId { get; internal set; }
@@ -86,7 +86,7 @@ namespace SqlNado
 
         public static bool IsFtsIdName(string name) => name.EqualsIgnoreCase("docid") || IsRowIdName(name);
 
-        public static bool AreCollationsEqual(string collation1, string collation2)
+        public static bool AreCollationsEqual(string? collation1, string? collation2)
         {
             if (collation1.EqualsIgnoreCase(collation2))
                 return true;
@@ -175,9 +175,9 @@ namespace SqlNado
             return true;
         }
 
-        public virtual object GetDefaultValueForBind() => Table.Database.CoerceValueForBind(DefaultValue, BindOptions);
+        public virtual object? GetDefaultValueForBind() => Table.Database.CoerceValueForBind(DefaultValue, BindOptions);
 
-        public virtual object GetValueForBind(object obj)
+        public virtual object? GetValueForBind(object obj)
         {
             var value = GetValue(obj);
             return Table.Database.CoerceValueForBind(value, BindOptions);
@@ -185,7 +185,7 @@ namespace SqlNado
 
         public virtual object GetValue(object obj) => GetValueFunc(obj);
 
-        public virtual void SetValue(SQLiteLoadOptions options, object obj, object value)
+        public virtual void SetValue(SQLiteLoadOptions? options, object obj, object? value)
         {
             if (SetValueAction == null)
                 throw new InvalidOperationException();
@@ -197,7 +197,7 @@ namespace SqlNado
             var raiseOnErrorsChanged = false;
             var raiseOnPropertyChanging = false;
             var raiseOnPropertyChanged = false;
-            ISQLiteObjectChangeEvents ce = null;
+            ISQLiteObjectChangeEvents? ce = null;
 
             if (options.ObjectChangeEventsDisabled)
             {
@@ -290,7 +290,7 @@ namespace SqlNado
             return sql;
         }
 
-        public static object FromLiteral(object value)
+        public static object? FromLiteral(object? value)
         {
             if (value == null)
                 return null;
@@ -313,7 +313,7 @@ namespace SqlNado
             return value;
         }
 
-        protected virtual string ToLiteral(object value)
+        protected virtual string ToLiteral(object? value)
         {
             value = Table.Database.CoerceValueForBind(value, BindOptions);
             // from here, we should have a limited set of types, the types supported by SQLite
@@ -404,7 +404,7 @@ namespace SqlNado
                 }
                 else
                 {
-                    if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object value))
+                    if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object? value))
                     {
                         var type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
                         throw new SqlNadoException("0028: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");

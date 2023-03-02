@@ -24,7 +24,7 @@ namespace SqlNado
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
         public IReadOnlyList<SQLiteIndexedColumn> Columns { get; }
-        public virtual string SchemaName { get; set; }
+        public virtual string? SchemaName { get; set; }
         public virtual bool IsUnique { get; set; }
 
         public override string ToString()

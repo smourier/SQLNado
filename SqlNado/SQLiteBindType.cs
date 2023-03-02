@@ -33,17 +33,17 @@ namespace SqlNado
                 typeof(ISQLiteBlobObject), typeof(SQLiteZeroBlob));
 
             DBNullType = new SQLiteBindType(ctx => null, typeof(DBNull));
-            ByteType = new SQLiteBindType(ctx => (int)(byte)ctx.Value, typeof(byte));
-            SByteType = new SQLiteBindType(ctx => (int)(sbyte)ctx.Value, typeof(sbyte));
-            Int16Type = new SQLiteBindType(ctx => (int)(short)ctx.Value, typeof(short));
-            UInt16Type = new SQLiteBindType(ctx => (int)(ushort)ctx.Value, typeof(ushort));
-            UInt32Type = new SQLiteBindType(ctx => (long)(uint)ctx.Value, typeof(uint));
-            UInt64Type = new SQLiteBindType(ctx => unchecked((long)(ulong)ctx.Value), typeof(ulong));
-            FloatType = new SQLiteBindType(ctx => (double)(float)ctx.Value, typeof(float));
+            ByteType = new SQLiteBindType(ctx => (int)(byte)ctx.Value!, typeof(byte));
+            SByteType = new SQLiteBindType(ctx => (int)(sbyte)ctx.Value!, typeof(sbyte));
+            Int16Type = new SQLiteBindType(ctx => (int)(short)ctx.Value!, typeof(short));
+            UInt16Type = new SQLiteBindType(ctx => (int)(ushort)ctx.Value!, typeof(ushort));
+            UInt32Type = new SQLiteBindType(ctx => (long)(uint)ctx.Value!, typeof(uint));
+            UInt64Type = new SQLiteBindType(ctx => unchecked((long)(ulong)ctx.Value!), typeof(ulong));
+            FloatType = new SQLiteBindType(ctx => (double)(float)ctx.Value!, typeof(float));
 
             GuidType = new SQLiteBindType(ctx =>
             {
-                var guid = (Guid)ctx.Value;
+                var guid = (Guid)ctx.Value!;
                 if (!ctx.Options.GuidAsBlob)
                 {
                     if (string.IsNullOrWhiteSpace(ctx.Options.GuidAsStringFormat))
@@ -56,7 +56,7 @@ namespace SqlNado
 
             DecimalType = new SQLiteBindType(ctx =>
             {
-                var dec = (decimal)ctx.Value;
+                var dec = (decimal)ctx.Value!;
                 if (!ctx.Options.DecimalAsBlob)
                     return dec.ToString(CultureInfo.InvariantCulture);
 
@@ -65,7 +65,7 @@ namespace SqlNado
 
             TimeSpanType = new SQLiteBindType(ctx =>
             {
-                var ts = (TimeSpan)ctx.Value;
+                var ts = (TimeSpan)ctx.Value!;
                 if (!ctx.Options.TimeSpanAsInt64)
                     return ts.ToString();
 
@@ -82,7 +82,7 @@ namespace SqlNado
                 }
                 else
                 {
-                    dt = (DateTime)ctx.Value;
+                    dt = (DateTime)ctx.Value!;
                 }
 
                 // https://sqlite.org/datatype3.html
@@ -127,12 +127,12 @@ namespace SqlNado
             // fallback
             ObjectToStringType = new SQLiteBindType(ctx =>
             {
-                ctx.Database.TryChangeType(ctx.Value, out string text); // always succeeds for a string
+                ctx.Database.TryChangeType(ctx.Value, out string? text); // always succeeds for a string
                 return text;
             }, typeof(object));
         }
 
-        public SQLiteBindType(Func<SQLiteBindContext, object> convertFunc, params Type[] handledClrType)
+        public SQLiteBindType(Func<SQLiteBindContext, object?> convertFunc, params Type[] handledClrType)
         {
             if (convertFunc == null)
                 throw new ArgumentNullException(nameof(convertFunc));
@@ -154,7 +154,7 @@ namespace SqlNado
         }
 
         public Type[] HandledClrTypes { get; }
-        public virtual Func<SQLiteBindContext, object> ConvertFunc { get; }
+        public virtual Func<SQLiteBindContext, object?> ConvertFunc { get; }
 
         public override string ToString() => string.Join(", ", HandledClrTypes.Select(t => t.FullName));
     }

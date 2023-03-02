@@ -12,6 +12,8 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(database));
 
             Database = database;
+            Name = string.Empty;
+            TableName = string.Empty;
         }
 
         [Browsable(false)] // remove from tablestring dumps
@@ -23,13 +25,13 @@ namespace SqlNado
         public string TableName { get; internal set; }
 
         public int RootPage { get; internal set; }
-        public string Sql { get; internal set; }
+        public string? Sql { get; internal set; }
 
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string? EscapedName => SQLiteStatement.EscapeName(Name);
 
-        public SQLiteTable Table => TableName != null ? Database.GetTable(TableName) : null;
-        public SQLiteTableIndex TableIndex => Table?.GetIndex(Name);
+        public SQLiteTable? Table => TableName != null ? Database.GetTable(TableName) : null;
+        public SQLiteTableIndex? TableIndex => Table?.GetIndex(Name);
 
         public override string ToString() => Name;
     }

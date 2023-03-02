@@ -11,13 +11,13 @@ namespace SqlNado.Utilities
     // note: all conversions here are using invariant culture by design
     public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
     {
-        private SQLiteDatabase _database;
+        private SQLiteDatabase? _database;
         private bool _disposedValue;
         private readonly SQLiteLoadOptions _loadKeysOptions;
         private readonly SQLiteLoadOptions _loadTypedValuesOptions;
         private readonly SQLiteLoadOptions _loadValuesOptions;
 
-        public PersistentDictionary(string filePath = null, SQLiteOpenOptions options = SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
+        public PersistentDictionary(string? filePath = null, SQLiteOpenOptions options = SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
         {
             IsTypedValue = typeof(Tv) == typeof(object);
             DeleteOnDispose = filePath == null;
@@ -34,17 +34,17 @@ namespace SqlNado.Utilities
 
             _loadKeysOptions = new SQLiteLoadOptions(_database)
             {
-                GetInstanceFunc = (t, s, o) => s.GetColumnString(0)
+                GetInstanceFunc = (t, s, o) => s!.GetColumnString(0)
             };
 
             _loadTypedValuesOptions = new SQLiteLoadOptions(_database)
             {
-                GetInstanceFunc = (t, s, o) => new Tuple<string, string>(s.GetColumnString(0), s.GetColumnString(1))
+                GetInstanceFunc = (t, s, o) => new Tuple<string?, string?>(s!.GetColumnString(0), s.GetColumnString(1))
             };
 
             _loadValuesOptions = new SQLiteLoadOptions(_database)
             {
-                GetInstanceFunc = (t, s, o) => s.GetColumnValue(0)
+                GetInstanceFunc = (t, s, o) => s!.GetColumnValue(0)
             };
 
             if (IsTypedValue)
@@ -57,7 +57,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public SQLiteDatabase Database => _database;
+        public SQLiteDatabase? Database => _database;
         public bool DeleteOnDispose { get; set; }
         private bool IsTypedValue { get; }
 
@@ -92,8 +92,11 @@ namespace SqlNado.Utilities
                     var list = new List<Tv>();
                     foreach (var tuple in CheckDisposed().Load<Tuple<string, string>>("SELECT " + nameof(TypedEntry.Value) + ", " + nameof(TypedEntry.TypeName) + " FROM " + nameof(TypedEntry), _loadTypedValuesOptions))
                     {
-                        var value = ConvertToValue(tuple.Item1, tuple.Item2);
-                        list.Add((Tv)value);
+                        var value = (Tv?)ConvertToValue(tuple.Item1, tuple.Item2);
+                        if (value != null)
+                        {
+                            list.Add(value);
+                        }
                     }
                     return list;
                 }
@@ -103,8 +106,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public override string ToString() => _database?.FilePath;
-
+        public override string? ToString() => _database?.FilePath;
 
         public virtual void Clear()
         {
@@ -160,7 +162,7 @@ namespace SqlNado.Utilities
                 var typed = CheckDisposed().LoadByPrimaryKey<TypedEntry>(key);
                 if (typed != null)
                 {
-                    value = (Tv)ConvertToValue(typed.Value, typed.TypeName);
+                    value = (Tv)ConvertToValue(typed.Value, typed.TypeName)!;
                     return true;
                 }
             }
@@ -169,12 +171,12 @@ namespace SqlNado.Utilities
                 var entry = CheckDisposed().LoadByPrimaryKey<Entry>(key);
                 if (entry != null)
                 {
-                    value = entry.Value;
+                    value = entry.Value!;
                     return true;
                 }
             }
 
-            value = default;
+            value = default!;
             return false;
         }
 
@@ -223,8 +225,8 @@ namespace SqlNado.Utilities
                     if ((arrayIndex + i) >= array.Length)
                         return;
 
-                    var value = (Tv)ConvertToValue(entry.Value, entry.TypeName);
-                    array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key, value);
+                    var value = (Tv)ConvertToValue(entry.Value, entry.TypeName)!;
+                    array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key!, value);
                     i++;
                 }
                 return;
@@ -235,12 +237,12 @@ namespace SqlNado.Utilities
                 if ((arrayIndex + i) >= array.Length)
                     return;
 
-                array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key, entry.Value);
+                array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key!, entry.Value!);
                 i++;
             }
         }
 
-        public virtual string ConvertToString(object input, out string typeName)
+        public virtual string? ConvertToString(object? input, out string? typeName)
         {
             if (input == null || Convert.IsDBNull(input))
             {
@@ -302,7 +304,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public virtual object ConvertToValue(string input, string typeName)
+        public virtual object? ConvertToValue(string? input, string? typeName)
         {
             if (typeName == null)
                 return input;
@@ -381,7 +383,7 @@ namespace SqlNado.Utilities
 
         private sealed class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
-            private IEnumerator<TypedEntry> _enumerator;
+            private IEnumerator<TypedEntry>? _enumerator;
             private readonly PersistentDictionary<Tk, Tv> _dic;
 
             public TypedEntryEnumerator(PersistentDictionary<Tk, Tv> dic)
@@ -394,40 +396,43 @@ namespace SqlNado.Utilities
             {
                 get
                 {
+                    if (_enumerator == null)
+                        return new KeyValuePair<Tk, Tv>();
+
                     var value = _dic.ConvertToValue(_enumerator.Current.Value, _enumerator.Current.TypeName);
-                    return new KeyValuePair<Tk, Tv>(_enumerator.Current.Key, (Tv)value);
+                    return new KeyValuePair<Tk, Tv>(_enumerator.Current.Key!, (Tv)value!);
                 }
             }
 
             object IEnumerator.Current => Current;
 
             public void Dispose() => Interlocked.Exchange(ref _enumerator, null)?.Dispose();
-            public bool MoveNext() => _enumerator.MoveNext();
-            public void Reset() => _enumerator.Reset();
+            public bool MoveNext() => (_enumerator?.MoveNext()).GetValueOrDefault();
+            public void Reset() => _enumerator?.Reset();
         }
 
         private sealed class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
-            private IEnumerator<Entry> _enumerator;
+            private IEnumerator<Entry>? _enumerator;
 
             public EntryEnumerator(PersistentDictionary<Tk, Tv> dic)
             {
                 _enumerator = dic.CheckDisposed().LoadAll<Entry>().GetEnumerator();
             }
 
-            public KeyValuePair<Tk, Tv> Current => new KeyValuePair<Tk, Tv>(_enumerator.Current.Key, _enumerator.Current.Value);
+            public KeyValuePair<Tk, Tv> Current => _enumerator != null ? new KeyValuePair<Tk, Tv>(_enumerator.Current.Key!, _enumerator.Current.Value!) : new KeyValuePair<Tk, Tv>();
             object IEnumerator.Current => Current;
 
             public void Dispose() => Interlocked.Exchange(ref _enumerator, null)?.Dispose();
-            public bool MoveNext() => _enumerator.MoveNext();
-            public void Reset() => _enumerator.Reset();
+            public bool MoveNext() => (_enumerator?.MoveNext()).GetValueOrDefault();
+            public void Reset() => _enumerator?.Reset();
         }
 
         private class Entry
         {
             [SQLiteColumn(IsPrimaryKey = true)]
-            public Tk Key { get; set; }
-            public Tv Value { get; set; }
+            public Tk? Key { get; set; }
+            public Tv? Value { get; set; }
         }
 
         private enum TypeCodeEx
@@ -441,14 +446,10 @@ namespace SqlNado.Utilities
 
         private sealed class TypedEntry : Entry
         {
-            public new string Value { get; set; }
-            public string TypeName { get; set; }
+            public new string? Value { get; set; }
+            public string? TypeName { get; set; }
 
-            public TypedEntry()
-            {
-            }
-
-            public TypedEntry(Tk key, string value, string typeName)
+            public TypedEntry(Tk key, string? value, string? typeName)
             {
                 Key = key;
                 Value = value;
@@ -469,7 +470,7 @@ namespace SqlNado.Utilities
                         db.Dispose();
                         if (DeleteOnDispose)
                         {
-                            Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                            SQLiteExtensions.WrapSharingViolations(() => File.Delete(db.FilePath));
                         }
                     }
                 }

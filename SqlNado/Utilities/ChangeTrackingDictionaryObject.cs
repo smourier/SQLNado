@@ -23,13 +23,13 @@ namespace SqlNado.Utilities
 
         // this is better than the base impl because we are sure to get the original value
         // while the base impl only knows the last value
-        protected override DictionaryObjectProperty DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty oldProperty, DictionaryObjectProperty newProperty)
+        protected override DictionaryObjectProperty? DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty)
         {
             DictionaryObjectChangedProperties.TryGetValue(name, out DictionaryObjectProperty prop);
             return prop; // null is ok
         }
 
-        protected override DictionaryObjectProperty DictionaryObjectUpdatedProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty oldProperty, DictionaryObjectProperty newProperty)
+        protected override DictionaryObjectProperty? DictionaryObjectUpdatedProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty)
         {
             // we always keep the first or last commited value
             if (oldProperty != null)

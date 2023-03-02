@@ -21,10 +21,10 @@ namespace SqlNado
         }
 
         public string Name { get; }
-        public string SchemaName { get; set; }
+        public string? SchemaName { get; set; }
         public bool IsUnique { get; set; }
         public int Order { get; set; }
-        public string CollationName { get; set; }
+        public string? CollationName { get; set; }
         public SQLiteDirection? Direction { get; set; }
 
         public override string ToString()

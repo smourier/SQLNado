@@ -61,7 +61,7 @@ namespace SqlNado
 
         public static string GetMessage(SQLiteErrorCode code)
         {
-            string msg = null;
+            string? msg = null;
             switch (code)
             {
                 case SQLiteErrorCode.SQLITE_ERROR:

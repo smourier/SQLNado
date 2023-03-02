@@ -12,7 +12,7 @@ namespace SqlNado.Utilities
     {
         private static readonly char[] _enumSeparators = new char[] { ',', ';', '+', '|', ' ' };
 
-        public static Type GetEnumeratedType(Type collectionType)
+        public static Type? GetEnumeratedType(Type collectionType)
         {
             if (collectionType == null)
                 throw new ArgumentNullException(nameof(collectionType));
@@ -30,7 +30,7 @@ namespace SqlNado.Utilities
             return null;
         }
 
-        private static Type GetEnumeratedItemType(Type type)
+        private static Type? GetEnumeratedItemType(Type type)
         {
             if (!type.IsGenericType)
                 return null;
@@ -79,7 +79,7 @@ namespace SqlNado.Utilities
             return bytes;
         }
 
-        public static byte[] ToBytes(string text)
+        public static byte[]? ToBytes(string? text)
         {
             if (text == null)
                 return null;
@@ -88,7 +88,7 @@ namespace SqlNado.Utilities
                 return Array.Empty<byte>();
 
             var list = new List<byte>();
-            bool lo = false;
+            var lo = false;
             byte prev = 0;
             int offset;
 
@@ -102,9 +102,9 @@ namespace SqlNado.Utilities
                 offset = 0;
             }
 
-            for (int i = 0; i < text.Length - offset; i++)
+            for (var i = 0; i < text.Length - offset; i++)
             {
-                byte b = GetHexaByte(text[i + offset]);
+                var b = GetHexaByte(text[i + offset]);
                 if (b == 0xFF)
                     continue;
 
@@ -136,9 +136,9 @@ namespace SqlNado.Utilities
             return 0xFF;
         }
 
-        public static string ToHexa(this byte[] bytes) => ToHexa(bytes, 0, (bytes?.Length).GetValueOrDefault());
-        public static string ToHexa(this byte[] bytes, int count) => ToHexa(bytes, 0, count);
-        public static string ToHexa(this byte[] bytes, int offset, int count)
+        public static string? ToHexa(this byte[]? bytes) => ToHexa(bytes, 0, (bytes?.Length).GetValueOrDefault());
+        public static string? ToHexa(this byte[]? bytes, int count) => ToHexa(bytes, 0, count);
+        public static string? ToHexa(this byte[]? bytes, int offset, int count)
         {
             if (bytes == null)
                 return null;
@@ -163,8 +163,7 @@ namespace SqlNado.Utilities
             return sb.ToString();
         }
 
-        public static string ToHexaDump(string text) => ToHexaDump(text, null);
-        public static string ToHexaDump(string text, Encoding encoding)
+        public static string? ToHexaDump(string text, Encoding? encoding = null)
         {
             if (text == null)
                 return null;
@@ -185,7 +184,7 @@ namespace SqlNado.Utilities
             return ToHexaDump(bytes, null);
         }
 
-        public static string ToHexaDump(this byte[] bytes, string prefix)
+        public static string ToHexaDump(this byte[] bytes, string? prefix)
         {
             if (bytes == null)
                 throw new ArgumentNullException(nameof(bytes));
@@ -194,7 +193,7 @@ namespace SqlNado.Utilities
         }
 
         public static string ToHexaDump(this IntPtr ptr, int count) => ToHexaDump(ptr, 0, count, null, true);
-        public static string ToHexaDump(this IntPtr ptr, int offset, int count, string prefix, bool addHeader)
+        public static string ToHexaDump(this IntPtr ptr, int offset, int count, string? prefix, bool addHeader)
         {
             if (ptr == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(ptr));
@@ -206,7 +205,7 @@ namespace SqlNado.Utilities
 
         public static string ToHexaDump(this byte[] bytes, int count) => ToHexaDump(bytes, 0, count, null, true);
         public static string ToHexaDump(this byte[] bytes, int offset, int count) => ToHexaDump(bytes, offset, count, null, true);
-        public static string ToHexaDump(this byte[] bytes, int offset, int count, string prefix, bool addHeader)
+        public static string ToHexaDump(this byte[] bytes, int offset, int count, string? prefix, bool addHeader)
         {
             if (bytes == null)
                 throw new ArgumentNullException(nameof(bytes));
@@ -270,16 +269,16 @@ namespace SqlNado.Utilities
             return sb.ToString();
         }
 
-        public static IList<T> SplitToList<T>(string text, params char[] separators) => SplitToList<T>(text, null, separators);
-        public static IList<T> SplitToList<T>(string text, IFormatProvider provider, params char[] separators)
+        public static IList<T?> SplitToList<T>(string? text, params char[] separators) => SplitToList<T>(text, null, separators);
+        public static IList<T?> SplitToList<T>(string? text, IFormatProvider? provider, params char[] separators)
         {
-            var al = new List<T>();
+            var al = new List<T?>();
             if (text == null || separators == null || separators.Length == 0)
                 return al;
 
-            foreach (string s in text.Split(separators))
+            foreach (var s in text.Split(separators))
             {
-                string value = s.Nullify();
+                var value = s.Nullify();
                 if (value == null)
                     continue;
 
@@ -289,8 +288,7 @@ namespace SqlNado.Utilities
             return al;
         }
 
-        public static bool EqualsIgnoreCase(this string thisString, string text) => EqualsIgnoreCase(thisString, text, false);
-        public static bool EqualsIgnoreCase(this string thisString, string text, bool trim)
+        public static bool EqualsIgnoreCase(this string? thisString, string? text, bool trim = false)
         {
             if (trim)
             {
@@ -310,7 +308,7 @@ namespace SqlNado.Utilities
             return string.Compare(thisString, text, StringComparison.OrdinalIgnoreCase) == 0;
         }
 
-        public static string Nullify(this string text)
+        public static string? Nullify(this string? text)
         {
             if (text == null)
                 return null;
@@ -322,7 +320,7 @@ namespace SqlNado.Utilities
             return t.Length == 0 ? null : t;
         }
 
-        public static Type GetNullableTypeArgument(this Type type)
+        public static Type? GetNullableTypeArgument(this Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -341,41 +339,41 @@ namespace SqlNado.Utilities
             return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
 
-        public static object ChangeType(object input, Type conversionType) => ChangeType(input, conversionType, null, null);
-        public static object ChangeType(object input, Type conversionType, object defaultValue) => ChangeType(input, conversionType, defaultValue, null);
-        public static object ChangeType(object input, Type conversionType, object defaultValue, IFormatProvider provider)
+        public static object? ChangeType(object? input, Type conversionType) => ChangeType(input, conversionType, null, null);
+        public static object? ChangeType(object? input, Type conversionType, object? defaultValue) => ChangeType(input, conversionType, defaultValue, null);
+        public static object? ChangeType(object? input, Type conversionType, object? defaultValue, IFormatProvider? provider)
         {
-            if (!TryChangeType(input, conversionType, provider, out object value))
+            if (!TryChangeType(input, conversionType, provider, out object? value))
                 return defaultValue;
 
             return value;
         }
 
-        public static T ChangeType<T>(object input) => ChangeType(input, default(T));
-        public static T ChangeType<T>(object input, T defaultValue) => ChangeType(input, defaultValue, null);
-        public static T ChangeType<T>(object input, T defaultValue, IFormatProvider provider)
+        public static T? ChangeType<T>(object? input) => ChangeType(input, default(T));
+        public static T? ChangeType<T>(object? input, T? defaultValue) => ChangeType(input, defaultValue, null);
+        public static T? ChangeType<T>(object? input, T? defaultValue, IFormatProvider? provider)
         {
-            if (!TryChangeType(input, provider, out T value))
+            if (!TryChangeType(input, provider, out T? value))
                 return defaultValue;
 
             return value;
         }
 
-        public static bool TryChangeType<T>(object input, out T value) => TryChangeType(input, null, out value);
-        public static bool TryChangeType<T>(object input, IFormatProvider provider, out T value)
+        public static bool TryChangeType<T>(object? input, out T? value) => TryChangeType(input, null, out value);
+        public static bool TryChangeType<T>(object? input, IFormatProvider? provider, out T? value)
         {
-            if (!TryChangeType(input, typeof(T), provider, out object tvalue))
+            if (!TryChangeType(input, typeof(T), provider, out object? tvalue))
             {
                 value = default;
                 return false;
             }
 
-            value = (T)tvalue;
+            value = (T?)tvalue;
             return true;
         }
 
-        public static bool TryChangeType(object input, Type conversionType, out object value) => TryChangeType(input, conversionType, null, out value);
-        public static bool TryChangeType(object input, Type conversionType, IFormatProvider provider, out object value)
+        public static bool TryChangeType(object? input, Type conversionType, out object? value) => TryChangeType(input, conversionType, null, out value);
+        public static bool TryChangeType(object? input, Type conversionType, IFormatProvider? provider, out object? value)
         {
             if (conversionType == null)
                 throw new ArgumentNullException(nameof(conversionType));
@@ -430,7 +428,7 @@ namespace SqlNado.Utilities
                     return true;
                 }
 
-                string svalue = string.Format(provider, "{0}", input).Nullify();
+                var svalue = string.Format(provider, "{0}", input).Nullify();
                 if (svalue != null && Guid.TryParse(svalue, out Guid guid))
                 {
                     value = guid;
@@ -845,7 +843,7 @@ namespace SqlNado.Utilities
                 var bytes = (byte[])input;
                 if (bytes.Length != 2)
                     return false;
-                
+
                 value = BitConverter.ToChar(bytes, 0);
                 return true;
             }
@@ -865,7 +863,7 @@ namespace SqlNado.Utilities
                 var bytes = (byte[])input;
                 if (bytes.Length != 8)
                     return false;
-                
+
                 value = BitConverter.ToDouble(bytes, 0);
                 return true;
             }
@@ -967,7 +965,7 @@ namespace SqlNado.Utilities
 
                 if (inputType == typeof(decimal))
                 {
-                    value = ((decimal)value).ToBytes();
+                    value = ((decimal)value!).ToBytes();
                     return true;
                 }
 
@@ -1028,12 +1026,12 @@ namespace SqlNado.Utilities
             return false;
         }
 
-        public static ulong EnumToUInt64(string text, Type enumType)
+        public static ulong EnumToUInt64(string? text, Type enumType)
         {
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
 
-            return EnumToUInt64(ChangeType(text, enumType));
+            return EnumToUInt64(ChangeType(text, enumType)!);
         }
 
         public static ulong EnumToUInt64(object value)
@@ -1168,7 +1166,7 @@ namespace SqlNado.Utilities
             return defaultValue;
         }
 
-        public static object ToEnum(string text, Type enumType)
+        public static object ToEnum(string? text, Type enumType)
         {
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
@@ -1177,7 +1175,7 @@ namespace SqlNado.Utilities
             return value;
         }
 
-        public static Enum ToEnum(string text, Enum defaultValue)
+        public static Enum ToEnum(string? text, Enum defaultValue)
         {
             if (defaultValue == null)
                 throw new ArgumentNullException(nameof(defaultValue));
@@ -1188,7 +1186,7 @@ namespace SqlNado.Utilities
             return defaultValue;
         }
 
-        public static bool EnumTryParse(Type type, object input, out object value)
+        public static bool EnumTryParse(Type type, object? input, out object value)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -1237,9 +1235,9 @@ namespace SqlNado.Utilities
             }
 
             ulong ul = 0;
-            foreach (string tok in tokens)
+            foreach (var tok in tokens)
             {
-                string token = tok.Nullify(); // NOTE: we don't consider empty tokens as errors
+                var token = tok.Nullify(); // NOTE: we don't consider empty tokens as errors
                 if (token == null)
                     continue;
 
@@ -1270,8 +1268,7 @@ namespace SqlNado.Utilities
             return true;
         }
 
-        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key) => GetNullifiedValue(dictionary, key, null);
-        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key, string defaultValue)
+        public static string? GetNullifiedValue(this IDictionary<string, string> dictionary, string key, string? defaultValue = null)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -1285,7 +1282,7 @@ namespace SqlNado.Utilities
             return str.Nullify();
         }
 
-        public static T GetValue<T>(this IDictionary<string, object> dictionary, string key, T defaultValue)
+        public static T? GetValue<T>(this IDictionary<string, object> dictionary, string key, T? defaultValue)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -1299,7 +1296,7 @@ namespace SqlNado.Utilities
             return ChangeType(o, defaultValue);
         }
 
-        public static T GetValue<T>(this IDictionary<string, object> dictionary, string key, T defaultValue, IFormatProvider provider)
+        public static T? GetValue<T>(this IDictionary<string, object> dictionary, string key, T? defaultValue, IFormatProvider? provider)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -1313,7 +1310,7 @@ namespace SqlNado.Utilities
             return ChangeType(o, defaultValue, provider);
         }
 
-        public static T GetValue<T>(this IDictionary<string, string> dictionary, string key, T defaultValue)
+        public static T? GetValue<T>(this IDictionary<string, string> dictionary, string key, T? defaultValue)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -1327,7 +1324,7 @@ namespace SqlNado.Utilities
             return ChangeType(str, defaultValue);
         }
 
-        public static T GetValue<T>(this IDictionary<string, string> dictionary, string key, T defaultValue, IFormatProvider provider)
+        public static T? GetValue<T>(this IDictionary<string, string> dictionary, string key, T? defaultValue, IFormatProvider? provider)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -1341,8 +1338,7 @@ namespace SqlNado.Utilities
             return ChangeType(str, defaultValue, provider);
         }
 
-        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2) => Compare(dic1, dic2, null);
-        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2, IEqualityComparer<TValue> comparer)
+        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2, IEqualityComparer<TValue>? comparer = null)
         {
             if (dic1 == null)
                 return dic2 == null;

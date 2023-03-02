@@ -46,7 +46,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public string CollationName { get; }
-        public CultureInfo CollationCulture { get; }
+        public CultureInfo? CollationCulture { get; }
         public CompareOptions CollationOptions { get; }
     }
 }

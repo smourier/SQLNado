@@ -14,10 +14,10 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public SQLiteStatement Statement { get; set; }
-        public virtual SQLiteBindType Type { get; set; }
+        public SQLiteStatement? Statement { get; set; }
+        public virtual SQLiteBindType? Type { get; set; }
         public virtual int Index { get; set; }
-        public virtual object Value { get; set; }
+        public virtual object? Value { get; set; }
         public virtual SQLiteBindOptions Options { get; set; }
     }
 }

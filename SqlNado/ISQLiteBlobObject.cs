@@ -2,6 +2,6 @@
 {
     public interface ISQLiteBlobObject
     {
-        bool TryGetData(out byte[] data);
+        bool TryGetData(out byte[]? data);
     }
 }

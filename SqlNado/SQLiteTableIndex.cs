@@ -12,6 +12,7 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(table));
 
             Table = table;
+            Name = string.Empty;
         }
 
         public SQLiteTable Table { get; }
@@ -26,7 +27,7 @@ namespace SqlNado
         public bool IsPartial { get; internal set; }
 
         public string Name { get; internal set; }
-        public string Origin { get; internal set; }
+        public string? Origin { get; internal set; }
 
         public IEnumerable<SQLiteColumn> Columns
         {

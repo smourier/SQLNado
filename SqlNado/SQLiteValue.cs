@@ -10,7 +10,7 @@ namespace SqlNado
         internal SQLiteValue(IntPtr handle)
         {
             // These routines must be called from the same thread as the SQL function that supplied the sqlite3_value* parameters.
-            Type = SQLiteDatabase._sqlite3_value_type(handle);
+            Type = SQLiteDatabase.Native.sqlite3_value_type(handle);
             IntPtr ptr;
             switch (Type)
             {
@@ -18,20 +18,20 @@ namespace SqlNado
                     break;
 
                 case SQLiteColumnType.INTEGER:
-                    Int64Value = SQLiteDatabase._sqlite3_value_int64(handle);
-                    Int32Value = SQLiteDatabase._sqlite3_value_int(handle);
+                    Int64Value = SQLiteDatabase.Native.sqlite3_value_int64(handle);
+                    Int32Value = SQLiteDatabase.Native.sqlite3_value_int(handle);
                     break;
 
                 case SQLiteColumnType.REAL:
-                    DoubleValue = SQLiteDatabase._sqlite3_value_double(handle);
+                    DoubleValue = SQLiteDatabase.Native.sqlite3_value_double(handle);
                     break;
 
                 case SQLiteColumnType.BLOB:
-                    Size = SQLiteDatabase._sqlite3_value_bytes(handle);
+                    Size = SQLiteDatabase.Native.sqlite3_value_bytes(handle);
                     if (Size >= 0)
                     {
                         BlobValue = new byte[Size];
-                        ptr = SQLiteDatabase._sqlite3_value_blob(handle);
+                        ptr = SQLiteDatabase.Native.sqlite3_value_blob(handle);
                         if (ptr != IntPtr.Zero)
                         {
                             Marshal.Copy(ptr, BlobValue, 0, BlobValue.Length);
@@ -40,8 +40,8 @@ namespace SqlNado
                     break;
 
                 default:
-                    Size = SQLiteDatabase._sqlite3_value_bytes16(handle);
-                    ptr = SQLiteDatabase._sqlite3_value_text16(handle);
+                    Size = SQLiteDatabase.Native.sqlite3_value_bytes16(handle);
+                    ptr = SQLiteDatabase.Native.sqlite3_value_text16(handle);
                     if (ptr != IntPtr.Zero)
                     {
                         StringValue = Marshal.PtrToStringUni(ptr, Size / 2);
@@ -56,10 +56,10 @@ namespace SqlNado
         public SQLiteColumnType Type { get; }
         public int Size { get; }
         public int SizeOfText { get; }
-        public string StringValue { get; }
-        public byte[] BlobValue { get; }
+        public string? StringValue { get; }
+        public byte[]? BlobValue { get; }
 
-        public override string ToString()
+        public override string? ToString()
         {
             switch (Type)
             {

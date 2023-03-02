@@ -25,21 +25,21 @@ namespace SqlNado
         public int Ordinal { get; internal set; }
 
         [SQLiteColumn(Name = "table")]
-        public string ReferencedTable { get; internal set; }
+        public string? ReferencedTable { get; internal set; }
 
         [SQLiteColumn(Name = "from")]
-        public string From { get; internal set; }
+        public string? From { get; internal set; }
 
         [SQLiteColumn(Name = "to")]
-        public string To { get; internal set; }
+        public string? To { get; internal set; }
 
         [SQLiteColumn(Name = "on_update")]
-        public string OnUpdate { get; internal set; }
+        public string? OnUpdate { get; internal set; }
 
         [SQLiteColumn(Name = "on_delete")]
-        public string OnDelete { get; internal set; }
+        public string? OnDelete { get; internal set; }
 
-        public string Match { get; internal set; }
+        public string? Match { get; internal set; }
 
         public int CompareTo(SQLiteForeignKey other) => Ordinal.CompareTo(other.Ordinal);
 

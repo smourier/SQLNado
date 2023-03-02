@@ -9,7 +9,7 @@ namespace SqlNado
 {
     public class SQLiteObjectTableBuilder
     {
-        public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions options = null)
+        public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions? options = null)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -24,14 +24,14 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public Type Type { get; }
-        public SQLiteBuildTableOptions Options { get; }
+        public SQLiteBuildTableOptions? Options { get; }
 
         protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
         protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
         protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name, Options);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
-            Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
+            Action<SQLiteLoadOptions, object?, object?>? setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
 
         public virtual SQLiteObjectTable Build()
         {
@@ -41,6 +41,8 @@ namespace SqlNado
             {
                 name = typeAtt.Name;
             }
+            if (name == null)
+                throw new InvalidOperationException();
 
             var table = CreateObjectTable(name);
             if (table == null)
@@ -93,8 +95,8 @@ namespace SqlNado
                     ((List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>)atts).Add(new Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>(attribute, idx));
                 }
 
-                var column = CreateObjectColumn(table, attribute.Name, attribute.DataType, attribute.ClrType,
-                    attribute.GetValueExpression.Compile(),
+                var column = CreateObjectColumn(table, attribute.Name!, attribute.DataType!, attribute.ClrType!,
+                    attribute.GetValueExpression!.Compile(),
                     attribute.SetValueExpression?.Compile());
                 if (column == null)
                     throw new InvalidOperationException();
@@ -139,7 +141,7 @@ namespace SqlNado
                 body = Expression.Empty();
             }
 
-            var lambda = Expression.Lambda<Action<SQLiteStatement, SQLiteLoadOptions, object>>(body,
+            var lambda = Expression.Lambda<Action<SQLiteStatement, SQLiteLoadOptions, object?>>(body,
                 statementParameter,
                 optionsParameter,
                 instanceParameter);
@@ -171,9 +173,12 @@ namespace SqlNado
 
                 var columns = new List<SQLiteIndexedColumn>();
                 var unique = false;
-                string schemaName = null;
+                string? schemaName = null;
                 foreach (var kv in list.OrderBy(l => l.Item2.Order))
                 {
+                    if (kv.Item1.Name == null)
+                        throw new InvalidOperationException();
+
                     var col = CreateIndexedColumn(kv.Item1.Name);
                     if (col == null)
                         throw new InvalidOperationException();
@@ -207,7 +212,7 @@ namespace SqlNado
 
         protected virtual IEnumerable<SQLiteColumnAttribute> EnumerateColumnAttributes()
         {
-            foreach (PropertyInfo property in Type.GetProperties())
+            foreach (var property in Type.GetProperties())
             {
                 if (property.GetIndexParameters().Length > 0)
                     continue;
@@ -294,7 +299,7 @@ namespace SqlNado
             return nameof(SQLiteColumnType.TEXT);
         }
 
-        internal static bool IsComputedDefaultValue(string value) =>
+        internal static bool IsComputedDefaultValue(string? value) =>
             value.EqualsIgnoreCase("CURRENT_TIME") ||
             value.EqualsIgnoreCase("CURRENT_DATE") ||
             value.EqualsIgnoreCase("CURRENT_TIMESTAMP");
@@ -311,7 +316,7 @@ namespace SqlNado
             return attribute;
         }
 
-        protected virtual SQLiteColumnAttribute GetColumnAttribute(PropertyInfo property)
+        protected virtual SQLiteColumnAttribute? GetColumnAttribute(PropertyInfo property)
         {
             if (property == null)
                 throw new ArgumentNullException(nameof(property));
@@ -453,7 +458,7 @@ namespace SqlNado
 
                 expressions.Add(setValue);
                 var body = Expression.Block(variables, expressions);
-                var lambda = Expression.Lambda<Action<SQLiteLoadOptions, object, object>>(body, optionsParameter, instanceParameter, valueParameter);
+                var lambda = Expression.Lambda<Action<SQLiteLoadOptions, object?, object?>>(body, optionsParameter, instanceParameter, valueParameter);
                 att.SetValueExpression = lambda;
             }
 

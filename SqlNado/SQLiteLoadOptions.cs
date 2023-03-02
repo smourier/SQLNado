@@ -23,10 +23,10 @@ namespace SqlNado
         public virtual int Offset { get; set; }
         public virtual bool RemoveDuplicates { get; set; }
         public virtual bool TestTableExists { get; set; }
-        public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
-        public virtual Func<SQLiteError, SQLiteOnErrorAction> ErrorHandler { get; set; }
+        public virtual Func<Type, SQLiteStatement?, SQLiteLoadOptions?, object?>? GetInstanceFunc { get; set; }
+        public virtual Func<SQLiteError, SQLiteOnErrorAction>? ErrorHandler { get; set; }
 
-        public virtual bool TryChangeType(object input, Type conversionType, out object value) => Database.TryChangeType(input, conversionType, out value);
+        public virtual bool TryChangeType(object? input, Type conversionType, out object? value) => Database.TryChangeType(input, conversionType, out value);
 
         public override string ToString()
         {

@@ -5,7 +5,7 @@ namespace SqlNado.Utilities
 {
     public class DictionaryObjectPropertyChangingEventArgs : PropertyChangingEventArgs
     {
-        public DictionaryObjectPropertyChangingEventArgs(string propertyName, DictionaryObjectProperty existingProperty, DictionaryObjectProperty newProperty)
+        public DictionaryObjectPropertyChangingEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, DictionaryObjectProperty newProperty)
             : base(propertyName)
         {
             if (propertyName == null)
@@ -20,7 +20,7 @@ namespace SqlNado.Utilities
             NewProperty = newProperty;
         }
 
-        public DictionaryObjectProperty ExistingProperty { get; }
+        public DictionaryObjectProperty? ExistingProperty { get; }
         public DictionaryObjectProperty NewProperty { get; }
         public bool Cancel { get; set; }
     }

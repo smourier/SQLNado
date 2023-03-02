@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace SqlNado.Utilities
 {
-    public static class Extensions
+    public static class SQLiteExtensions
     {
         public const int DefaultWrapSharingViolationsRetryCount = 10;
         public const int DefaultWrapSharingViolationsWaitTime = 100;
@@ -48,12 +48,12 @@ namespace SqlNado.Utilities
 
         public static void WrapSharingViolations(Action action) => WrapSharingViolations(action, DefaultWrapSharingViolationsRetryCount, DefaultWrapSharingViolationsWaitTime);
         public static void WrapSharingViolations(Action action, int maxRetryCount, int waitTime) => WrapSharingViolations(action, null, maxRetryCount, waitTime);
-        public static void WrapSharingViolations(Action action, WrapSharingViolationsExceptionsCallback exceptionsCallback, int maxRetryCount, int waitTime)
+        public static void WrapSharingViolations(Action action, WrapSharingViolationsExceptionsCallback? exceptionsCallback, int maxRetryCount, int waitTime)
         {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
 
-            for (int i = 0; i < maxRetryCount; i++)
+            for (var i = 0; i < maxRetryCount; i++)
             {
                 try
                 {
@@ -64,7 +64,7 @@ namespace SqlNado.Utilities
                 {
                     if (IsSharingViolation(ioe) && i < (maxRetryCount - 1))
                     {
-                        bool wait = true;
+                        var wait = true;
                         if (exceptionsCallback != null)
                         {
                             wait = exceptionsCallback(ioe, i, maxRetryCount, waitTime);

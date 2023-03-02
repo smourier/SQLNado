@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace SqlNado.Utilities
 {
@@ -19,7 +18,7 @@ namespace SqlNado.Utilities
 
         public bool AddThreadId { get; set; }
 
-        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null)
+        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string? methodName = null)
         {
             switch (level)
             {
@@ -39,7 +38,7 @@ namespace SqlNado.Utilities
                     return;
             }
 
-            string tid = AddThreadId ? "[" + Environment.CurrentManagedThreadId + "]:" : null;
+            var tid = AddThreadId ? "[" + Environment.CurrentManagedThreadId + "]:" : null;
 
             if (!string.IsNullOrWhiteSpace(methodName))
             {

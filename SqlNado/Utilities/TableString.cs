@@ -3,7 +3,7 @@ using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -31,7 +31,7 @@ namespace SqlNado.Utilities
         private int _defaultCellMaxLength;
         private char _defaultNewLineReplacement;
         private char _defaultNonPrintableReplacement;
-        private string _defaultHyphens;
+        private string? _defaultHyphens;
         private ConsoleColor? _defaultHeaderForegroundColor;
         private ConsoleColor? _defaultHeaderBackgroundColor;
         private ConsoleColor? _defaultForegroundColor;
@@ -90,19 +90,19 @@ namespace SqlNado.Utilities
         public virtual char MiddleRightCharacter { get; set; }
         public virtual char VerticalCharacter { get; set; }
         public virtual char HorizontalCharacter { get; set; }
-        public virtual TableStringPadding CellPadding { get; set; }
+        public virtual TableStringPadding? CellPadding { get; set; }
         public virtual bool CanReduceCellPadding { get; set; }
         public virtual bool CellWrap { get; set; }
-        public virtual Func<char, char> PrintCharFunc { get; set; }
+        public virtual Func<char, char>? PrintCharFunc { get; set; }
 
         // default column settings
         public TableStringAlignment DefaultCellAlignment { get; set; }
         public TableStringAlignment DefaultHeaderCellAlignment { get; set; }
         public virtual char DefaultNewLineReplacement { get => _defaultNewLineReplacement; set => _defaultNewLineReplacement = value; }
         public virtual char DefaultNonPrintableReplacement { get => _defaultNonPrintableReplacement; set => _defaultNonPrintableReplacement = ToPrintable(value); }
-        public virtual string DefaultHyphens { get => _defaultHyphens; set => _defaultHyphens = value ?? string.Empty; }
+        public virtual string? DefaultHyphens { get => _defaultHyphens; set => _defaultHyphens = value ?? string.Empty; }
         public virtual int DefaultCellMaxLength { get => _defaultCellMaxLength; set => _defaultCellMaxLength = Math.Max(value, 1); }
-        public virtual IFormatProvider DefaultFormatProvider { get; set; }
+        public virtual IFormatProvider? DefaultFormatProvider { get; set; }
         public virtual ConsoleColor? DefaultHeaderForegroundColor { get => _defaultHeaderForegroundColor ?? GlobalHeaderForegroundColor; set => _defaultHeaderForegroundColor = value; }
         public virtual ConsoleColor? DefaultHeaderBackgroundColor { get => _defaultHeaderBackgroundColor ?? GlobalHeaderBackgroundColor; set => _defaultHeaderBackgroundColor = value; }
         public virtual ConsoleColor? DefaultForegroundColor { get => _defaultForegroundColor ?? GlobalForegroundColor; set => _defaultForegroundColor = value; }
@@ -297,7 +297,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public virtual string Write(IEnumerable enumerable)
+        public virtual string Write(IEnumerable? enumerable)
         {
             using (var sw = new StringWriter())
             {
@@ -306,7 +306,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public virtual void Write(TextWriter writer, IEnumerable enumerable)
+        public virtual void Write(TextWriter writer, IEnumerable? enumerable)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
@@ -317,8 +317,8 @@ namespace SqlNado.Utilities
             if (enumerable == null)
                 return;
 
-            bool consoleMode = IsInConsoleMode(writer);
-            bool useConsoleWriter = MaximumWidth > 0 && consoleMode && ConsoleWindowWidth == MaximumWidth;
+            var consoleMode = IsInConsoleMode(writer);
+            var useConsoleWriter = MaximumWidth > 0 && consoleMode && ConsoleWindowWidth == MaximumWidth;
             var cw = useConsoleWriter ? new ConsoleModeTextWriter(writer, MaximumWidth) : writer;
 
             // switch to indented writer if needed
@@ -390,8 +390,8 @@ namespace SqlNado.Utilities
                 }
             }
 
-            string leftPadding = CellPadding != null ? new string(' ', CellPadding.Left) : null;
-            string rightPadding = CellPadding != null ? new string(' ', CellPadding.Right) : null;
+            var leftPadding = CellPadding != null ? new string(' ', CellPadding.Left) : null;
+            var rightPadding = CellPadding != null ? new string(' ', CellPadding.Right) : null;
 
             wr.Write(VerticalCharacter);
             for (var i = 0; i < columnsCount; i++)
@@ -447,13 +447,13 @@ namespace SqlNado.Utilities
                         if (height == 0)
                         {
                             cell.ComputeTextLines();
-                            if (cell.TextLines.Length > cellsMaxHeight)
+                            if (cell.TextLines != null && cell.TextLines.Length > cellsMaxHeight)
                             {
                                 cellsMaxHeight = Math.Min(MaximumRowHeight, cell.TextLines.Length);
                             }
                         }
 
-                        if (height < cell.TextLines.Length)
+                        if (cell.TextLines != null && height < cell.TextLines.Length)
                         {
                             cell.WriteTextLine(wr, height);
                         }
@@ -502,7 +502,7 @@ namespace SqlNado.Utilities
 
             header.Clear();
             rows.Clear();
-            int[] desiredPaddedColumnWidths = null; // with h padding
+            int[]? desiredPaddedColumnWidths = null; // with h padding
             var hp = CellPadding != null ? CellPadding.Horizontal : 0;
             foreach (var row in enumerable)
             {
@@ -591,7 +591,7 @@ namespace SqlNado.Utilities
                 {
                     maxWidth--;
                 }
-                
+
                 var desiredWidth = desiredPaddedColumnWidths.Sum();
                 if (desiredWidth > maxWidth)
                 {
@@ -684,11 +684,11 @@ namespace SqlNado.Utilities
             return desiredPaddedColumnWidths.Length;
         }
 
-        protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object> getValueFunc) => new TableStringColumn(this, name, getValueFunc);
+        protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object?> getValueFunc) => new TableStringColumn(this, name, getValueFunc);
         public virtual bool IsInConsoleMode(TextWriter writer) => IsConsoleValid && (writer == Console.Out || writer is ConsoleModeTextWriter);
 
-        public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, string text) => WriteWithColor(writer, foreground, Console.BackgroundColor, text);
-        public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, ConsoleColor background, string text)
+        public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, string? text) => WriteWithColor(writer, foreground, Console.BackgroundColor, text);
+        public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, ConsoleColor background, string? text)
         {
             var fcolor = Console.ForegroundColor;
             var bcolor = Console.BackgroundColor;
@@ -726,7 +726,7 @@ namespace SqlNado.Utilities
             if (first == null)
                 throw new ArgumentNullException(nameof(first));
 
-            bool scanObject = ScanProperties(first);
+            var scanObject = ScanProperties(first);
             if (scanObject)
             {
                 if (first is Array array)
@@ -738,9 +738,9 @@ namespace SqlNado.Utilities
                     return;
                 }
 
-                if (first is DataRow row)
+                if (first is System.Data.DataRow row)
                 {
-                    foreach (DataColumn column in row.Table.Columns)
+                    foreach (System.Data.DataColumn column in row.Table.Columns)
                     {
                         AddColumn(new DataColumnTableStringColumn(this, column));
                     }
@@ -759,13 +759,13 @@ namespace SqlNado.Utilities
                     return;
                 }
 
-                if (IsKeyValuePairEnumerable(first.GetType(), out Type keyType, out Type valueType, out Type enumerableType))
+                if (IsKeyValuePairEnumerable(first.GetType(), out var keyType, out var valueType, out var enumerableType))
                 {
                     var enumerable = (IEnumerable)Cast(enumerableType, first);
                     foreach (var kvp in enumerable)
                     {
                         var pi = kvp.GetType().GetProperty("Key");
-                        string key = pi.GetValue(kvp).ToString();
+                        var key = pi.GetValue(kvp).ToString();
                         AddColumn(new KeyValuePairTableStringColumn(this, keyType, valueType, key));
                     }
                     return;
@@ -805,22 +805,22 @@ namespace SqlNado.Utilities
             return func.DynamicInvoke(value);
         }
 
-        private static bool IsKeyValuePairEnumerable(Type inputType, out Type keyType, out Type valueType, out Type enumerableType)
+        private static bool IsKeyValuePairEnumerable(Type inputType, [NotNullWhen(true)] out Type? keyType, [NotNullWhen(true)] out Type? valueType, [NotNullWhen(true)] out Type? enumerableType)
         {
             keyType = null;
             valueType = null;
             enumerableType = null;
-            foreach (Type type in inputType.GetInterfaces().Where(i => i.IsGenericType && typeof(IEnumerable<>).IsAssignableFrom(i.GetGenericTypeDefinition())))
+            foreach (var type in inputType.GetInterfaces().Where(i => i.IsGenericType && typeof(IEnumerable<>).IsAssignableFrom(i.GetGenericTypeDefinition())))
             {
-                Type[] args = type.GetGenericArguments();
+                var args = type.GetGenericArguments();
                 if (args.Length != 1)
                     continue;
 
-                Type kvp = args[0];
+                var kvp = args[0];
                 if (!kvp.IsGenericType || !typeof(KeyValuePair<,>).IsAssignableFrom(kvp.GetGenericTypeDefinition()))
                     continue;
 
-                Type[] kvpArgs = kvp.GetGenericArguments();
+                var kvpArgs = kvp.GetGenericArguments();
                 if (kvpArgs.Length == 2)
                 {
                     keyType = kvpArgs[0];
@@ -832,7 +832,7 @@ namespace SqlNado.Utilities
             return false;
         }
 
-        protected virtual TableStringCell CreateCell(TableStringColumn column, object value)
+        protected virtual TableStringCell CreateCell(TableStringColumn column, object? value)
         {
             if (value != null && value.Equals(column))
                 return new HeaderTableStringCell(column);
@@ -915,10 +915,10 @@ namespace SqlNado.Utilities
     public class TableStringColumn
     {
         private int? _maxLength;
-        private IFormatProvider _formatProvider;
+        private IFormatProvider? _formatProvider;
         private TableStringAlignment? _aligment;
         private TableStringAlignment? _headerAligment;
-        private string _hyphens;
+        private string? _hyphens;
         private int _width = -1;
         private int _widthWithoutPadding = -1;
         private bool? _padded;
@@ -929,7 +929,7 @@ namespace SqlNado.Utilities
         private ConsoleColor? _foregroundColor;
         private ConsoleColor? _backgroundColor;
 
-        public TableStringColumn(TableString table, string name, Func<TableStringColumn, object, object> getValueFunc)
+        public TableStringColumn(TableString table, string name, Func<TableStringColumn, object, object?> getValueFunc)
         {
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
@@ -948,7 +948,7 @@ namespace SqlNado.Utilities
 
         public TableString Table { get; }
         public string Name { get; }
-        public Func<TableStringColumn, object, object> GetValueFunc { get; }
+        public Func<TableStringColumn, object, object?> GetValueFunc { get; }
         public int Index { get; internal set; }
         public int DesiredPaddedWidth { get; internal set; }
         public int WidthWithPadding { get => _width; internal set => _width = Math.Min(MaxLength, value); }
@@ -956,10 +956,10 @@ namespace SqlNado.Utilities
         public bool IsHorizontallyPadded { get => _padded ?? true; internal set => _padded = value; }
 
         public virtual int MaxLength { get => _maxLength ?? Table.DefaultCellMaxLength; set => _maxLength = value; }
-        public virtual string Hyphens { get => _hyphens ?? Table.DefaultHyphens; set => _hyphens = value; }
+        public virtual string? Hyphens { get => _hyphens ?? Table.DefaultHyphens; set => _hyphens = value; }
         public virtual char NewLineReplacement { get => _newLineReplacement ?? Table.DefaultNewLineReplacement; set => _newLineReplacement = value; }
         public virtual char NonPrintableReplacement { get => _nonPrintableReplacement ?? Table.DefaultNonPrintableReplacement; set => _nonPrintableReplacement = Table.ToPrintable(value); }
-        public virtual IFormatProvider FormatProvider { get => _formatProvider ?? Table.DefaultFormatProvider; set => _formatProvider = value; }
+        public virtual IFormatProvider? FormatProvider { get => _formatProvider ?? Table.DefaultFormatProvider; set => _formatProvider = value; }
         public virtual TableStringAlignment Alignment { get => _aligment ?? Table.DefaultCellAlignment; set => _aligment = value; }
         public virtual TableStringAlignment HeaderAlignment { get => _headerAligment ?? Table.DefaultHeaderCellAlignment; set => _headerAligment = value; }
         public virtual ConsoleColor? HeaderForegroundColor { get => _headerForegroundColor ?? Table.DefaultHeaderForegroundColor; set => _headerForegroundColor = value; }
@@ -972,9 +972,9 @@ namespace SqlNado.Utilities
 
     public class TableStringCell
     {
-        private string[] _split;
+        private string[]? _split;
 
-        public TableStringCell(TableStringColumn column, object value)
+        public TableStringCell(TableStringColumn column, object? value)
         {
             if (column == null)
                 throw new ArgumentNullException(nameof(column));
@@ -984,10 +984,10 @@ namespace SqlNado.Utilities
         }
 
         public TableStringColumn Column { get; }
-        public object Value { get; }
+        public object? Value { get; }
         public virtual TableStringAlignment Alignment => Column.Alignment;
-        public virtual string Text { get; protected set; }
-        public virtual string[] TextLines { get; protected set; }
+        public virtual string? Text { get; protected set; }
+        public virtual string?[]? TextLines { get; protected set; }
 
         public virtual int DesiredColumnWith
         {
@@ -999,7 +999,7 @@ namespace SqlNado.Utilities
                 var pos = Text.IndexOfAny(new[] { '\r', '\n' });
                 if (pos >= 0)
                 {
-                    _split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    _split ??= Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                     return _split.Max(s => s.Length);
                 }
 
@@ -1010,7 +1010,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public override string ToString() => Text;
+        public override string? ToString() => Text;
 
         public virtual void ComputeText()
         {
@@ -1022,7 +1022,7 @@ namespace SqlNado.Utilities
         }
 
         // this early escaping can change text length
-        public virtual string EscapeText(string text)
+        public virtual string? EscapeText(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return text;
@@ -1041,7 +1041,7 @@ namespace SqlNado.Utilities
         }
 
         // this *must not* change text length, it's too late
-        public virtual string EscapeTextLine(string text)
+        public virtual string? EscapeTextLine(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return text;
@@ -1059,6 +1059,9 @@ namespace SqlNado.Utilities
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
 
+            if (TextLines == null)
+                throw new InvalidOperationException();
+
             if (Column.Table.IsInConsoleMode(writer) && (Column.ForegroundColor.HasValue || Column.BackgroundColor.HasValue))
             {
                 Column.Table.WriteWithColor(writer, Column.ForegroundColor ?? Console.ForegroundColor, Column.BackgroundColor ?? Console.BackgroundColor, TextLines[index]);
@@ -1075,16 +1078,16 @@ namespace SqlNado.Utilities
 
             if (Text == null)
             {
-                TextLines = new string[] { null };
+                TextLines = new string?[] { null };
             }
             else if (_split == null && Text.Length <= Column.WidthWithoutPadding)
             {
-                TextLines = new string[] { Align(EscapeTextLine(Text)) };
+                TextLines = new string?[] { Align(EscapeTextLine(Text)) };
             }
             else
             {
                 var split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                var lines = new List<string>();
+                var lines = new List<string?>();
                 var segmentWidth = Column.WidthWithoutPadding - 1; // keep 1 char to display NewLineReplacement
                 for (var i = 0; i < split.Length; i++)
                 {
@@ -1158,9 +1161,9 @@ namespace SqlNado.Utilities
             }
         }
 
-        protected virtual string Align(string text)
+        protected virtual string? Align(string? text)
         {
-            string str;
+            string? str;
             switch (Alignment)
             {
                 case TableStringAlignment.Left:
@@ -1204,6 +1207,9 @@ namespace SqlNado.Utilities
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
 
+            if (TextLines == null)
+                throw new InvalidOperationException();
+
             if (Column.Table.IsInConsoleMode(writer) && (Column.HeaderForegroundColor.HasValue || Column.HeaderBackgroundColor.HasValue))
             {
                 Column.Table.WriteWithColor(writer, Column.HeaderForegroundColor ?? Console.ForegroundColor, Column.HeaderBackgroundColor ?? Console.BackgroundColor, TextLines[index]);
@@ -1221,12 +1227,18 @@ namespace SqlNado.Utilities
         {
         }
 
-        public new byte[] Value => (byte[])base.Value;
+        public new byte[]? Value => (byte[]?)base.Value;
 
         public override void ComputeText()
         {
             var bytes = Value;
             var max = Column.Table.MaximumByteArrayDisplayCount;
+
+            if (bytes == null)
+            {
+                Text = string.Empty;
+                return;
+            }
 
             if (bytes.Length == 0)
             {
@@ -1246,7 +1258,7 @@ namespace SqlNado.Utilities
 
     public class ObjectTableString : TableString
     {
-        public ObjectTableString(object obj)
+        public ObjectTableString(object? obj)
         {
             // we support obj = null
             Object = obj;
@@ -1257,7 +1269,7 @@ namespace SqlNado.Utilities
         public bool AddValueTypeColumn { get; set; }
         public bool AddArrayRow { get; set; }
         public bool ExpandEnumerable { get; set; }
-        public object Object { get; }
+        public object? Object { get; }
 
         internal static object GetValue(PropertyInfo property, object obj, bool throwOnError)
         {
@@ -1293,11 +1305,11 @@ namespace SqlNado.Utilities
             return string.Join(Environment.NewLine, enumerable.Cast<object>());
         }
 
-        protected virtual IEnumerable<Tuple<object, object>> Values
+        protected virtual IEnumerable<Tuple<object?, object?>> Values
         {
             get
             {
-                var list = new List<Tuple<object, object>>();
+                var list = new List<Tuple<object?, object?>>();
                 var i = 0;
                 var array = Object as Array;
                 if (Object != null && !(Object is string))
@@ -1322,7 +1334,7 @@ namespace SqlNado.Utilities
                             continue;
 
                         object value = GetValue(property, Object, ThrowOnPropertyGetError);
-                        list.Add(new Tuple<object, object>(property.Name, value));
+                        list.Add(new Tuple<object?, object?>(property.Name, value));
                         i++;
                     }
 
@@ -1333,31 +1345,31 @@ namespace SqlNado.Utilities
                 // no columns? let's return the object itself (we support null)
                 if (i == 0)
                 {
-                    list.Add(new Tuple<object, object>(Object?.GetType(), Object));
+                    list.Add(new Tuple<object?, object?>(Object?.GetType(), Object));
                 }
                 else if (AddArrayRow && array != null)
                 {
-                    list.Add(new Tuple<object, object>("<values>", string.Join(Environment.NewLine, array.Cast<object>())));
+                    list.Add(new Tuple<object?, object?>("<values>", string.Join(Environment.NewLine, array.Cast<object>())));
                 }
                 return list;
             }
         }
 
-        protected class ComparableComparer : IComparer<Tuple<object, object>>
+        protected class ComparableComparer : IComparer<Tuple<object?, object?>>
         {
-            public int Compare(Tuple<object, object> x, Tuple<object, object> y) => ((IComparable)x.Item1).CompareTo((IComparable)y.Item1);
+            public int Compare(Tuple<object?, object?> x, Tuple<object?, object?> y) => (((IComparable?)x?.Item1)?.CompareTo((IComparable?)y?.Item1)).GetValueOrDefault();
         }
 
         protected override void AddColumns(object first)
         {
-            string firstColumnName = "Name";
-            object item1 = ((Tuple<object, object>)first).Item1;
+            var firstColumnName = "Name";
+            var item1 = ((Tuple<object?, object?>)first).Item1;
             if (item1 == null || item1 is Type)
             {
                 firstColumnName = "Type";
             }
 
-            var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object, object>)r).Item1 ?? "<null>");
+            var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object?, object?>)r).Item1 ?? "<null>");
             if (nameColumn == null)
                 throw new InvalidOperationException();
 
@@ -1365,7 +1377,7 @@ namespace SqlNado.Utilities
             nameColumn.Alignment = nameColumn.HeaderAlignment;
             AddColumn(nameColumn);
 
-            var valueColumn = CreateColumn("Value", (c, r) => ((Tuple<object, object>)r).Item2);
+            var valueColumn = CreateColumn("Value", (c, r) => ((Tuple<object?, object?>)r).Item2);
             if (valueColumn == null)
                 throw new InvalidOperationException();
 
@@ -1375,7 +1387,7 @@ namespace SqlNado.Utilities
             {
                 var typeColumn = CreateColumn("Type", (c, r) =>
                 {
-                    object value = ((Tuple<object, object>)r).Item2;
+                    var value = ((Tuple<object?, object?>)r).Item2;
                     if (value == null)
                         return null;
 
@@ -1407,11 +1419,11 @@ namespace SqlNado.Utilities
         {
         }
 
-        protected override IEnumerable<Tuple<object, object>> Values
+        protected override IEnumerable<Tuple<object?, object?>> Values
         {
             get
             {
-                var list = new List<Tuple<object, object>>();
+                var list = new List<Tuple<object?, object?>>();
                 var i = 0;
                 if (Object != null && !(Object is string))
                 {
@@ -1422,7 +1434,7 @@ namespace SqlNado.Utilities
                             continue;
 
                         var value = GetValue(field, Object, ThrowOnPropertyGetError);
-                        list.Add(new Tuple<object, object>(field.Name, value));
+                        list.Add(new Tuple<object?, object?>(field.Name, value));
                         i++;
                     }
 
@@ -1431,7 +1443,7 @@ namespace SqlNado.Utilities
 
                 if (i == 0)
                 {
-                    list.Add(new Tuple<object, object>(Object?.GetType(), Object));
+                    list.Add(new Tuple<object?, object?>(Object?.GetType(), Object));
                 }
                 return list;
             }
@@ -1483,8 +1495,8 @@ namespace SqlNado.Utilities
         public KeyValuePairTableStringColumn(TableString table, Type keyType, Type valueType, string name)
             : base(table, name, (c, r) =>
             {
-                var objs = new object[] { name, null };
-                bool b = (bool)((KeyValuePairTableStringColumn)c).Method.Invoke(r, objs);
+                var objs = new object?[] { name, null };
+                var b = (bool)((KeyValuePairTableStringColumn)c).Method.Invoke(r, objs);
                 return b ? objs[1] : null;
             })
         {
@@ -1505,26 +1517,26 @@ namespace SqlNado.Utilities
 
     public class DataColumnTableStringColumn : TableStringColumn
     {
-        public DataColumnTableStringColumn(TableString table, DataColumn dataColumn)
-            : base(table, dataColumn?.ColumnName, (c, r) => ((DataRow)r)[((DataColumnTableStringColumn)c).DataColumn])
+        public DataColumnTableStringColumn(TableString table, System.Data.DataColumn dataColumn)
+            : base(table, dataColumn?.ColumnName!, (c, r) => ((System.Data.DataRow)r)[((DataColumnTableStringColumn)c).DataColumn])
         {
-            DataColumn = dataColumn;
+            DataColumn = dataColumn!;
         }
 
-        public DataColumn DataColumn { get; }
+        public System.Data.DataColumn DataColumn { get; }
     }
 
     public class PropertyDescriptorTableStringColumn : TableStringColumn
     {
         public PropertyDescriptorTableStringColumn(TableString table, PropertyDescriptor property)
-            : base(table, property?.Name, (c, r) => ((PropertyDescriptorTableStringColumn)c).GetValue(r))
+            : base(table, property?.Name!, (c, r) => ((PropertyDescriptorTableStringColumn)c).GetValue(r))
         {
-            Property = property;
+            Property = property!;
         }
 
         public PropertyDescriptor Property { get; }
 
-        private object GetValue(object component)
+        private object? GetValue(object component)
         {
             try
             {
@@ -1541,9 +1553,9 @@ namespace SqlNado.Utilities
     {
         // yes, performance could be inproved (delegates, etc.)
         public PropertyInfoTableStringColumn(TableString table, PropertyInfo property)
-            : base(table, property?.Name, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableStringColumn)c).Property, r, table.ThrowOnPropertyGetError))
+            : base(table, property?.Name!, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableStringColumn)c).Property, r, table.ThrowOnPropertyGetError))
         {
-            Property = property;
+            Property = property!;
         }
 
         public PropertyInfo Property { get; }
@@ -1551,10 +1563,10 @@ namespace SqlNado.Utilities
 
     public static class TableStringExtensions
     {
-        public static string ToTableString<T>(this IEnumerable<T> enumerable) => new TableString().Write(enumerable);
-        public static string ToTableString(this IEnumerable enumerable) => new TableString().Write(enumerable);
+        public static string ToTableString<T>(this IEnumerable<T>? enumerable) => new TableString().Write(enumerable);
+        public static string ToTableString(this IEnumerable? enumerable) => new TableString().Write(enumerable);
 
-        public static string ToTableString<T>(this IEnumerable<T> enumerable, int indent)
+        public static string ToTableString<T>(this IEnumerable<T>? enumerable, int indent)
         {
             var ts = new TableString
             {
@@ -1563,7 +1575,7 @@ namespace SqlNado.Utilities
             return ts.Write(enumerable);
         }
 
-        public static string ToTableString(this IEnumerable enumerable, int indent)
+        public static string ToTableString(this IEnumerable? enumerable, int indent)
         {
             var ts = new TableString
             {
@@ -1572,10 +1584,9 @@ namespace SqlNado.Utilities
             return ts.Write(enumerable);
         }
 
-        public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
-        public static void ToTableString(this IEnumerable enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
-
-        public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer, int indent)
+        public static void ToTableString<T>(this IEnumerable<T>? enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
+        public static void ToTableString(this IEnumerable? enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
+        public static void ToTableString<T>(this IEnumerable<T>? enumerable, TextWriter writer, int indent)
         {
             var ts = new TableString
             {
@@ -1593,9 +1604,9 @@ namespace SqlNado.Utilities
             ts.Write(writer, enumerable);
         }
 
-        public static string ToTableString(object obj, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject();
-        public static string ToTableString(object obj) => new ObjectTableString(obj).WriteObject();
-        public static void ToTableString(object obj, TextWriter writer, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject(writer);
-        public static void ToTableString(object obj, TextWriter writer) => new ObjectTableString(obj).WriteObject(writer);
+        public static string ToTableString(object? obj, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject();
+        public static string ToTableString(object? obj) => new ObjectTableString(obj).WriteObject();
+        public static void ToTableString(object? obj, TextWriter writer, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject(writer);
+        public static void ToTableString(object? obj, TextWriter writer) => new ObjectTableString(obj).WriteObject(writer);
     }
 }

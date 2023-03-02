@@ -42,10 +42,10 @@ namespace SqlNado
 
         public override string ToString() => TableName + ":" + ColumnName + ":" + RowId;
 
-        public virtual int Size => SQLiteDatabase._sqlite3_blob_bytes(CheckDisposed());
-        public virtual void MoveToNewRow(long rowId) => Database.CheckError(SQLiteDatabase._sqlite3_blob_reopen(CheckDisposed(), rowId));
-        public virtual void Read(byte[] buffer, int count, int blobOffset) => Database.CheckError(SQLiteDatabase._sqlite3_blob_read(CheckDisposed(), buffer, count, blobOffset));
-        public virtual void Write(byte[] buffer, int count, int blobOffset) => Database.CheckError(SQLiteDatabase._sqlite3_blob_write(CheckDisposed(), buffer, count, blobOffset));
+        public virtual int Size => SQLiteDatabase.Native.sqlite3_blob_bytes(CheckDisposed());
+        public virtual void MoveToNewRow(long rowId) => Database.CheckError(SQLiteDatabase.Native.sqlite3_blob_reopen(CheckDisposed(), rowId));
+        public virtual void Read(byte[] buffer, int count, int blobOffset) => Database.CheckError(SQLiteDatabase.Native.sqlite3_blob_read(CheckDisposed(), buffer, count, blobOffset));
+        public virtual void Write(byte[] buffer, int count, int blobOffset) => Database.CheckError(SQLiteDatabase.Native.sqlite3_blob_write(CheckDisposed(), buffer, count, blobOffset));
 
         // This is not recommended to use this, in general.
         // SQLiteBlob's design targets streams, not byte arrays. If you really want a byte array, then don't use this blob class type, just use byte[]
@@ -94,7 +94,7 @@ namespace SqlNado
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {
-                SQLiteDatabase._sqlite3_blob_close(handle);
+                SQLiteDatabase.Native.sqlite3_blob_close(handle);
             }
         }
 

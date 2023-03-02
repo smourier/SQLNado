@@ -20,7 +20,7 @@ namespace SqlNado.Utilities
         public SQLiteBaseObject Owner { get; }
         public string ColumnName { get; }
 
-        bool ISQLiteBlobObject.TryGetData(out byte[] data)
+        bool ISQLiteBlobObject.TryGetData(out byte[]? data)
         {
             data = null;
             return false;
@@ -70,7 +70,7 @@ namespace SqlNado.Utilities
                 throw new ArgumentNullException(nameof(inputStream));
 
             var db = ((ISQLiteObject)Owner).Database;
-            var table = db.GetObjectTable(Owner.GetType());
+            var table = db!.GetObjectTable(Owner.GetType());
             var col = table.GetColumn(ColumnName);
             if (col == null)
                 throw new SqlNadoException("0018: Cannot find column name '" + ColumnName + "' on table '" + table.Name + "'.'");
@@ -126,7 +126,7 @@ namespace SqlNado.Utilities
                 throw new ArgumentNullException(nameof(outputStream));
 
             var db = ((ISQLiteObject)Owner).Database;
-            var table = db.GetObjectTable(Owner.GetType());
+            var table = db!.GetObjectTable(Owner.GetType());
             var col = table.GetColumn(ColumnName);
             if (col == null)
                 throw new SqlNadoException("0021: Cannot find column name '" + ColumnName + "' on table '" + table.Name + "'.'");
