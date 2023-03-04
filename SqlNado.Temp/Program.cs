@@ -33,11 +33,9 @@ namespace SqlNado.Temp
         private static void Test(string[] args)
         {
             Console.WriteLine(IntPtr.Size);
-            //var w = new Platforms.SQLiteDynamicWindows("winsqlite3.dll");
-            //var w = new Platforms.SQLiteWindowsWinsqlite3();
-            //var w = new Platforms.SQLiteWindowsSqlite3x64();
-            //var w = new Platforms.SQLiteDynamicWindows();
-            //SQLiteDatabase.LoadNative(w);
+            //SQLiteDatabase.LoadNative(new Platforms.SQLiteWindowsDynamic("winsqlite3.dll", System.Runtime.InteropServices.CallingConvention.StdCall));
+            //SQLiteDatabase.LoadNative(new Platforms.SQLiteWindowsDynamic("sqlite3.x86.dll", System.Runtime.InteropServices.CallingConvention.Cdecl));
+            //SQLiteDatabase.LoadNative(new Platforms.SQLiteSqlite3());
             SafeMain(args);
         }
 

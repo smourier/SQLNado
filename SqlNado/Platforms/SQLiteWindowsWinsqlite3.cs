@@ -20,6 +20,7 @@ namespace SqlNado.Platforms
 
         public string? LibraryPath => _libraryPath.Value;
         public bool IsUsingWindowsRuntime => true;
+        public CallingConvention CallingConvention => CallingConvention.StdCall;
 
         public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr) => new SQLiteStdCallNativeTokenizer(ptr);
 

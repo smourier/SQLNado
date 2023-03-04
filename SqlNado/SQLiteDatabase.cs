@@ -375,23 +375,19 @@ namespace SqlNado
             tokenizer._module = GCHandle.Alloc(mt, GCHandleType.Pinned);
             _tokenizers.AddOrUpdate(tokenizer.Name, tokenizer, (k, old) => tokenizer);
 
-            Native.xCreate dcreate = (int c, string[]? args, out IntPtr p) =>
+            SQLiteErrorCode createFn(int c, string[]? args, out IntPtr p)
             {
                 p = Marshal.AllocCoTaskMem(IntPtr.Size);
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._create = GCHandle.Alloc(dcreate);
-            mt.xCreate = Marshal.GetFunctionPointerForDelegate(dcreate);
+            }
 
-            Native.xDestroy ddestroy = (p) =>
+            SQLiteErrorCode destroyFn(IntPtr pTokenizer)
             {
-                Marshal.FreeCoTaskMem(p);
+                Marshal.FreeCoTaskMem(pTokenizer);
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._destroy = GCHandle.Alloc(ddestroy);
-            mt.xDestroy = Marshal.GetFunctionPointerForDelegate(ddestroy);
+            }
 
-            Native.xOpen dopen = (IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor) =>
+            SQLiteErrorCode openFn(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor)
             {
                 if (nBytes < 0)
                 {
@@ -434,13 +430,11 @@ namespace SqlNado
                 Marshal.StructureToPtr(te, te.Address, false);
                 ppCursor = te.Address;
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._open = GCHandle.Alloc(dopen);
-            mt.xOpen = Marshal.GetFunctionPointerForDelegate(dopen);
+            }
 
-            Native.xClose dclose = (p) =>
+            SQLiteErrorCode closeFn(IntPtr pCursor)
             {
-                var te = Marshal.PtrToStructure<TokenEnumerator>(p);
+                var te = Marshal.PtrToStructure<TokenEnumerator>(pCursor);
                 TokenEnumerator._enumerators.TryRemove(te.Address, out var kv);
                 if (te.Token != IntPtr.Zero)
                 {
@@ -450,11 +444,9 @@ namespace SqlNado
                 Marshal.FreeCoTaskMem(te.Address);
                 te.Address = IntPtr.Zero;
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._close = GCHandle.Alloc(dclose);
-            mt.xClose = Marshal.GetFunctionPointerForDelegate(dclose);
+            }
 
-            Native.xNext dnext = (IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition) =>
+            SQLiteErrorCode nextFn(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition)
             {
                 ppToken = IntPtr.Zero;
                 pnBytes = 0;
@@ -489,13 +481,62 @@ namespace SqlNado
                 piEndOffset = token.EndOffset;
                 piPosition = token.Position;
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._next = GCHandle.Alloc(dnext);
-            mt.xNext = Marshal.GetFunctionPointerForDelegate(dnext);
+            }
 
-            Native.xLanguageid dlangid = (p, i) => SQLiteErrorCode.SQLITE_OK;
-            tokenizer._languageid = GCHandle.Alloc(dlangid);
-            mt.xLanguageid = Marshal.GetFunctionPointerForDelegate(dlangid);
+            SQLiteErrorCode languageidFn(IntPtr pCursor, int iLangid) => SQLiteErrorCode.SQLITE_OK;
+
+            if (Native.CallingConvention == CallingConvention.StdCall)
+            {
+                SQLiteStdCallNativeTokenizer.xCreate create = createFn;
+                tokenizer._create = GCHandle.Alloc(create);
+                mt.xCreate = Marshal.GetFunctionPointerForDelegate(create);
+
+                SQLiteStdCallNativeTokenizer.xDestroy destroy = destroyFn;
+                tokenizer._destroy = GCHandle.Alloc(destroy);
+                mt.xDestroy = Marshal.GetFunctionPointerForDelegate(destroy);
+
+                SQLiteStdCallNativeTokenizer.xOpen open = openFn;
+                tokenizer._open = GCHandle.Alloc(open);
+                mt.xOpen = Marshal.GetFunctionPointerForDelegate(open);
+
+                SQLiteStdCallNativeTokenizer.xClose close = closeFn;
+                tokenizer._close = GCHandle.Alloc(close);
+                mt.xClose = Marshal.GetFunctionPointerForDelegate(close);
+
+                SQLiteStdCallNativeTokenizer.xNext next = nextFn;
+                tokenizer._next = GCHandle.Alloc(next);
+                mt.xNext = Marshal.GetFunctionPointerForDelegate(next);
+
+                SQLiteStdCallNativeTokenizer.xLanguageid languageid = languageidFn;
+                tokenizer._languageid = GCHandle.Alloc(languageid);
+                mt.xLanguageid = Marshal.GetFunctionPointerForDelegate(languageid);
+            }
+            else
+            {
+                SQLiteCdeclNativeTokenizer.xCreate create = createFn;
+                tokenizer._create = GCHandle.Alloc(create);
+                mt.xCreate = Marshal.GetFunctionPointerForDelegate(create);
+
+                SQLiteCdeclNativeTokenizer.xDestroy destroy = destroyFn;
+                tokenizer._destroy = GCHandle.Alloc(destroy);
+                mt.xDestroy = Marshal.GetFunctionPointerForDelegate(destroy);
+
+                SQLiteCdeclNativeTokenizer.xOpen open = openFn;
+                tokenizer._open = GCHandle.Alloc(open);
+                mt.xOpen = Marshal.GetFunctionPointerForDelegate(open);
+
+                SQLiteCdeclNativeTokenizer.xClose close = closeFn;
+                tokenizer._close = GCHandle.Alloc(close);
+                mt.xClose = Marshal.GetFunctionPointerForDelegate(close);
+
+                SQLiteCdeclNativeTokenizer.xNext next = nextFn;
+                tokenizer._next = GCHandle.Alloc(next);
+                mt.xNext = Marshal.GetFunctionPointerForDelegate(next);
+
+                SQLiteCdeclNativeTokenizer.xLanguageid languageid = languageidFn;
+                tokenizer._languageid = GCHandle.Alloc(languageid);
+                mt.xLanguageid = Marshal.GetFunctionPointerForDelegate(languageid);
+            }
 
             // we need to copy struct's data again as structs are copied when pinned
             Marshal.StructureToPtr(mt, tokenizer._module.AddrOfPinnedObject(), false);

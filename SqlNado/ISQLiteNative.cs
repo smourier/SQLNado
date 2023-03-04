@@ -15,6 +15,7 @@ namespace SqlNado
     public interface ISQLiteNative
     {
         string? LibraryPath { get; }
+        CallingConvention CallingConvention { get; }
         void Load();
         ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr);
 
