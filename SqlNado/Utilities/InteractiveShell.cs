@@ -14,7 +14,7 @@ namespace SqlNado.Utilities
         public ISQLiteLogger? Logger { get; set; }
 
         protected virtual bool HandleLine(T database, string line) => false;
-        protected virtual T CreateDatabase(string filePath, SQLiteOpenOptions options) => (T)Activator.CreateInstance(typeof(T), new object[] { filePath, options });
+        protected virtual T CreateDatabase(string filePath, SQLiteOpenOptions options) => (T)Activator.CreateInstance(typeof(T), new object[] { filePath, options })!;
 
         protected virtual void Write(TraceLevel level, string message)
         {

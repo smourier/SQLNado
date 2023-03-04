@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2036
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33424.131
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado", "SqlNado\SqlNado.csproj", "{ED748985-55BB-4753-B0A6-EA7CAF31CD07}"
 EndProject
@@ -12,6 +12,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Tests", "SqlNado.Tests\SqlNado.Tests.csproj", "{48CADD57-A74C-45CA-B727-801CD00A9C5C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlNado.Converter", "SqlNado.Converter\SqlNado.Converter.csproj", "{BC168850-7857-4E42-ACFE-789C6E3D373C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlNado.TempCore", "SqlNado.TempCore\SqlNado.TempCore.csproj", "{CC472C2D-4201-4930-940C-2ED591C266F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{BC168850-7857-4E42-ACFE-789C6E3D373C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC168850-7857-4E42-ACFE-789C6E3D373C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC168850-7857-4E42-ACFE-789C6E3D373C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC472C2D-4201-4930-940C-2ED591C266F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC472C2D-4201-4930-940C-2ED591C266F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC472C2D-4201-4930-940C-2ED591C266F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC472C2D-4201-4930-940C-2ED591C266F0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

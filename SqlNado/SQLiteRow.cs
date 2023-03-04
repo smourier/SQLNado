@@ -29,14 +29,14 @@ namespace SqlNado
         public object?[] Values { get; }
         public int Count => Names.Length;
 
-        public object this[string name]
+        public object? this[string name]
         {
             get
             {
                 if (name == null)
                     throw new ArgumentNullException(nameof(name));
 
-                ((IDictionary<string, object>)this).TryGetValue(name, out object value);
+                ((IDictionary<string, object>)this).TryGetValue(name, out object? value);
                 return value;
             }
         }

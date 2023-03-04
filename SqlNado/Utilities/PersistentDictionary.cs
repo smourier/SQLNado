@@ -311,68 +311,69 @@ namespace SqlNado.Utilities
 
             if (!int.TryParse(typeName, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i))
             {
-                var type = Type.GetType(typeName, true);
+                var type = Type.GetType(typeName, true)!;
                 if (type.IsEnum)
                     return Conversions.ToEnum(input, type);
 
                 return Conversions.ChangeType(input, type, null, CultureInfo.InvariantCulture);
             }
 
+
             switch (i)
             {
                 case (int)TypeCode.Boolean:
-                    return bool.Parse(input);
+                    return input != null ? bool.Parse(input) : false;
 
                 case (int)TypeCode.Byte:
-                    return byte.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? byte.Parse(input, CultureInfo.InvariantCulture) : (byte)0;
 
                 case (int)TypeCode.Char:
-                    return char.Parse(input);
+                    return input != null ? char.Parse(input) : (char)0;
 
                 case (int)TypeCode.DateTime:
-                    return DateTime.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? DateTime.Parse(input, CultureInfo.InvariantCulture) : DateTime.MinValue;
 
                 case (int)TypeCode.Decimal:
-                    return decimal.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? decimal.Parse(input, CultureInfo.InvariantCulture) : 0m;
 
                 case (int)TypeCode.Double:
-                    return double.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? double.Parse(input, CultureInfo.InvariantCulture) : 0d;
 
                 case (int)TypeCode.Int16:
-                    return short.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? short.Parse(input, CultureInfo.InvariantCulture) : (short)0;
 
                 case (int)TypeCode.Int32:
-                    return int.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? int.Parse(input, CultureInfo.InvariantCulture) : 0;
 
                 case (int)TypeCode.Int64:
-                    return long.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? long.Parse(input, CultureInfo.InvariantCulture) : 0L;
 
                 case (int)TypeCode.SByte:
-                    return sbyte.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? sbyte.Parse(input, CultureInfo.InvariantCulture) : (sbyte)0;
 
                 case (int)TypeCode.Single:
-                    return float.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? float.Parse(input, CultureInfo.InvariantCulture) : 0f;
 
                 case (int)TypeCode.UInt16:
-                    return ushort.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? ushort.Parse(input, CultureInfo.InvariantCulture) : (ushort)0;
 
                 case (int)TypeCode.UInt32:
-                    return uint.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? uint.Parse(input, CultureInfo.InvariantCulture) : 0u;
 
                 case (int)TypeCode.UInt64:
-                    return ulong.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? ulong.Parse(input, CultureInfo.InvariantCulture) : 0ul;
 
                 case (int)TypeCodeEx.ByteArray:
-                    return Conversions.ToBytes(input);
+                    return input != null ? Conversions.ToBytes(input) : null;
 
                 case (int)TypeCodeEx.DateTimeOffset:
-                    return DateTimeOffset.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? DateTimeOffset.Parse(input, CultureInfo.InvariantCulture) : DateTimeOffset.MinValue;
 
                 case (int)TypeCodeEx.Guid:
-                    return Guid.Parse(input);
+                    return input != null ? Guid.Parse(input) : Guid.Empty;
 
                 case (int)TypeCodeEx.TimeSpan:
-                    return TimeSpan.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? TimeSpan.Parse(input, CultureInfo.InvariantCulture) : TimeSpan.Zero;
 
                 default:
                     throw new NotSupportedException();
@@ -399,7 +400,7 @@ namespace SqlNado.Utilities
                     if (_enumerator == null)
                         return new KeyValuePair<Tk, Tv>();
 
-                    var value = _dic.ConvertToValue(_enumerator.Current.Value, _enumerator.Current.TypeName);
+                    var value = _dic.ConvertToValue(_enumerator.Current.Value!, _enumerator.Current.TypeName);
                     return new KeyValuePair<Tk, Tv>(_enumerator.Current.Key!, (Tv)value!);
                 }
             }

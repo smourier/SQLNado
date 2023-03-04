@@ -1,0 +1,114 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\SqlNado\GlobalSuppressions.cs" Link="SqlNado\GlobalSuppressions.cs" />
+    <Compile Include="..\SqlNado\ISQLiteBlobObject.cs" Link="SqlNado\ISQLiteBlobObject.cs" />
+    <Compile Include="..\SqlNado\ISQLiteLogger.cs" Link="SqlNado\ISQLiteLogger.cs" />
+    <Compile Include="..\SqlNado\ISQLiteNative.cs" Link="SqlNado\ISQLiteNative.cs" />
+    <Compile Include="..\SqlNado\ISQLiteNativeTokenizer.cs" Link="SqlNado\ISQLiteNativeTokenizer.cs" />
+    <Compile Include="..\SqlNado\ISQLiteObject.cs" Link="SqlNado\ISQLiteObject.cs" />
+    <Compile Include="..\SqlNado\ISQLiteObjectChangeEvents.cs" Link="SqlNado\ISQLiteObjectChangeEvents.cs" />
+    <Compile Include="..\SqlNado\ISQLiteObjectEvents.cs" Link="SqlNado\ISQLiteObjectEvents.cs" />
+    <Compile Include="..\SqlNado\Platforms\ISQLiteWindows.cs" Link="SqlNado\Platforms\ISQLiteWindows.cs" />
+    <Compile Include="..\SqlNado\Platforms\SQLiteCdeclNativeTokenizer.cs" Link="SqlNado\Platforms\SQLiteCdeclNativeTokenizer.cs" />
+    <Compile Include="..\SqlNado\Platforms\SQLiteSqlite3.cs" Link="SqlNado\Platforms\SQLiteSqlite3.cs" />
+    <Compile Include="..\SqlNado\Platforms\SQLiteStdCallNativeTokenizer.cs" Link="SqlNado\Platforms\SQLiteStdCallNativeTokenizer.cs" />
+    <Compile Include="..\SqlNado\Platforms\SQLiteWindowsDynamic.cs" Link="SqlNado\Platforms\SQLiteWindowsDynamic.cs" />
+    <Compile Include="..\SqlNado\Platforms\SQLiteWinsqlite3.cs" Link="SqlNado\Platforms\SQLiteWinsqlite3.cs" />
+    <Compile Include="..\SqlNado\SQLiteAutomaticColumnType.cs" Link="SqlNado\SQLiteAutomaticColumnType.cs" />
+    <Compile Include="..\SqlNado\SQLiteBindContext.cs" Link="SqlNado\SQLiteBindContext.cs" />
+    <Compile Include="..\SqlNado\SQLiteBindOptions.cs" Link="SqlNado\SQLiteBindOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteBindType.cs" Link="SqlNado\SQLiteBindType.cs" />
+    <Compile Include="..\SqlNado\SQLiteBlob.cs" Link="SqlNado\SQLiteBlob.cs" />
+    <Compile Include="..\SqlNado\SQLiteBlobOpenMode.cs" Link="SqlNado\SQLiteBlobOpenMode.cs" />
+    <Compile Include="..\SqlNado\SQLiteBuildTableOptions.cs" Link="SqlNado\SQLiteBuildTableOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteCollationNeededEventArgs.cs" Link="SqlNado\SQLiteCollationNeededEventArgs.cs" />
+    <Compile Include="..\SqlNado\SQLiteColumn.cs" Link="SqlNado\SQLiteColumn.cs" />
+    <Compile Include="..\SqlNado\SQLiteColumnAffinity.cs" Link="SqlNado\SQLiteColumnAffinity.cs" />
+    <Compile Include="..\SqlNado\SQLiteColumnAttribute.cs" Link="SqlNado\SQLiteColumnAttribute.cs" />
+    <Compile Include="..\SqlNado\SQLiteColumnType.cs" Link="SqlNado\SQLiteColumnType.cs" />
+    <Compile Include="..\SqlNado\SQLiteConfiguration.cs" Link="SqlNado\SQLiteConfiguration.cs" />
+    <Compile Include="..\SqlNado\SQLiteConflictResolution.cs" Link="SqlNado\SQLiteConflictResolution.cs" />
+    <Compile Include="..\SqlNado\SQLiteCreateSqlOptions.cs" Link="SqlNado\SQLiteCreateSqlOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteDatabase.cs" Link="SqlNado\SQLiteDatabase.cs" />
+    <Compile Include="..\SqlNado\SQLiteDatabaseConfiguration.cs" Link="SqlNado\SQLiteDatabaseConfiguration.cs" />
+    <Compile Include="..\SqlNado\SQLiteDateTimeFormat.cs" Link="SqlNado\SQLiteDateTimeFormat.cs" />
+    <Compile Include="..\SqlNado\SQLiteDeleteOptions.cs" Link="SqlNado\SQLiteDeleteOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteDirection.cs" Link="SqlNado\SQLiteDirection.cs" />
+    <Compile Include="..\SqlNado\SQLiteError.cs" Link="SqlNado\SQLiteError.cs" />
+    <Compile Include="..\SqlNado\SQLiteErrorCode.cs" Link="SqlNado\SQLiteErrorCode.cs" />
+    <Compile Include="..\SqlNado\SQLiteErrorOptions.cs" Link="SqlNado\SQLiteErrorOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteException.cs" Link="SqlNado\SQLiteException.cs" />
+    <Compile Include="..\SqlNado\SQLiteForeignKey.cs" Link="SqlNado\SQLiteForeignKey.cs" />
+    <Compile Include="..\SqlNado\SQLiteFunctionContext.cs" Link="SqlNado\SQLiteFunctionContext.cs" />
+    <Compile Include="..\SqlNado\SQLiteIndex.cs" Link="SqlNado\SQLiteIndex.cs" />
+    <Compile Include="..\SqlNado\SQLiteIndexAttribute.cs" Link="SqlNado\SQLiteIndexAttribute.cs" />
+    <Compile Include="..\SqlNado\SQLiteIndexColumn.cs" Link="SqlNado\SQLiteIndexColumn.cs" />
+    <Compile Include="..\SqlNado\SQLiteIndexedColumn.cs" Link="SqlNado\SQLiteIndexedColumn.cs" />
+    <Compile Include="..\SqlNado\SQLiteJournalMode.cs" Link="SqlNado\SQLiteJournalMode.cs" />
+    <Compile Include="..\SqlNado\SQLiteLimit.cs" Link="SqlNado\SQLiteLimit.cs" />
+    <Compile Include="..\SqlNado\SQLiteLoadForeignKeyOptions.cs" Link="SqlNado\SQLiteLoadForeignKeyOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteLoadOptions.cs" Link="SqlNado\SQLiteLoadOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteLockingMode.cs" Link="SqlNado\SQLiteLockingMode.cs" />
+    <Compile Include="..\SqlNado\SQLiteNativeTokenizerModule.cs" Link="SqlNado\SQLiteNativeTokenizerModule.cs" />
+    <Compile Include="..\SqlNado\SQLiteObjectAction.cs" Link="SqlNado\SQLiteObjectAction.cs" />
+    <Compile Include="..\SqlNado\SQLiteObjectColumn.cs" Link="SqlNado\SQLiteObjectColumn.cs" />
+    <Compile Include="..\SqlNado\SQLiteObjectColumnSynchronizationOptions.cs" Link="SqlNado\SQLiteObjectColumnSynchronizationOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteObjectIndex.cs" Link="SqlNado\SQLiteObjectIndex.cs" />
+    <Compile Include="..\SqlNado\SQLiteObjectTable.cs" Link="SqlNado\SQLiteObjectTable.cs" />
+    <Compile Include="..\SqlNado\SQLiteObjectTableBuilder.cs" Link="SqlNado\SQLiteObjectTableBuilder.cs" />
+    <Compile Include="..\SqlNado\SQLiteOnErrorAction.cs" Link="SqlNado\SQLiteOnErrorAction.cs" />
+    <Compile Include="..\SqlNado\SQLiteOpenOptions.cs" Link="SqlNado\SQLiteOpenOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteQuery.cs" Link="SqlNado\SQLiteQuery.cs" />
+    <Compile Include="..\SqlNado\SQLiteQueryTranslator.cs" Link="SqlNado\SQLiteQueryTranslator.cs" />
+    <Compile Include="..\SqlNado\SQLiteRow.cs" Link="SqlNado\SQLiteRow.cs" />
+    <Compile Include="..\SqlNado\SQLiteSaveOptions.cs" Link="SqlNado\SQLiteSaveOptions.cs" />
+    <Compile Include="..\SqlNado\SQLiteStatement.cs" Link="SqlNado\SQLiteStatement.cs" />
+    <Compile Include="..\SqlNado\SQLiteSynchronousMode.cs" Link="SqlNado\SQLiteSynchronousMode.cs" />
+    <Compile Include="..\SqlNado\SQLiteTable.cs" Link="SqlNado\SQLiteTable.cs" />
+    <Compile Include="..\SqlNado\SQLiteTableAttribute.cs" Link="SqlNado\SQLiteTableAttribute.cs" />
+    <Compile Include="..\SqlNado\SQLiteTableIndex.cs" Link="SqlNado\SQLiteTableIndex.cs" />
+    <Compile Include="..\SqlNado\SQLiteTempStore.cs" Link="SqlNado\SQLiteTempStore.cs" />
+    <Compile Include="..\SqlNado\SQLiteTextEncoding.cs" Link="SqlNado\SQLiteTextEncoding.cs" />
+    <Compile Include="..\SqlNado\SQLiteThreadingMode.cs" Link="SqlNado\SQLiteThreadingMode.cs" />
+    <Compile Include="..\SqlNado\SQLiteToken.cs" Link="SqlNado\SQLiteToken.cs" />
+    <Compile Include="..\SqlNado\SQLiteTokenizer.cs" Link="SqlNado\SQLiteTokenizer.cs" />
+    <Compile Include="..\SqlNado\SQLiteTransactionType.cs" Link="SqlNado\SQLiteTransactionType.cs" />
+    <Compile Include="..\SqlNado\SQLiteValue.cs" Link="SqlNado\SQLiteValue.cs" />
+    <Compile Include="..\SqlNado\SQLiteZeroBlob.cs" Link="SqlNado\SQLiteZeroBlob.cs" />
+    <Compile Include="..\SqlNado\SqlNadoException.cs" Link="SqlNado\SqlNadoException.cs" />
+    <Compile Include="..\SqlNado\Utilities\ChangeTrackingDictionaryObject.cs" Link="SqlNado\Utilities\ChangeTrackingDictionaryObject.cs" />
+    <Compile Include="..\SqlNado\Utilities\ConsoleLogger.cs" Link="SqlNado\Utilities\ConsoleLogger.cs" />
+    <Compile Include="..\SqlNado\Utilities\Conversions.cs" Link="SqlNado\Utilities\Conversions.cs" />
+    <Compile Include="..\SqlNado\Utilities\DictionaryObject.cs" Link="SqlNado\Utilities\DictionaryObject.cs" />
+    <Compile Include="..\SqlNado\Utilities\DictionaryObjectProperty.cs" Link="SqlNado\Utilities\DictionaryObjectProperty.cs" />
+    <Compile Include="..\SqlNado\Utilities\DictionaryObjectPropertyChangedEventArgs.cs" Link="SqlNado\Utilities\DictionaryObjectPropertyChangedEventArgs.cs" />
+    <Compile Include="..\SqlNado\Utilities\DictionaryObjectPropertyChangingEventArgs.cs" Link="SqlNado\Utilities\DictionaryObjectPropertyChangingEventArgs.cs" />
+    <Compile Include="..\SqlNado\Utilities\DictionaryObjectPropertyRollbackEventArgs.cs" Link="SqlNado\Utilities\DictionaryObjectPropertyRollbackEventArgs.cs" />
+    <Compile Include="..\SqlNado\Utilities\DictionaryObjectPropertySetOptions.cs" Link="SqlNado\Utilities\DictionaryObjectPropertySetOptions.cs" />
+    <Compile Include="..\SqlNado\Utilities\IChangeTrackingDictionaryObject.cs" Link="SqlNado\Utilities\IChangeTrackingDictionaryObject.cs" />
+    <Compile Include="..\SqlNado\Utilities\IDictionaryObject.cs" Link="SqlNado\Utilities\IDictionaryObject.cs" />
+    <Compile Include="..\SqlNado\Utilities\InteractiveShell.cs" Link="SqlNado\Utilities\InteractiveShell.cs" />
+    <Compile Include="..\SqlNado\Utilities\PersistentDictionary.cs" Link="SqlNado\Utilities\PersistentDictionary.cs" />
+    <Compile Include="..\SqlNado\Utilities\QueryExtensions.cs" Link="SqlNado\Utilities\QueryExtensions.cs" />
+    <Compile Include="..\SqlNado\Utilities\SQLiteBaseObject.cs" Link="SqlNado\Utilities\SQLiteBaseObject.cs" />
+    <Compile Include="..\SqlNado\Utilities\SQLiteBasePublicObject.cs" Link="SqlNado\Utilities\SQLiteBasePublicObject.cs" />
+    <Compile Include="..\SqlNado\Utilities\SQLiteBlobObject.cs" Link="SqlNado\Utilities\SQLiteBlobObject.cs" />
+    <Compile Include="..\SqlNado\Utilities\SQLiteExtensions.cs" Link="SqlNado\Utilities\SQLiteExtensions.cs" />
+    <Compile Include="..\SqlNado\Utilities\SQLiteTrackObject.cs" Link="SqlNado\Utilities\SQLiteTrackObject.cs" />
+    <Compile Include="..\SqlNado\Utilities\TableString.cs" Link="SqlNado\Utilities\TableString.cs" />
+    <Compile Include="..\SqlNado\Utilities\Utf8Marshaler.cs" Link="SqlNado\Utilities\Utf8Marshaler.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="SqlNado\Utilities\" />
+    <Folder Include="SqlNado\Platforms\" />
+  </ItemGroup>
+
+</Project>

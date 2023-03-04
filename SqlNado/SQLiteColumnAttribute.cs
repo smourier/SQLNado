@@ -48,7 +48,7 @@ namespace SqlNado
         public Expression<Action<SQLiteLoadOptions, object?, object?>>? SetValueExpression { get; set; }
 
         public override string? ToString() => Name;
-        int IComparable.CompareTo(object obj) => CompareTo(obj as SQLiteColumnAttribute);
+        int IComparable.CompareTo(object? obj) => CompareTo(obj as SQLiteColumnAttribute);
 
         public int CompareTo(SQLiteColumnAttribute? other)
         {

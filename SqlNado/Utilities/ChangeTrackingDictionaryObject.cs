@@ -25,7 +25,7 @@ namespace SqlNado.Utilities
         // while the base impl only knows the last value
         protected override DictionaryObjectProperty? DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty)
         {
-            DictionaryObjectChangedProperties.TryGetValue(name, out DictionaryObjectProperty prop);
+            DictionaryObjectChangedProperties.TryGetValue(name, out var prop);
             return prop; // null is ok
         }
 

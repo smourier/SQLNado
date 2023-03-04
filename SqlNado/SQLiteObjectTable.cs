@@ -40,7 +40,7 @@ namespace SqlNado
         public virtual IEnumerable<SQLiteObjectColumn> PrimaryKeyColumns => _columns.Where(c => c.IsPrimaryKey);
         public virtual IReadOnlyList<SQLiteObjectIndex> Indices => _indices;
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
         public bool HasPrimaryKey => _columns.Any(c => c.IsPrimaryKey);
         public bool Exists => Database.TableExists(Name);
         public bool HasRowId => Columns.Any(c => c.IsRowId);
@@ -54,7 +54,7 @@ namespace SqlNado
         public virtual bool DisableRowId { get; set; }
 
         public override string ToString() => Name;
-        public SQLiteObjectColumn GetColumn(string name) => _columns.Find(c => c.Name.EqualsIgnoreCase(name));
+        public SQLiteObjectColumn? GetColumn(string name) => _columns.Find(c => c.Name.EqualsIgnoreCase(name));
 
         public virtual void AddIndex(SQLiteObjectIndex index)
         {

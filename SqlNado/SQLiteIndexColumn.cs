@@ -31,7 +31,13 @@ namespace SqlNado
 
         public bool IsRowId => Id == -1;
 
-        public int CompareTo(SQLiteIndexColumn other) => Ordinal.CompareTo(other.Ordinal);
+        public int CompareTo(SQLiteIndexColumn? other)
+        {
+            if (other == null)
+                throw new ArgumentNullException(nameof(other));
+
+            return Ordinal.CompareTo(other.Ordinal);
+        }
 
         public override string ToString() => Name;
     }

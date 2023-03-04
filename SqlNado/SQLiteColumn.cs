@@ -56,7 +56,7 @@ namespace SqlNado
         public object? DefaultValue { get => _defaultValue; set => _defaultValue = SQLiteObjectColumn.FromLiteral(value); }
 
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
         public bool IsRowId { get; internal set; }
 
         [SQLiteColumn(Ignore = true)]

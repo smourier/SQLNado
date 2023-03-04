@@ -3,7 +3,6 @@ using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -248,7 +247,7 @@ namespace SqlNado.Utilities
                 Line++;
             }
 
-            public override void WriteLine(string value)
+            public override void WriteLine(string? value)
             {
                 Write(value);
                 WriteLine();
@@ -270,7 +269,7 @@ namespace SqlNado.Utilities
                 }
             }
 
-            public override void Write(string value)
+            public override void Write(string? value)
             {
                 if (value == null)
                     return;
@@ -761,12 +760,18 @@ namespace SqlNado.Utilities
 
                 if (IsKeyValuePairEnumerable(first.GetType(), out var keyType, out var valueType, out var enumerableType))
                 {
-                    var enumerable = (IEnumerable)Cast(enumerableType, first);
-                    foreach (var kvp in enumerable)
+                    var enumerable = (IEnumerable?)Cast(enumerableType, first);
+                    if (enumerable != null && keyType != null && valueType != null)
                     {
-                        var pi = kvp.GetType().GetProperty("Key");
-                        var key = pi.GetValue(kvp).ToString();
-                        AddColumn(new KeyValuePairTableStringColumn(this, keyType, valueType, key));
+                        foreach (var kvp in enumerable)
+                        {
+                            var pi = kvp.GetType().GetProperty("Key");
+                            var key = pi?.GetValue(kvp)?.ToString();
+                            if (key == null)
+                                continue;
+
+                            AddColumn(new KeyValuePairTableStringColumn(this, keyType, valueType, key));
+                        }
                     }
                     return;
                 }
@@ -797,15 +802,18 @@ namespace SqlNado.Utilities
             }
         }
 
-        internal static object Cast(Type type, object value)
+        internal static object? Cast(Type? type, object? value)
         {
+            if (type == null || value == null)
+                return null;
+
             var parameter = Expression.Parameter(typeof(object));
             var block = Expression.Block(Expression.Convert(Expression.Convert(parameter, value.GetType()), type));
             var func = Expression.Lambda(block, parameter).Compile();
             return func.DynamicInvoke(value);
         }
 
-        private static bool IsKeyValuePairEnumerable(Type inputType, [NotNullWhen(true)] out Type? keyType, [NotNullWhen(true)] out Type? valueType, [NotNullWhen(true)] out Type? enumerableType)
+        private static bool IsKeyValuePairEnumerable(Type inputType, out Type? keyType, out Type? valueType, out Type? enumerableType)
         {
             keyType = null;
             valueType = null;
@@ -1271,9 +1279,9 @@ namespace SqlNado.Utilities
         public bool ExpandEnumerable { get; set; }
         public object? Object { get; }
 
-        internal static object GetValue(PropertyInfo property, object obj, bool throwOnError)
+        internal static object? GetValue(PropertyInfo property, object obj, bool throwOnError)
         {
-            object value;
+            object? value;
             if (throwOnError)
             {
                 value = property.GetValue(obj);
@@ -1333,7 +1341,7 @@ namespace SqlNado.Utilities
                         if (array != null && string.Equals(property.Name, nameof(Array.SyncRoot), StringComparison.Ordinal))
                             continue;
 
-                        object value = GetValue(property, Object, ThrowOnPropertyGetError);
+                        var value = GetValue(property, Object, ThrowOnPropertyGetError);
                         list.Add(new Tuple<object?, object?>(property.Name, value));
                         i++;
                     }
@@ -1357,7 +1365,7 @@ namespace SqlNado.Utilities
 
         protected class ComparableComparer : IComparer<Tuple<object?, object?>>
         {
-            public int Compare(Tuple<object?, object?> x, Tuple<object?, object?> y) => (((IComparable?)x?.Item1)?.CompareTo((IComparable?)y?.Item1)).GetValueOrDefault();
+            public int Compare(Tuple<object?, object?>? x, Tuple<object?, object?>? y) => (((IComparable?)x?.Item1)?.CompareTo((IComparable?)y?.Item1)).GetValueOrDefault();
         }
 
         protected override void AddColumns(object first)
@@ -1449,9 +1457,9 @@ namespace SqlNado.Utilities
             }
         }
 
-        internal static object GetValue(FieldInfo field, object obj, bool throwOnError)
+        internal static object? GetValue(FieldInfo field, object obj, bool throwOnError)
         {
-            object value;
+            object? value;
             if (throwOnError)
             {
                 value = field.GetValue(obj);
@@ -1496,7 +1504,7 @@ namespace SqlNado.Utilities
             : base(table, name, (c, r) =>
             {
                 var objs = new object?[] { name, null };
-                var b = (bool)((KeyValuePairTableStringColumn)c).Method.Invoke(r, objs);
+                var b = (bool)((KeyValuePairTableStringColumn)c).Method.Invoke(r, objs)!;
                 return b ? objs[1] : null;
             })
         {
@@ -1507,7 +1515,7 @@ namespace SqlNado.Utilities
                 throw new ArgumentNullException(nameof(valueType));
 
             var type = typeof(IDictionary<,>).MakeGenericType(keyType, valueType);
-            Method = type.GetMethod("TryGetValue");
+            Method = type.GetMethod("TryGetValue")!;
             if (Method == null)
                 throw new NotSupportedException();
         }

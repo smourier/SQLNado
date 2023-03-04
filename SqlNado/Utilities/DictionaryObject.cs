@@ -32,20 +32,20 @@ namespace SqlNado.Utilities
         protected virtual bool DictionaryObjectRaiseOnPropertyChanged { get; set; }
         protected virtual bool DictionaryObjectRaiseOnErrorsChanged { get; set; }
 
-        protected string? DictionaryObjectError => DictionaryObjectGetError(null);
+        protected string DictionaryObjectError => DictionaryObjectGetError(null);
         protected bool DictionaryObjectHasErrors => (DictionaryObjectGetErrors(null)?.Cast<object>().Any()).GetValueOrDefault();
 
-        protected virtual string? DictionaryObjectGetError(string? propertyName)
+        protected virtual string DictionaryObjectGetError(string? propertyName)
         {
             var errors = DictionaryObjectGetErrors(propertyName);
             if (errors == null)
-                return null;
+                return string.Empty;
 
-            string error = string.Join(Environment.NewLine, errors.Cast<object>().Select(e => string.Format("{0}", e)));
-            return !string.IsNullOrEmpty(error) ? error : null;
+            var error = string.Join(Environment.NewLine, errors.Cast<object>().Select(e => string.Format("{0}", e)));
+            return !string.IsNullOrEmpty(error) ? error : string.Empty;
         }
 
-        protected virtual IEnumerable? DictionaryObjectGetErrors(string? propertyName) => null;
+        protected virtual IEnumerable DictionaryObjectGetErrors(string? propertyName) => Enumerable.Empty<object>();
 
         protected void OnErrorsChanged(string name)
         {
@@ -96,7 +96,7 @@ namespace SqlNado.Utilities
                 _dob = dob;
             }
 
-            public new bool Equals(object x, object y) => _dob.DictionaryObjectAreValuesEqual(x, y);
+            public new bool Equals(object? x, object? y) => _dob.DictionaryObjectAreValuesEqual(x, y);
             public int GetHashCode(object obj) => (obj?.GetHashCode()).GetValueOrDefault();
         }
 
@@ -250,10 +250,10 @@ namespace SqlNado.Utilities
             return false;
         }
 
-        string? IDataErrorInfo.Error => DictionaryObjectError;
-        string? IDataErrorInfo.this[string columnName] => DictionaryObjectGetError(columnName);
+        string IDataErrorInfo.Error => DictionaryObjectError;
+        string IDataErrorInfo.this[string? columnName] => DictionaryObjectGetError(columnName);
         bool INotifyDataErrorInfo.HasErrors => DictionaryObjectHasErrors;
-        IEnumerable? INotifyDataErrorInfo.GetErrors(string propertyName) => DictionaryObjectGetErrors(propertyName);
+        IEnumerable INotifyDataErrorInfo.GetErrors(string? propertyName) => DictionaryObjectGetErrors(propertyName);
 
         ConcurrentDictionary<string, DictionaryObjectProperty?> IDictionaryObject.Properties => DictionaryObjectProperties;
         bool ISQLiteObjectChangeEvents.RaiseOnPropertyChanging { get => DictionaryObjectRaiseOnPropertyChanging; set => DictionaryObjectRaiseOnPropertyChanging = value; }

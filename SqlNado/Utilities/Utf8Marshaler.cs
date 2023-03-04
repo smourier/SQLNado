@@ -40,10 +40,12 @@ namespace SqlNado.Utilities
             return ptr;
         }
 
-        public object? MarshalNativeToManaged(IntPtr pNativeData)
+        public object MarshalNativeToManaged(IntPtr pNativeData)
         {
             if (pNativeData == IntPtr.Zero)
+#pragma warning disable CS8603 // Possible null reference return.
                 return null;
+#pragma warning restore CS8603 // Possible null reference return.
 
             // look for the terminating zero
             var i = 0;

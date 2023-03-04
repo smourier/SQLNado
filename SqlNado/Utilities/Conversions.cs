@@ -1062,18 +1062,18 @@ namespace SqlNado.Utilities
 
         private static bool StringToEnum(Type type, string[] names, Array values, string input, out object value)
         {
-            for (int i = 0; i < names.Length; i++)
+            for (var i = 0; i < names.Length; i++)
             {
                 if (names[i].EqualsIgnoreCase(input))
                 {
-                    value = values.GetValue(i);
+                    value = values.GetValue(i)!;
                     return true;
                 }
             }
 
-            for (int i = 0; i < values.GetLength(0); i++)
+            for (var i = 0; i < values.GetLength(0); i++)
             {
-                object valuei = values.GetValue(i);
+                var valuei = values.GetValue(i)!;
                 if (input.Length > 0 && input[0] == '-')
                 {
                     var ul = (long)EnumToUInt64(valuei);
@@ -1099,14 +1099,14 @@ namespace SqlNado.Utilities
                 var obj = EnumToObject(type, input);
                 if (obj == null)
                 {
-                    value = Activator.CreateInstance(type);
+                    value = Activator.CreateInstance(type)!;
                     return false;
                 }
                 value = obj;
                 return true;
             }
 
-            value = Activator.CreateInstance(type);
+            value = Activator.CreateInstance(type)!;
             return false;
         }
 
@@ -1196,7 +1196,7 @@ namespace SqlNado.Utilities
 
             if (input == null)
             {
-                value = Activator.CreateInstance(type);
+                value = Activator.CreateInstance(type)!;
                 return false;
             }
 
@@ -1204,7 +1204,7 @@ namespace SqlNado.Utilities
             stringInput = stringInput.Nullify();
             if (stringInput == null)
             {
-                value = Activator.CreateInstance(type);
+                value = Activator.CreateInstance(type)!;
                 return false;
             }
 
@@ -1217,7 +1217,7 @@ namespace SqlNado.Utilities
             var names = Enum.GetNames(type);
             if (names.Length == 0)
             {
-                value = Activator.CreateInstance(type);
+                value = Activator.CreateInstance(type)!;
                 return false;
             }
 
@@ -1230,7 +1230,7 @@ namespace SqlNado.Utilities
             var tokens = stringInput.Split(_enumSeparators, StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length == 0)
             {
-                value = Activator.CreateInstance(type);
+                value = Activator.CreateInstance(type)!;
                 return false;
             }
 
@@ -1243,7 +1243,7 @@ namespace SqlNado.Utilities
 
                 if (!StringToEnum(type, names, values, token, out object tokenValue))
                 {
-                    value = Activator.CreateInstance(type);
+                    value = Activator.CreateInstance(type)!;
                     return false;
                 }
 
@@ -1276,7 +1276,7 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out string str))
+            if (!dictionary.TryGetValue(key, out var str))
                 return defaultValue;
 
             return str.Nullify();
@@ -1290,7 +1290,7 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out object o))
+            if (!dictionary.TryGetValue(key, out var o))
                 return defaultValue;
 
             return ChangeType(o, defaultValue);
@@ -1304,7 +1304,7 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out object o))
+            if (!dictionary.TryGetValue(key, out var o))
                 return defaultValue;
 
             return ChangeType(o, defaultValue, provider);
@@ -1318,7 +1318,7 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out string str))
+            if (!dictionary.TryGetValue(key, out var str))
                 return defaultValue;
 
             return ChangeType(str, defaultValue);
@@ -1332,7 +1332,7 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out string str))
+            if (!dictionary.TryGetValue(key, out var str))
                 return defaultValue;
 
             return ChangeType(str, defaultValue, provider);
@@ -1356,13 +1356,13 @@ namespace SqlNado.Utilities
 
             foreach (var kv1 in dic1)
             {
-                if (!dic2.TryGetValue(kv1.Key, out TValue s2) || !comparer.Equals(s2, kv1.Value))
+                if (!dic2.TryGetValue(kv1.Key, out var s2) || !comparer.Equals(s2, kv1.Value))
                     return false;
             }
 
             foreach (var kv2 in dic2)
             {
-                if (!dic1.TryGetValue(kv2.Key, out TValue s1) || !comparer.Equals(s1, kv2.Value))
+                if (!dic1.TryGetValue(kv2.Key, out var s1) || !comparer.Equals(s1, kv2.Value))
                     return false;
             }
             return true;

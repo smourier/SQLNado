@@ -7,13 +7,13 @@ using SqlNado.Utilities;
 namespace SqlNado.Platforms
 {
     // works on Azure web apps too
-    public class SQLiteWindowsWinsqlite3 : ISQLiteNative, ISQLiteWindows
+    public class SQLiteWinsqlite3 : ISQLiteNative, ISQLiteWindows
     {
         // note: always compiled in stdcall
         public const string DllName = "winsqlite3";
         private readonly Lazy<string?> _libraryPath;
 
-        public SQLiteWindowsWinsqlite3()
+        public SQLiteWinsqlite3()
         {
             _libraryPath = new Lazy<string?>(GetLibraryPath);
         }

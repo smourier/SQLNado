@@ -306,7 +306,7 @@ namespace SqlNado
 
         protected virtual SQLiteColumnAttribute CreateColumnAttribute() => new SQLiteColumnAttribute();
 
-        protected virtual SQLiteColumnAttribute AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute attribute)
+        protected virtual SQLiteColumnAttribute? AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute? attribute)
         {
             if (property == null)
                 throw new ArgumentNullException(nameof(property));
@@ -406,7 +406,7 @@ namespace SqlNado
                 // att.GetValueExpression = (o) => property.GetValue(o);
 
                 var instanceParameter = Expression.Parameter(typeof(object));
-                var instance = Expression.Convert(instanceParameter, property.DeclaringType);
+                var instance = Expression.Convert(instanceParameter, property.DeclaringType!);
                 Expression getValue = Expression.Property(instance, property);
                 if (att.ClrType != typeof(object))
                 {
@@ -429,7 +429,7 @@ namespace SqlNado
                 var optionsParameter = Expression.Parameter(typeof(SQLiteLoadOptions), "options");
                 var instanceParameter = Expression.Parameter(typeof(object), "instance");
                 var valueParameter = Expression.Parameter(typeof(object), "value");
-                var instance = Expression.Convert(instanceParameter, property.DeclaringType);
+                var instance = Expression.Convert(instanceParameter, property.DeclaringType!);
 
                 var expressions = new List<Expression>();
                 var variables = new List<ParameterExpression>();
@@ -442,7 +442,7 @@ namespace SqlNado
 
                     var tryConvert = Expression.Call(
                         optionsParameter,
-                        typeof(SQLiteLoadOptions).GetMethod(nameof(SQLiteLoadOptions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() }),
+                        typeof(SQLiteLoadOptions).GetMethod(nameof(SQLiteLoadOptions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() })!,
                         valueParameter,
                         Expression.Constant(att.ClrType, typeof(Type)),
                         convertedValue);

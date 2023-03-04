@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -86,7 +85,6 @@ namespace SqlNado
             }
         }
 
-        [MemberNotNull("_native")]
         public static void LoadNative(ISQLiteNative native)
         {
             if (native == null)
@@ -121,8 +119,8 @@ namespace SqlNado
                     if (name.Contains("sqlite", StringComparison.OrdinalIgnoreCase))
                         return new SQLiteWindowsDynamic(path, CallingConvention.Cdecl);
 
-                    if (name.EqualsIgnoreCase(SQLiteWindowsWinsqlite3.DllName))
-                        return new SQLiteWindowsWinsqlite3();
+                    if (name.EqualsIgnoreCase(SQLiteWinsqlite3.DllName))
+                        return new SQLiteWinsqlite3();
                 }
             }
 
@@ -371,7 +369,7 @@ namespace SqlNado
             if (_tokenizers.ContainsKey(tokenizer.Name))
                 throw new ArgumentException(null, nameof(tokenizer));
 
-            var mt = new SQLiteTokenizerModule();
+            var mt = new SQLiteNativeTokenizerModule();
             tokenizer._module = GCHandle.Alloc(mt, GCHandleType.Pinned);
             _tokenizers.AddOrUpdate(tokenizer.Name, tokenizer, (k, old) => tokenizer);
 
@@ -639,7 +637,6 @@ namespace SqlNado
                     Database.CheckError(_native.xDestroy(_tokenizer), false);
 #endif
                 }
-
                 base.Dispose(disposing);
             }
         }
@@ -1018,7 +1015,7 @@ namespace SqlNado
             }
         }
 
-        public virtual SQLiteBindType RemoveBindType(Type type)
+        public virtual SQLiteBindType? RemoveBindType(Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -1664,9 +1661,9 @@ namespace SqlNado
                 if (key is Array array)
                 {
                     keys = new object[array.Length];
-                    for (int i = 0; i < keys.Length; i++)
+                    for (var i = 0; i < keys.Length; i++)
                     {
-                        keys[i] = array.GetValue(i);
+                        keys[i] = array.GetValue(i)!;
                     }
                 }
                 else if (!(key is string) && key is IEnumerable enumerable)
@@ -1704,6 +1701,9 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(type));
 
             var key = type.FullName;
+            if (key == null)
+                throw new ArgumentException(null, nameof(type));
+
             if (options?.CacheKey != null)
             {
                 // a character invalid in type names

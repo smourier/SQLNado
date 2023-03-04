@@ -129,12 +129,12 @@ namespace SqlNado
 
                     case nameof(Queryable.Take):
                         Visit(node.Arguments[0]);
-                        Take = (int)((ConstantExpression)node.Arguments[1]).Value;
+                        Take = (int)((ConstantExpression)node.Arguments[1]).Value!;
                         return node;
 
                     case nameof(Queryable.Skip):
                         Visit(node.Arguments[0]);
-                        Skip = (int)((ConstantExpression)node.Arguments[1]).Value;
+                        Skip = (int)((ConstantExpression)node.Arguments[1]).Value!;
                         return node;
                 }
             }
@@ -325,7 +325,7 @@ namespace SqlNado
                 return node;
             }
 
-            throw new SqlNadoException(BuildNotSupported("The method '" + node.Method.Name + "' of type '" + node.Method.DeclaringType.FullName + "'"));
+            throw new SqlNadoException(BuildNotSupported("The method '" + node.Method.Name + "' of type '" + node?.Method?.DeclaringType?.FullName + "'"));
         }
 
         private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'", StringComparison.Ordinal) && s.EndsWith("'", StringComparison.Ordinal);
@@ -581,7 +581,7 @@ namespace SqlNado
 
                 internal static Expression? DoEval(HashSet<Expression> candidates, Func<ConstantExpression, Expression>? onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
 
-                public override Expression? Visit(Expression node)
+                public override Expression? Visit(Expression? node)
                 {
                     if (node == null)
                         return null;
@@ -654,7 +654,7 @@ namespace SqlNado
                     return PostEval(constant);
                 }
 
-                private static object GetValue(MemberInfo member, object instance)
+                private static object? GetValue(MemberInfo member, object? instance)
                 {
                     switch (member.MemberType)
                     {
@@ -692,7 +692,7 @@ namespace SqlNado
                     return nominator._candidates;
                 }
 
-                public override Expression? Visit(Expression node)
+                public override Expression? Visit(Expression? node)
                 {
                     if (node != null)
                     {

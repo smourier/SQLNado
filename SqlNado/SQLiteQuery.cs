@@ -40,7 +40,7 @@ namespace SqlNado
         public SQLiteBindOptions? BindOptions { get; set; }
 
         protected virtual SQLiteQueryTranslator CreateTranslator(TextWriter writer) => new SQLiteQueryTranslator(Database, writer);
-        public IEnumerator<T> GetEnumerator() => (_provider.ExecuteEnumerable<T>(_expression)).GetEnumerator();
+        public IEnumerator<T> GetEnumerator() => _provider.ExecuteEnumerable<T>(_expression).GetEnumerator();
         public override string ToString() => GetQueryText(_expression);
 
         Expression IQueryable.Expression => _expression;
@@ -68,7 +68,7 @@ namespace SqlNado
         private sealed class QueryProvider : IQueryProvider
         {
             private readonly SQLiteQuery<T> _query;
-            private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance);
+            private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance)!;
 
             public QueryProvider(SQLiteQuery<T> query)
             {
@@ -79,7 +79,7 @@ namespace SqlNado
             public IQueryable<TElement> CreateQuery<TElement>(Expression expression) => new SQLiteQuery<TElement>(_query.Database, expression);
 
             // single value expected
-            public object Execute(Expression expression) => Execute<object>(expression);
+            public object? Execute(Expression expression) => Execute<object>(expression);
 
             // single value also expected, but we still support IEnumerable and IEnumerable<T>
             public TResult Execute<TResult>(Expression expression)
@@ -95,11 +95,11 @@ namespace SqlNado
                     if (typeof(TResult) != typeof(string) && typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
                         return (TResult)_query.Database.Load(typeof(object), sql);
 
-                    return (TResult)(_query.Database.Load(typeof(TResult), sql).FirstOrDefault());
+                    return (TResult)_query.Database.Load(typeof(TResult), sql).FirstOrDefault()!;
                 }
 
                 var ee = _executeEnumerable.MakeGenericMethod(elementType);
-                return (TResult)ee.Invoke(this, new object?[] { sql });
+                return (TResult)ee.Invoke(this, new object?[] { sql })!;
             }
 
             // poor man tentative to fix queries without Where() specified

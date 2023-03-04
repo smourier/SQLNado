@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -453,7 +452,6 @@ namespace SqlNado
             return index;
         }
 
-        [return: NotNullIfNotNull("name")]
         public static string? EscapeName(string? name)
         {
             if (name == null)

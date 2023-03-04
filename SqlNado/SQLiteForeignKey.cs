@@ -41,7 +41,13 @@ namespace SqlNado
 
         public string? Match { get; internal set; }
 
-        public int CompareTo(SQLiteForeignKey other) => Ordinal.CompareTo(other.Ordinal);
+        public int CompareTo(SQLiteForeignKey? other)
+        {
+            if (other == null)
+                throw new ArgumentNullException(nameof(other));
+
+            return Ordinal.CompareTo(other.Ordinal);
+        }
 
         public override string ToString() => "(" + From + ") -> " + ReferencedTable + " (" + To + ")";
     }

@@ -39,7 +39,7 @@ namespace SqlNado
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
         public string DataType { get; }
         public Type ClrType { get; }
         public int Index { get; internal set; }
@@ -278,7 +278,7 @@ namespace SqlNado
                 if ((options & SQLiteCreateSqlOptions.ForAlterColumn) == SQLiteCreateSqlOptions.ForAlterColumn && !IsNullable)
                 {
                     // we *must* define a default value or "Cannot add a NOT NULL column with default value NULL".
-                    object defaultValue = Activator.CreateInstance(ClrType);
+                    var defaultValue = Activator.CreateInstance(ClrType);
                     sql += " DEFAULT " + ToLiteral(defaultValue);
                 }
             }

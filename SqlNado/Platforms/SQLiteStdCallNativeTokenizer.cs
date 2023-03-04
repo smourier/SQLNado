@@ -24,7 +24,7 @@ namespace SqlNado.Platforms
             if (ptr == IntPtr.Zero)
                 throw new ArgumentException(null, nameof(ptr));
 
-            var module = Marshal.PtrToStructure<SQLiteTokenizerModule>(ptr);
+            var module = Marshal.PtrToStructure<SQLiteNativeTokenizerModule>(ptr);
             Version = module.iVersion;
             _create = Marshal.GetDelegateForFunctionPointer<xCreate>(module.xCreate);
             _destroy = Marshal.GetDelegateForFunctionPointer<xDestroy>(module.xDestroy);

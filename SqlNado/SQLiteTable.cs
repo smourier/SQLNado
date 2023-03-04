@@ -28,7 +28,7 @@ namespace SqlNado
         public int RootPage { get; internal set; }
 
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
         public bool IsVirtual => Module != null;
         public bool IsFts => SQLiteObjectTable.IsFtsModule(Module);
         public string? Module { get; private set; }
@@ -54,7 +54,7 @@ namespace SqlNado
                 else
                 {
                     var split = Sql?.Split(' ', '\t', '\r', '\n');
-                    TokenizedSql = split.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                    TokenizedSql = split!.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
                     for (var i = 0; i < TokenizedSql.Length; i++)
                     {
                         if (TokenizedSql[i].EqualsIgnoreCase("using") && (i + 1) < TokenizedSql.Length)
@@ -192,10 +192,10 @@ namespace SqlNado
         private sealed class ColumnNameComparer : IEqualityComparer<SQLiteColumn>
         {
             public int GetHashCode(SQLiteColumn obj) => obj.GetHashCode();
-            public bool Equals(SQLiteColumn x, SQLiteColumn y) => x?.Name.EqualsIgnoreCase(y?.Name) == true;
+            public bool Equals(SQLiteColumn? x, SQLiteColumn? y) => x?.Name.EqualsIgnoreCase(y?.Name) == true;
         }
 
-        public SQLiteTableIndex AutoPrimaryKey => Indices.FirstOrDefault(i => i.Origin.EqualsIgnoreCase("pk"));
+        public SQLiteTableIndex? AutoPrimaryKey => Indices.FirstOrDefault(i => i.Origin.EqualsIgnoreCase("pk"));
         public IEnumerable<SQLiteColumn> PrimaryKeyColumns => Columns.Where(c => c.IsPrimaryKey);
 
         public IEnumerable<SQLiteForeignKey> ForeignKeys
@@ -255,7 +255,7 @@ namespace SqlNado
 
         public void Delete(bool throwOnError = true) => Database.DeleteTable(Name, throwOnError);
 
-        public SQLiteColumn GetColumn(string name)
+        public SQLiteColumn? GetColumn(string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -263,7 +263,7 @@ namespace SqlNado
             return Columns.FirstOrDefault(c => name.EqualsIgnoreCase(c.Name));
         }
 
-        public SQLiteTableIndex GetIndex(string name)
+        public SQLiteTableIndex? GetIndex(string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));

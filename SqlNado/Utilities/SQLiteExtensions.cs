@@ -106,8 +106,8 @@ namespace SqlNado.Utilities
                     (options & CompareOptions.OrdinalIgnoreCase) == CompareOptions.OrdinalIgnoreCase;
             }
 
-            public override bool Equals(string x, string y) => string.Equals(x, y, StringComparison.Ordinal) || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0;
-            public override bool Equals(object obj)
+            public override bool Equals(string? x, string? y) => string.Equals(x, y, StringComparison.Ordinal) || x != null && y != null && _compareInfo.Compare(x, y, _options) == 0;
+            public override bool Equals(object? obj)
             {
                 if (!(obj is CultureStringComparer comparer))
                     return false;
@@ -118,7 +118,7 @@ namespace SqlNado.Utilities
                 return _compareInfo.Equals(comparer._compareInfo) && _options == comparer._options;
             }
 
-            public override int Compare(string x, string y)
+            public override int Compare(string? x, string? y)
             {
                 if (string.Equals(x, y, StringComparison.Ordinal))
                     return 0;

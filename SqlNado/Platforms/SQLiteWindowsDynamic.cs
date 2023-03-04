@@ -53,7 +53,7 @@ namespace SqlNado.Platforms
             if (_module != IntPtr.Zero)
                 return;
 
-            IsUsingWindowsRuntime = Path.GetFileName(_initialLibraryPath).EqualsIgnoreCase(SQLiteWindowsWinsqlite3.DllName + ".dll");
+            IsUsingWindowsRuntime = Path.GetFileName(_initialLibraryPath).EqualsIgnoreCase(SQLiteWinsqlite3.DllName + ".dll");
             if (IsUsingWindowsRuntime)
             {
                 CallingConvention = CallingConvention.StdCall;
@@ -253,7 +253,7 @@ namespace SqlNado.Platforms
                     // relative path?
                     yield return Path.Combine(bd, env);
                     if (searchRsp)
-                        yield return Path.Combine(rsp, env);
+                        yield return Path.Combine(rsp!, env);
                 }
             }
 
@@ -261,16 +261,16 @@ namespace SqlNado.Platforms
             var name = "sqlite3.x" + bitness + ".dll";
             yield return Path.Combine(bd, name);
             if (searchRsp)
-                yield return Path.Combine(rsp, name);
+                yield return Path.Combine(rsp!, name);
 
             // look in windows/azure
             if (useWindowsRuntime)
-                yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), SQLiteWindowsWinsqlite3.DllName + ".dll");
+                yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), SQLiteWinsqlite3.DllName + ".dll");
 
             name = "sqlite.dll";
             yield return Path.Combine(bd, name); // last resort, hoping the bitness's right, we do not recommend it
             if (searchRsp)
-                yield return Path.Combine(rsp, name);
+                yield return Path.Combine(rsp!, name);
         }
 
         private static string? GetEnvironmentVariable(string name)
@@ -296,9 +296,6 @@ namespace SqlNado.Platforms
 
         [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpLibFileName);
-
-        [DllImport("kernel32", SetLastError = true)]
-        private static extern IntPtr FreeLibrary(IntPtr hLibModule);
 
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
 #pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
