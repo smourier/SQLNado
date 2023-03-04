@@ -309,28 +309,6 @@ namespace SqlNado
                         }
                         break;
 
-                    case SQLiteAutomaticColumnType.EnvironmentTickCountIfZero:
-                        if (value is int i && i == 0)
-                        {
-                            col.SetValue(null, instance, Environment.TickCount);
-                        }
-                        else if (value is long l && l == 0)
-                        {
-                            col.SetValue(null, instance, SQLiteDatabase.Native.GetTickCount());
-                        }
-                        break;
-
-                    case SQLiteAutomaticColumnType.EnvironmentTickCount:
-                        if (value is int)
-                        {
-                            col.SetValue(null, instance, Environment.TickCount);
-                        }
-                        else if (value is long)
-                        {
-                            col.SetValue(null, instance, SQLiteDatabase.Native.GetTickCount());
-                        }
-                        break;
-
                     case SQLiteAutomaticColumnType.EnvironmentMachineName:
                     case SQLiteAutomaticColumnType.EnvironmentDomainName:
                     case SQLiteAutomaticColumnType.EnvironmentUserName:

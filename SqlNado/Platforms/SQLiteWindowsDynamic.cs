@@ -9,13 +9,13 @@ using SqlNado.Utilities;
 
 namespace SqlNado.Platforms
 {
-    public class SQLiteDynamicWindows : ISQLiteNative, ISQLiteWindows
+    public class SQLiteWindowsDynamic : ISQLiteNative, ISQLiteWindows
     {
         private static IntPtr _module;
         private readonly string _initialLibraryPath;
         private readonly Lazy<string?> _libraryPath;
 
-        public SQLiteDynamicWindows(string libraryPath, CallingConvention callingConvention = CallingConvention.Cdecl)
+        public SQLiteWindowsDynamic(string libraryPath, CallingConvention callingConvention)
         {
             if (libraryPath == null)
                 throw new ArgumentNullException(nameof(libraryPath));
@@ -30,7 +30,6 @@ namespace SqlNado.Platforms
         private bool IsStdCall => CallingConvention != CallingConvention.Cdecl;
         public string? LibraryPath => _libraryPath.Value;
 
-        public long GetTickCount() => GetTickCount64();
         public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr)
         {
             if (IsStdCall)
@@ -47,30 +46,6 @@ namespace SqlNado.Platforms
             var name = Path.GetFileName(_initialLibraryPath);
             var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.EqualsIgnoreCase(name));
             return dll?.FileName;
-        }
-
-        public static ISQLiteNative GetDefault()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return new SQLiteWindowsSqlite3();
-
-            var path = GetPossibleNativePaths(true).FirstOrDefault(p => File.Exists(p));
-            if (path != null)
-            {
-                var name = Path.GetFileNameWithoutExtension(path);
-                if (name.EqualsIgnoreCase(SQLiteWindowsWinsqlite3.DllName))
-                    return new SQLiteWindowsWinsqlite3();
-
-                if (name.EqualsIgnoreCase(SQLiteWindowsSqlite3x86.DllName))
-                    return new SQLiteWindowsSqlite3x86();
-
-                if (name.EqualsIgnoreCase(SQLiteWindowsSqlite3x64.DllName))
-                    return new SQLiteWindowsSqlite3x64();
-
-                if (name.EqualsIgnoreCase(SQLiteWindowsSqlite3.DllName))
-                    return new SQLiteWindowsSqlite3();
-            }
-            throw new SqlNadoException("0002: Cannot determine native sqlite shared library path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
         }
 
         public virtual void Load()
@@ -257,7 +232,7 @@ namespace SqlNado.Platforms
         }
 
         // with this code, we support AnyCpu targets
-        private static IEnumerable<string> GetPossibleNativePaths(bool useWindowsRuntime)
+        public static IEnumerable<string> GetPossibleNativePaths(bool useWindowsRuntime)
         {
             var bd = AppDomain.CurrentDomain.BaseDirectory;
             var rsp = AppDomain.CurrentDomain.RelativeSearchPath;
@@ -329,9 +304,6 @@ namespace SqlNado.Platforms
 #pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
         private static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string lpProcName);
 #pragma warning restore CA2101 // Specify marshaling for P/Invoke string arguments
-
-        [DllImport("kernel32")]
-        private static extern long GetTickCount64();
 
         private delegate void cdecl_collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, string strB);
         private delegate int cdecl_xCompare(IntPtr arg, int lenA, IntPtr strA, int lenB, IntPtr strB);

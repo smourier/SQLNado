@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -14,17 +15,17 @@ namespace SqlNado.Tests
         {
             using (var db = new SQLiteDatabase(":memory:"))
             {
-                //using (var tok = db.GetTokenizer("unicode61", "remove_diacritics=0", "tokenchars=.=", "separators=X"))
-                //{
-                //    Assert.AreEqual("hellofriends", string.Join(string.Empty, tok.Tokenize("hello friends")));
-                //    GC.Collect(1000, GCCollectionMode.Forced, true);
-                //}
+                using (var tok = db.GetTokenizer("unicode61", "remove_diacritics=0", "tokenchars=.=", "separators=X"))
+                {
+                    Assert.AreEqual("hellofriends", string.Join(string.Empty, tok.Tokenize("hello friends")));
+                    GC.Collect(1000, GCCollectionMode.Forced, true);
+                }
 
-                //var sp = new StopWordTokenizer(db);
-                //Assert.AreEqual(1, db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1));
+                var sp = new StopWordTokenizer(db);
+                Assert.AreEqual(1, db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1));
 
-                //db.SetTokenizer(sp);
-                //db.ExecuteNonQuery("CREATE VIRTUAL TABLE tok1 USING fts3tokenize('" + sp.Name + "');");
+                db.SetTokenizer(sp);
+                db.ExecuteNonQuery("CREATE VIRTUAL TABLE tok1 USING fts3tokenize('" + sp.Name + "');");
 
                 //var tokens = db.LoadRows(@"SELECT token, start, end, position FROM tok1 WHERE input=?;",
                 //    "This is a test sentence.");
@@ -38,24 +39,23 @@ namespace SqlNado.Tests
         {
             using (var db = new SQLiteDatabase(":memory:"))
             {
-                var tok = db.GetUnicodeTokenizer();
-                //db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1);
-                //var tok = new StopWordTokenizer(db);
-                //db.SetTokenizer(tok);
+                db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1);
+                var tok = new StopWordTokenizer(db);
+                db.SetTokenizer(tok);
 
-                //// insert data as in SQLite exemple
-                //db.Save(new Mail { docid = 1, Subject = "software feedback", Body = "found it too slow" });
-                //db.Save(new Mail { docid = 2, Subject = "software feedback", Body = "no feedback" });
-                //db.Save(new Mail { docid = 3, Subject = "slow lunch order", Body = "was a software problem" });
+                // insert data as in SQLite exemple
+                db.Save(new Mail { docid = 1, Subject = "software feedback", Body = "found it too slow" });
+                db.Save(new Mail { docid = 2, Subject = "software feedback", Body = "no feedback" });
+                db.Save(new Mail { docid = 3, Subject = "slow lunch order", Body = "was a software problem" });
 
-                //// check result
-                //Assert.AreEqual(3, db.LoadAll<Mail>().Count());
+                // check result
+                Assert.AreEqual(3, db.LoadAll<Mail>().Count());
 
-                //Assert.AreEqual("1,2", string.Join(",", db.Load<Mail>("WHERE Subject MATCH 'software'").Select(m => m.docid)));
-                //Assert.AreEqual("2", string.Join(",", db.Load<Mail>("WHERE body MATCH 'feedback'").Select(m => m.docid)));
-                //Assert.AreEqual("1,2,3", string.Join(",", db.Load<Mail>("WHERE mail MATCH 'software'").Select(m => m.docid)));
-                //Assert.AreEqual("1,3", string.Join(",", db.Load<Mail>("WHERE mail MATCH 'slow'").Select(m => m.docid)));
-                //Assert.AreEqual("", string.Join(",", db.Load<Mail>("WHERE mail MATCH 'no'").Select(m => m.docid)));
+                Assert.AreEqual("1,2", string.Join(",", db.Load<Mail>("WHERE Subject MATCH 'software'").Select(m => m.docid)));
+                Assert.AreEqual("2", string.Join(",", db.Load<Mail>("WHERE body MATCH 'feedback'").Select(m => m.docid)));
+                Assert.AreEqual("1,2,3", string.Join(",", db.Load<Mail>("WHERE mail MATCH 'software'").Select(m => m.docid)));
+                Assert.AreEqual("1,3", string.Join(",", db.Load<Mail>("WHERE mail MATCH 'slow'").Select(m => m.docid)));
+                Assert.AreEqual("", string.Join(",", db.Load<Mail>("WHERE mail MATCH 'no'").Select(m => m.docid)));
             }
         }
     }

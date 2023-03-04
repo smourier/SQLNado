@@ -6,13 +6,14 @@ using SqlNado.Utilities;
 
 namespace SqlNado.Platforms
 {
-    public class SQLiteWindowsSqlite3 : ISQLiteNative, ISQLiteWindows
+    // this binding is for Linux or Windows or other OSes that support sqlite3 as a shared library name with cdecl bindings
+    public class SQLiteSqlite3 : ISQLiteNative, ISQLiteWindows
     {
         // note: always compiled in cdecl
         public const string DllName = "sqlite3";
         private readonly Lazy<string?> _libraryPath;
 
-        public SQLiteWindowsSqlite3()
+        public SQLiteSqlite3()
         {
             _libraryPath = new Lazy<string?>(GetLibraryPath);
         }
@@ -20,11 +21,7 @@ namespace SqlNado.Platforms
         public string? LibraryPath => _libraryPath.Value;
         public bool IsUsingWindowsRuntime => false;
 
-        public long GetTickCount() => GetTickCount64();
         public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr) => new SQLiteCdeclNativeTokenizer(ptr);
-
-        [DllImport("kernel32")]
-        private static extern long GetTickCount64();
 
         public void Load()
         {
@@ -37,7 +34,7 @@ namespace SqlNado.Platforms
         private string? GetLibraryPath()
         {
             Load();
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.EqualsIgnoreCase(DllName + ".dll"));
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.Contains(DllName, StringComparison.OrdinalIgnoreCase));
             return dll?.FileName;
         }
 

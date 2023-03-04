@@ -21,11 +21,7 @@ namespace SqlNado.Platforms
         public string? LibraryPath => _libraryPath.Value;
         public bool IsUsingWindowsRuntime => true;
 
-        public long GetTickCount() => GetTickCount64();
         public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr) => new SQLiteStdCallNativeTokenizer(ptr);
-
-        [DllImport("kernel32")]
-        private static extern long GetTickCount64();
 
         public void Load()
         {

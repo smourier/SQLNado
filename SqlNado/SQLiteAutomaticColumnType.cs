@@ -15,8 +15,6 @@
         TimeOfDayUtcIfNotSet,
         Random,
         RandomIfZero,
-        EnvironmentTickCount,
-        EnvironmentTickCountIfZero,
         EnvironmentMachineNameIfNull,
         EnvironmentDomainNameIfNull,
         EnvironmentUserNameIfNull,

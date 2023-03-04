@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -75,7 +76,6 @@ namespace SqlNado
         }
 
         public static string? NativeDllPath => Native?.LibraryPath;
-
         public static bool CanBeThreadSafe => DefaultThreadingMode != SQLiteThreadingMode.SingleThreaded;
         public static SQLiteThreadingMode DefaultThreadingMode
         {
@@ -104,7 +104,32 @@ namespace SqlNado
             if (_native != null)
                 return;
 
-            LoadNative(SQLiteDynamicWindows.GetDefault());
+            LoadNative(GetDefaultNative());
+        }
+
+        public static ISQLiteNative GetDefaultNative()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var path = SQLiteWindowsDynamic.GetPossibleNativePaths(true).FirstOrDefault(p => File.Exists(p));
+                if (path != null)
+                {
+                    var name = Path.GetFileNameWithoutExtension(path);
+                    if (name.EqualsIgnoreCase(SQLiteSqlite3.DllName))
+                        return new SQLiteSqlite3();
+
+                    if (name.Contains("sqlite", StringComparison.OrdinalIgnoreCase))
+                        return new SQLiteWindowsDynamic(path, CallingConvention.Cdecl);
+
+                    if (name.EqualsIgnoreCase(SQLiteWindowsWinsqlite3.DllName))
+                        return new SQLiteWindowsWinsqlite3();
+                }
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return new SQLiteSqlite3();
+
+            throw new SqlNadoException("0002: Cannot determine native sqlite shared library path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
         }
 
         [Browsable(false)]
