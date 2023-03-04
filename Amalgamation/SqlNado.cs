@@ -1,7 +1,7 @@
 ﻿/*
 MIT License
 
-Copyright (c) 2017-2022 Simon Mourier
+Copyright (c) 2017-2023 Simon Mourier
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,13 +21,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+using SqlNado.Platforms;
 using SqlNado.Utilities;
 using System.CodeDom.Compiler;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections;
 using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -46,7 +46,7 @@ namespace SqlNado
 {
     public interface ISQLiteBlobObject
     {
-        bool TryGetData(out byte[] data);
+        bool TryGetData(out byte[]? data);
     }
 }
 
@@ -54,15 +54,123 @@ namespace SqlNado
 {
     public interface ISQLiteLogger
     {
-        void Log(TraceLevel level, object value, string methodName = null);
+        void Log(TraceLevel level, object value, string? methodName = null);
     }
+}
+
+namespace SqlNado
+{
+#pragma warning disable IDE1006 // Naming Styles
+    namespace Native
+    {
+        public delegate void collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, string strB);
+        public delegate int xCompare(IntPtr arg, int lenA, IntPtr strA, int lenB, IntPtr strB);
+        public delegate void xFunc(IntPtr context, int argsCount, [In, Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] IntPtr[] args);
+        public delegate void xFinal(IntPtr context);
+    }
+
+    public interface ISQLiteNative
+    {
+        string? LibraryPath { get; }
+        CallingConvention CallingConvention { get; }
+        void Load();
+        ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr);
+
+        SQLiteErrorCode sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);
+        SQLiteErrorCode sqlite3_bind_double(IntPtr statement, int index, double value);
+        SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
+        SQLiteErrorCode sqlite3_bind_int64(IntPtr statement, int index, long value);
+        SQLiteErrorCode sqlite3_bind_null(IntPtr statement, int index);
+        int sqlite3_bind_parameter_count(IntPtr statement);
+        int sqlite3_bind_parameter_index(IntPtr statement, string name);
+        SQLiteErrorCode sqlite3_bind_text16(IntPtr statement, int index, string text, int count, IntPtr xDel);
+        SQLiteErrorCode sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
+        int sqlite3_blob_bytes(IntPtr blob);
+        SQLiteErrorCode sqlite3_blob_close(IntPtr blob);
+        SQLiteErrorCode sqlite3_blob_open(IntPtr db, string database, string table, string column, long rowId, int flags, out IntPtr blob);
+        SQLiteErrorCode sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
+        SQLiteErrorCode sqlite3_blob_reopen(IntPtr blob, long rowId);
+        SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
+        int sqlite3_changes(IntPtr db);
+        SQLiteErrorCode sqlite3_clear_bindings(IntPtr statement);
+        SQLiteErrorCode sqlite3_close(IntPtr db);
+        SQLiteErrorCode sqlite3_collation_needed16(IntPtr db, IntPtr arg, Native.collationNeeded? callback);
+        IntPtr sqlite3_column_blob(IntPtr statement, int index);
+        int sqlite3_column_bytes(IntPtr statement, int index);
+        int sqlite3_column_count(IntPtr statement);
+        double sqlite3_column_double(IntPtr statement, int index);
+        int sqlite3_column_int(IntPtr statement, int index);
+        long sqlite3_column_int64(IntPtr statement, int index);
+        IntPtr sqlite3_column_name16(IntPtr statement, int index);
+        IntPtr sqlite3_column_text16(IntPtr statement, int index);
+        SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
+        SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
+        SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
+        SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
+        SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
+        SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
+        SQLiteErrorCode sqlite3_create_collation16(IntPtr db, string name, SQLiteTextEncoding encoding, IntPtr arg, Native.xCompare? comparer);
+        SQLiteErrorCode sqlite3_create_function16(IntPtr db, string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, Native.xFunc? func, Native.xFunc? step, Native.xFinal? final);
+        SQLiteErrorCode sqlite3_db_cacheflush(IntPtr db);
+        SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
+        SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
+        SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, string? s);
+        SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
+        SQLiteErrorCode sqlite3_enable_shared_cache(int i);
+        IntPtr sqlite3_errmsg16(IntPtr db);
+        SQLiteErrorCode sqlite3_finalize(IntPtr statement);
+        long sqlite3_last_insert_rowid(IntPtr db);
+        int sqlite3_limit(IntPtr db, int id, int newVal);
+        SQLiteErrorCode sqlite3_load_extension(IntPtr db, string zFile, string? zProc, out IntPtr pzErrMsg);
+        SQLiteErrorCode sqlite3_open_v2(string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
+        SQLiteErrorCode sqlite3_prepare16_v2(IntPtr db, string sql, int numBytes, out IntPtr statement, IntPtr tail);
+        SQLiteErrorCode sqlite3_reset(IntPtr statement);
+        void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
+        void sqlite3_result_double(IntPtr ctx, double value);
+        void sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
+        void sqlite3_result_error16(IntPtr ctx, string value, int len);
+        void sqlite3_result_int(IntPtr ctx, int value);
+        void sqlite3_result_int64(IntPtr ctx, long value);
+        void sqlite3_result_null(IntPtr ctx);
+        void sqlite3_result_text16(IntPtr ctx, string value, int len, IntPtr xDel);
+        void sqlite3_result_zeroblob(IntPtr ctx, int size);
+        SQLiteErrorCode sqlite3_step(IntPtr statement);
+        SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
+        int sqlite3_total_changes(IntPtr db);
+        int sqlite3_threadsafe();
+        IntPtr sqlite3_value_blob(IntPtr value);
+        int sqlite3_value_bytes(IntPtr value);
+        int sqlite3_value_bytes16(IntPtr value);
+        double sqlite3_value_double(IntPtr value);
+        int sqlite3_value_int(IntPtr value);
+        long sqlite3_value_int64(IntPtr value);
+        IntPtr sqlite3_value_text16(IntPtr value);
+        SQLiteColumnType sqlite3_value_type(IntPtr value);
+    }
+#pragma warning restore IDE1006 // Naming Styles
+}
+
+namespace SqlNado
+{
+#pragma warning disable IDE1006 // Naming Styles
+    public interface ISQLiteNativeTokenizer
+    {
+        int Version { get; }
+        SQLiteErrorCode xCreate(int argc, string[]? argv, out IntPtr ppTokenizer);
+        SQLiteErrorCode xDestroy(IntPtr pTokenizer);
+        SQLiteErrorCode xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor);
+        SQLiteErrorCode xClose(IntPtr pCursor);
+        SQLiteErrorCode xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition);
+        SQLiteErrorCode xLanguageid(IntPtr pCursor, int iLangid);
+    }
+#pragma warning restore IDE1006 // Naming Styles
 }
 
 namespace SqlNado
 {
     public interface ISQLiteObject
     {
-        SQLiteDatabase Database { get; set; }
+        SQLiteDatabase? Database { get; set; }
     }
 }
 
@@ -102,8 +210,6 @@ namespace SqlNado
         TimeOfDayUtcIfNotSet,
         Random,
         RandomIfZero,
-        EnvironmentTickCount,
-        EnvironmentTickCountIfZero,
         EnvironmentMachineNameIfNull,
         EnvironmentDomainNameIfNull,
         EnvironmentUserNameIfNull,
@@ -131,10 +237,10 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public SQLiteStatement Statement { get; set; }
-        public virtual SQLiteBindType Type { get; set; }
+        public SQLiteStatement? Statement { get; set; }
+        public virtual SQLiteBindType? Type { get; set; }
         public virtual int Index { get; set; }
-        public virtual object Value { get; set; }
+        public virtual object? Value { get; set; }
         public virtual SQLiteBindOptions Options { get; set; }
     }
 }
@@ -153,7 +259,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public virtual bool GuidAsBlob { get; set; }
-        public virtual string GuidAsStringFormat { get; set; }
+        public virtual string? GuidAsStringFormat { get; set; }
         public virtual bool TimeSpanAsInt64 { get; set; } // ticks
         public virtual bool DecimalAsBlob { get; set; }
         public virtual bool EnumAsString { get; set; }
@@ -203,17 +309,17 @@ namespace SqlNado
                 typeof(ISQLiteBlobObject), typeof(SQLiteZeroBlob));
 
             DBNullType = new SQLiteBindType(ctx => null, typeof(DBNull));
-            ByteType = new SQLiteBindType(ctx => (int)(byte)ctx.Value, typeof(byte));
-            SByteType = new SQLiteBindType(ctx => (int)(sbyte)ctx.Value, typeof(sbyte));
-            Int16Type = new SQLiteBindType(ctx => (int)(short)ctx.Value, typeof(short));
-            UInt16Type = new SQLiteBindType(ctx => (int)(ushort)ctx.Value, typeof(ushort));
-            UInt32Type = new SQLiteBindType(ctx => (long)(uint)ctx.Value, typeof(uint));
-            UInt64Type = new SQLiteBindType(ctx => unchecked((long)(ulong)ctx.Value), typeof(ulong));
-            FloatType = new SQLiteBindType(ctx => (double)(float)ctx.Value, typeof(float));
+            ByteType = new SQLiteBindType(ctx => (int)(byte)ctx.Value!, typeof(byte));
+            SByteType = new SQLiteBindType(ctx => (int)(sbyte)ctx.Value!, typeof(sbyte));
+            Int16Type = new SQLiteBindType(ctx => (int)(short)ctx.Value!, typeof(short));
+            UInt16Type = new SQLiteBindType(ctx => (int)(ushort)ctx.Value!, typeof(ushort));
+            UInt32Type = new SQLiteBindType(ctx => (long)(uint)ctx.Value!, typeof(uint));
+            UInt64Type = new SQLiteBindType(ctx => unchecked((long)(ulong)ctx.Value!), typeof(ulong));
+            FloatType = new SQLiteBindType(ctx => (double)(float)ctx.Value!, typeof(float));
 
             GuidType = new SQLiteBindType(ctx =>
             {
-                var guid = (Guid)ctx.Value;
+                var guid = (Guid)ctx.Value!;
                 if (!ctx.Options.GuidAsBlob)
                 {
                     if (string.IsNullOrWhiteSpace(ctx.Options.GuidAsStringFormat))
@@ -226,7 +332,7 @@ namespace SqlNado
 
             DecimalType = new SQLiteBindType(ctx =>
             {
-                var dec = (decimal)ctx.Value;
+                var dec = (decimal)ctx.Value!;
                 if (!ctx.Options.DecimalAsBlob)
                     return dec.ToString(CultureInfo.InvariantCulture);
 
@@ -235,7 +341,7 @@ namespace SqlNado
 
             TimeSpanType = new SQLiteBindType(ctx =>
             {
-                var ts = (TimeSpan)ctx.Value;
+                var ts = (TimeSpan)ctx.Value!;
                 if (!ctx.Options.TimeSpanAsInt64)
                     return ts.ToString();
 
@@ -252,7 +358,7 @@ namespace SqlNado
                 }
                 else
                 {
-                    dt = (DateTime)ctx.Value;
+                    dt = (DateTime)ctx.Value!;
                 }
 
                 // https://sqlite.org/datatype3.html
@@ -297,12 +403,12 @@ namespace SqlNado
             // fallback
             ObjectToStringType = new SQLiteBindType(ctx =>
             {
-                ctx.Database.TryChangeType(ctx.Value, out string text); // always succeeds for a string
+                ctx.Database.TryChangeType(ctx.Value, out string? text); // always succeeds for a string
                 return text;
             }, typeof(object));
         }
 
-        public SQLiteBindType(Func<SQLiteBindContext, object> convertFunc, params Type[] handledClrType)
+        public SQLiteBindType(Func<SQLiteBindContext, object?> convertFunc, params Type[] handledClrType)
         {
             if (convertFunc == null)
                 throw new ArgumentNullException(nameof(convertFunc));
@@ -324,7 +430,7 @@ namespace SqlNado
         }
 
         public Type[] HandledClrTypes { get; }
-        public virtual Func<SQLiteBindContext, object> ConvertFunc { get; }
+        public virtual Func<SQLiteBindContext, object?> ConvertFunc { get; }
 
         public override string ToString() => string.Join(", ", HandledClrTypes.Select(t => t.FullName));
     }
@@ -369,10 +475,10 @@ namespace SqlNado
 
         public override string ToString() => TableName + ":" + ColumnName + ":" + RowId;
 
-        public virtual int Size => SQLiteDatabase._sqlite3_blob_bytes(CheckDisposed());
-        public virtual void MoveToNewRow(long rowId) => Database.CheckError(SQLiteDatabase._sqlite3_blob_reopen(CheckDisposed(), rowId));
-        public virtual void Read(byte[] buffer, int count, int blobOffset) => Database.CheckError(SQLiteDatabase._sqlite3_blob_read(CheckDisposed(), buffer, count, blobOffset));
-        public virtual void Write(byte[] buffer, int count, int blobOffset) => Database.CheckError(SQLiteDatabase._sqlite3_blob_write(CheckDisposed(), buffer, count, blobOffset));
+        public virtual int Size => SQLiteDatabase.Native.sqlite3_blob_bytes(CheckDisposed());
+        public virtual void MoveToNewRow(long rowId) => Database.CheckError(SQLiteDatabase.Native.sqlite3_blob_reopen(CheckDisposed(), rowId));
+        public virtual void Read(byte[] buffer, int count, int blobOffset) => Database.CheckError(SQLiteDatabase.Native.sqlite3_blob_read(CheckDisposed(), buffer, count, blobOffset));
+        public virtual void Write(byte[] buffer, int count, int blobOffset) => Database.CheckError(SQLiteDatabase.Native.sqlite3_blob_write(CheckDisposed(), buffer, count, blobOffset));
 
         // This is not recommended to use this, in general.
         // SQLiteBlob's design targets streams, not byte arrays. If you really want a byte array, then don't use this blob class type, just use byte[]
@@ -421,7 +527,7 @@ namespace SqlNado
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {
-                SQLiteDatabase._sqlite3_blob_close(handle);
+                SQLiteDatabase.Native.sqlite3_blob_close(handle);
             }
         }
 
@@ -568,7 +674,7 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public virtual string CacheKey { get; set; }
+        public virtual string? CacheKey { get; set; }
     }
 }
 
@@ -616,7 +722,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public string CollationName { get; }
-        public CultureInfo CollationCulture { get; }
+        public CultureInfo? CollationCulture { get; }
         public CompareOptions CollationOptions { get; }
     }
 }
@@ -626,7 +732,7 @@ namespace SqlNado
     public sealed class SQLiteColumn
     {
         private string _name;
-        private object _defaultValue;
+        private object? _defaultValue;
 
         internal SQLiteColumn(SQLiteTable table)
         {
@@ -634,6 +740,8 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(table));
 
             Table = table;
+            _name = string.Empty;
+            Type = string.Empty;
         }
 
         public SQLiteTable Table { get; }
@@ -652,12 +760,12 @@ namespace SqlNado
                 _name = value;
 
                 // collation and autoinc can only be read using this method
-                Table.Database.CheckError(SQLiteDatabase._sqlite3_table_column_metadata(Table.Database.CheckDisposed(), null, Table.Name, Name,
+                Table.Database.CheckError(SQLiteDatabase.Native.sqlite3_table_column_metadata(Table.Database.CheckDisposed(), null, Table.Name, Name,
                     out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc));
 
                 if (collation != IntPtr.Zero)
                 {
-                    Collation = (string)SQLiteDatabase.Utf8Marshaler.Instance.MarshalNativeToManaged(collation);
+                    Collation = (string?)Utf8Marshaler.Instance.MarshalNativeToManaged(collation);
                 }
 
                 AutoIncrements = autoInc != 0;
@@ -670,14 +778,14 @@ namespace SqlNado
         public bool IsNotNullable { get; internal set; }
 
         [SQLiteColumn(Name = "dflt_value")]
-        public object DefaultValue { get => _defaultValue; set => _defaultValue = SQLiteObjectColumn.FromLiteral(value); }
+        public object? DefaultValue { get => _defaultValue; set => _defaultValue = SQLiteObjectColumn.FromLiteral(value); }
 
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
         public bool IsRowId { get; internal set; }
 
         [SQLiteColumn(Ignore = true)]
-        public string Collation { get; private set; }
+        public string? Collation { get; private set; }
 
         [SQLiteColumn(Ignore = true)]
         public bool AutoIncrements { get; private set; }
@@ -739,17 +847,17 @@ namespace SqlNado
         internal int? _sortOrder;
         private readonly List<SQLiteIndexAttribute> _indices = new List<SQLiteIndexAttribute>();
 
-        public string Name { get; set; }
-        public string DataType { get; set; }
-        public Type ClrType { get; set; }
-        public string Collation { get; set; }
+        public string? Name { get; set; }
+        public string? DataType { get; set; }
+        public Type? ClrType { get; set; }
+        public string? Collation { get; set; }
         public bool Ignore { get => _ignore ?? false; set => _ignore = value; }
         public SQLiteAutomaticColumnType AutomaticType { get; set; }
         public bool AutoIncrements { get => _autoIncrements ?? false; set => _autoIncrements = value; }
         public bool IsPrimaryKey { get => _isPrimaryKey ?? false; set => _isPrimaryKey = value; }
         public SQLiteDirection PrimaryKeyDirection { get; set; }
         public bool IsUnique { get; set; }
-        public string CheckExpression { get; set; }
+        public string? CheckExpression { get; set; }
         public bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
         public bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
         public bool InsertOnly { get; set; }
@@ -757,17 +865,17 @@ namespace SqlNado
         public bool HasDefaultValue { get => _hasDefaultValue ?? false; set => _hasDefaultValue = value; }
         public bool IsDefaultValueIntrinsic { get => _isDefaultValueIntrinsic ?? false; set => _isDefaultValueIntrinsic = value; }
         public int SortOrder { get => _sortOrder ?? -1; set => _sortOrder = value; }
-        public SQLiteBindOptions BindOptions { get; set; }
-        public object DefaultValue { get; set; }
+        public SQLiteBindOptions? BindOptions { get; set; }
+        public object? DefaultValue { get; set; }
         public IList<SQLiteIndexAttribute> Indices => _indices;
 
-        public Expression<Func<object, object>> GetValueExpression { get; set; }
-        public Expression<Action<SQLiteLoadOptions, object, object>> SetValueExpression { get; set; }
+        public Expression<Func<object, object>>? GetValueExpression { get; set; }
+        public Expression<Action<SQLiteLoadOptions, object?, object?>>? SetValueExpression { get; set; }
 
-        public override string ToString() => Name;
-        int IComparable.CompareTo(object obj) => CompareTo(obj as SQLiteColumnAttribute);
+        public override string? ToString() => Name;
+        int IComparable.CompareTo(object? obj) => CompareTo(obj as SQLiteColumnAttribute);
 
-        public int CompareTo(SQLiteColumnAttribute other)
+        public int CompareTo(SQLiteColumnAttribute? other)
         {
             if (other == null)
                 throw new ArgumentNullException(nameof(other));
@@ -863,9 +971,10 @@ namespace SqlNado
 {
     public class SQLiteDatabase : IDisposable
     {
-        private string _primaryKeyPersistenceSeparator = "\0";
-        private static IntPtr _module;
+        private static ISQLiteNative? _native;
+
         private IntPtr _handle;
+        private string _primaryKeyPersistenceSeparator = "\0";
         private bool _enableStatementsCache = true;
         private volatile bool _querySupportFunctionsAdded = false;
         private readonly ConcurrentDictionary<Type, SQLiteBindType> _bindTypes = new ConcurrentDictionary<Type, SQLiteBindType>();
@@ -876,9 +985,9 @@ namespace SqlNado
 
         // note the pool is case-sensitive. it may not be always optimized, but it's safer
         private readonly ConcurrentDictionary<string, StatementPool> _statementPools = new ConcurrentDictionary<string, StatementPool>(StringComparer.Ordinal);
-        private readonly collationNeeded _collationNeeded;
+        private readonly Native.collationNeeded _collationNeeded;
 
-        public event EventHandler<SQLiteCollationNeededEventArgs> CollationNeeded;
+        public event EventHandler<SQLiteCollationNeededEventArgs>? CollationNeeded;
 
         public SQLiteDatabase(string filePath)
             : this(filePath, SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
@@ -898,26 +1007,79 @@ namespace SqlNado
             if (BindOptions == null)
                 throw new InvalidOperationException();
 
-            HookNativeProcs();
-            CheckError(_sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
+            EnsureNativeLoaded();
+            CheckError(Native.sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
             _collationNeeded = NativeCollationNeeded;
-            CheckError(_sqlite3_collation_needed16(_handle, IntPtr.Zero, _collationNeeded));
+            CheckError(Native.sqlite3_collation_needed16(_handle, IntPtr.Zero, _collationNeeded));
             FilePath = filePath;
             AddDefaultBindTypes();
         }
 
-        public static string NativeDllPath { get; private set; }
-        public static bool IsUsingWindowsRuntime { get; private set; }
-        public static bool UseWindowsRuntime { get; set; } = true;
+        public static ISQLiteNative Native
+        {
+            get
+            {
+                if (_native == null)
+                    throw new SqlNadoException("0032: Native library is not yet loaded.");
 
+                return _native;
+            }
+        }
+
+        public static string? NativeDllPath => Native?.LibraryPath;
         public static bool CanBeThreadSafe => DefaultThreadingMode != SQLiteThreadingMode.SingleThreaded;
         public static SQLiteThreadingMode DefaultThreadingMode
         {
             get
             {
-                HookNativeProcs();
-                return (SQLiteThreadingMode)_sqlite3_threadsafe();
+                EnsureNativeLoaded();
+                return (SQLiteThreadingMode)Native.sqlite3_threadsafe();
             }
+        }
+
+        public static void LoadNative(ISQLiteNative native)
+        {
+            if (native == null)
+                throw new ArgumentNullException(nameof(native));
+
+            if (_native != null)
+                throw new SqlNadoException("0031: Native library is already loaded.");
+
+            _native = native;
+            _native.Load();
+        }
+
+        private static void EnsureNativeLoaded()
+        {
+            if (_native != null)
+                return;
+
+            LoadNative(GetDefaultNative());
+        }
+
+        public static ISQLiteNative GetDefaultNative()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var path = SQLiteWindowsDynamic.GetPossibleNativePaths(true).FirstOrDefault(p => File.Exists(p));
+                if (path != null)
+                {
+                    var name = Path.GetFileNameWithoutExtension(path);
+                    if (name.EqualsIgnoreCase(SQLiteSqlite3.DllName))
+                        return new SQLiteSqlite3();
+
+                    if (name.Contains("sqlite", StringComparison.OrdinalIgnoreCase))
+                        return new SQLiteWindowsDynamic(path, CallingConvention.Cdecl);
+
+                    if (name.EqualsIgnoreCase(SQLiteWinsqlite3.DllName))
+                        return new SQLiteWinsqlite3();
+                }
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return new SQLiteSqlite3();
+
+            throw new SqlNadoException("0002: Cannot determine native sqlite shared library path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
         }
 
         [Browsable(false)]
@@ -948,11 +1110,11 @@ namespace SqlNado
         public SQLiteLockingMode LockingMode { get => ExecuteScalar<SQLiteLockingMode>("PRAGMA locking_mode"); set => ExecuteNonQuery("PRAGMA locking_mode=" + value); }
         public SQLiteTempStore TempStore { get => ExecuteScalar<SQLiteTempStore>("PRAGMA temp_store"); set => ExecuteNonQuery("PRAGMA temp_store=" + value); }
         public int DataVersion => ExecuteScalar<int>("PRAGMA data_version");
-        public IEnumerable<string> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string)row[0]);
-        public IEnumerable<string> Collations => LoadObjects("PRAGMA collation_list").Select(row => (string)row[1]);
-        public virtual ISQLiteLogger Logger { get; set; }
+        public IEnumerable<string?> CompileOptions => LoadObjects("PRAGMA compile_options").Select(row => (string?)row[0]);
+        public IEnumerable<string?> Collations => LoadObjects("PRAGMA collation_list").Select(row => (string?)row[1]);
+        public virtual ISQLiteLogger? Logger { get; set; }
         public virtual SQLiteErrorOptions ErrorOptions { get; set; }
-        public virtual string DefaultColumnCollation { get; set; }
+        public virtual string? DefaultColumnCollation { get; set; }
 
         public virtual bool EnableStatementsCache
         {
@@ -1006,14 +1168,14 @@ namespace SqlNado
         }
 
         [Browsable(false)]
-        public int TotalChangesCount => _sqlite3_total_changes(CheckDisposed());
+        public int TotalChangesCount => Native.sqlite3_total_changes(CheckDisposed());
 
         [Browsable(false)]
         public int ChangesCount
         {
             get
             {
-                var changes = _sqlite3_changes(CheckDisposed());
+                var changes = Native.sqlite3_changes(CheckDisposed());
 #if DEBUG
                 Log(TraceLevel.Verbose, "Changes: " + changes);
 #endif
@@ -1022,7 +1184,7 @@ namespace SqlNado
         }
 
         [Browsable(false)]
-        public long LastInsertRowId => _sqlite3_last_insert_rowid(CheckDisposed());
+        public long LastInsertRowId => Native.sqlite3_last_insert_rowid(CheckDisposed());
 
         private void NativeCollationNeeded(IntPtr arg, IntPtr handle, SQLiteTextEncoding encoding, string name)
         {
@@ -1060,7 +1222,7 @@ namespace SqlNado
                 default:
                     if (e.CollationCulture != null)
                     {
-                        SetCollationFunction(name, Extensions.GetStringComparer(e.CollationCulture.CompareInfo, e.CollationOptions));
+                        SetCollationFunction(name, SQLiteExtensions.GetStringComparer(e.CollationCulture.CompareInfo, e.CollationOptions));
                     }
                     break;
             }
@@ -1071,55 +1233,53 @@ namespace SqlNado
 
         protected virtual void OnCollationNeeded(object sender, SQLiteCollationNeededEventArgs e) => CollationNeeded?.Invoke(sender, e);
 
-        public virtual void SetCollationFunction(string name, IComparer<string> comparer)
+        public virtual void SetCollationFunction(string name, IComparer<string>? comparer)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
             if (comparer == null)
             {
-                CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null));
+                CheckError(Native.sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null));
                 _collationSinks.TryRemove(name, out _);
                 return;
             }
 
-            var sink = new CollationSink
-            {
-                Comparer = comparer
-            };
+            var sink = new CollationSink(comparer);
             _collationSinks[name] = sink;
 
             // note we only support UTF-16 encoding so we have only ptr > str marshaling
-            CheckError(_sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback));
+            CheckError(Native.sqlite3_create_collation16(CheckDisposed(), name, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback));
         }
 
         private sealed class CollationSink
         {
-            public IComparer<string> Comparer;
-            public xCompare Callback;
+            private readonly IComparer<string> _comparer;
+            public Native.xCompare Callback;
 
-            public CollationSink()
+            public CollationSink(IComparer<string> comparer)
             {
-                Callback = new xCompare(Compare);
+                _comparer = comparer;
+                Callback = new Native.xCompare(Compare);
             }
 
             public int Compare(IntPtr arg, int lenA, IntPtr strA, int lenB, IntPtr strB)
             {
                 var a = Marshal.PtrToStringUni(strA, lenA / 2);
                 var b = Marshal.PtrToStringUni(strB, lenB / 2);
-                return Comparer.Compare(a, b);
+                return _comparer.Compare(a, b);
             }
         }
 
         public virtual void UnsetCollationFunction(string name) => SetCollationFunction(name, null);
 
-        public SQLiteTokenizer GetSimpleTokenizer(params string[] arguments) => GetTokenizer("simple", arguments);
-        public SQLiteTokenizer GetPorterTokenizer(params string[] arguments) => GetTokenizer("porter", arguments);
-        public SQLiteTokenizer GetUnicodeTokenizer(params string[] arguments) => GetTokenizer("unicode61", arguments);
+        public SQLiteTokenizer? GetSimpleTokenizer(params string[] arguments) => GetTokenizer("simple", arguments);
+        public SQLiteTokenizer? GetPorterTokenizer(params string[] arguments) => GetTokenizer("porter", arguments);
+        public SQLiteTokenizer? GetUnicodeTokenizer(params string[] arguments) => GetTokenizer("unicode61", arguments);
 
         // https://www.sqlite.org/fts3.html#tokenizer
         // we use FTS3/4 because FTS5 is not included in winsqlite.dll (as of today 2019/1/15)
-        public SQLiteTokenizer GetTokenizer(string name, params string[] arguments)
+        public SQLiteTokenizer? GetTokenizer(string name, params string[] arguments)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -1161,27 +1321,23 @@ namespace SqlNado
             if (_tokenizers.ContainsKey(tokenizer.Name))
                 throw new ArgumentException(null, nameof(tokenizer));
 
-            var mt = new sqlite3_tokenizer_module();
+            var mt = new SQLiteNativeTokenizerModule();
             tokenizer._module = GCHandle.Alloc(mt, GCHandleType.Pinned);
             _tokenizers.AddOrUpdate(tokenizer.Name, tokenizer, (k, old) => tokenizer);
 
-            xCreate dcreate = (int c, string[] args, out IntPtr p) =>
+            SQLiteErrorCode createFn(int c, string[]? args, out IntPtr p)
             {
                 p = Marshal.AllocCoTaskMem(IntPtr.Size);
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._create = GCHandle.Alloc(dcreate);
-            mt.xCreate = Marshal.GetFunctionPointerForDelegate(dcreate);
+            }
 
-            xDestroy ddestroy = (p) =>
+            SQLiteErrorCode destroyFn(IntPtr pTokenizer)
             {
-                Marshal.FreeCoTaskMem(p);
+                Marshal.FreeCoTaskMem(pTokenizer);
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._destroy = GCHandle.Alloc(ddestroy);
-            mt.xDestroy = Marshal.GetFunctionPointerForDelegate(ddestroy);
+            }
 
-            xOpen dopen = (IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor) =>
+            SQLiteErrorCode openFn(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor)
             {
                 if (nBytes < 0)
                 {
@@ -1224,13 +1380,11 @@ namespace SqlNado
                 Marshal.StructureToPtr(te, te.Address, false);
                 ppCursor = te.Address;
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._open = GCHandle.Alloc(dopen);
-            mt.xOpen = Marshal.GetFunctionPointerForDelegate(dopen);
+            }
 
-            xClose dclose = (p) =>
+            SQLiteErrorCode closeFn(IntPtr pCursor)
             {
-                var te = Marshal.PtrToStructure<TokenEnumerator>(p);
+                var te = Marshal.PtrToStructure<TokenEnumerator>(pCursor);
                 TokenEnumerator._enumerators.TryRemove(te.Address, out var kv);
                 if (te.Token != IntPtr.Zero)
                 {
@@ -1240,11 +1394,9 @@ namespace SqlNado
                 Marshal.FreeCoTaskMem(te.Address);
                 te.Address = IntPtr.Zero;
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._close = GCHandle.Alloc(dclose);
-            mt.xClose = Marshal.GetFunctionPointerForDelegate(dclose);
+            }
 
-            xNext dnext = (IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition) =>
+            SQLiteErrorCode nextFn(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition)
             {
                 ppToken = IntPtr.Zero;
                 pnBytes = 0;
@@ -1279,13 +1431,62 @@ namespace SqlNado
                 piEndOffset = token.EndOffset;
                 piPosition = token.Position;
                 return SQLiteErrorCode.SQLITE_OK;
-            };
-            tokenizer._next = GCHandle.Alloc(dnext);
-            mt.xNext = Marshal.GetFunctionPointerForDelegate(dnext);
+            }
 
-            xLanguageid dlangid = (p, i) => SQLiteErrorCode.SQLITE_OK;
-            tokenizer._languageid = GCHandle.Alloc(dlangid);
-            mt.xLanguageid = Marshal.GetFunctionPointerForDelegate(dlangid);
+            SQLiteErrorCode languageidFn(IntPtr pCursor, int iLangid) => SQLiteErrorCode.SQLITE_OK;
+
+            if (Native.CallingConvention == CallingConvention.StdCall)
+            {
+                SQLiteStdCallNativeTokenizer.xCreate create = createFn;
+                tokenizer._create = GCHandle.Alloc(create);
+                mt.xCreate = Marshal.GetFunctionPointerForDelegate(create);
+
+                SQLiteStdCallNativeTokenizer.xDestroy destroy = destroyFn;
+                tokenizer._destroy = GCHandle.Alloc(destroy);
+                mt.xDestroy = Marshal.GetFunctionPointerForDelegate(destroy);
+
+                SQLiteStdCallNativeTokenizer.xOpen open = openFn;
+                tokenizer._open = GCHandle.Alloc(open);
+                mt.xOpen = Marshal.GetFunctionPointerForDelegate(open);
+
+                SQLiteStdCallNativeTokenizer.xClose close = closeFn;
+                tokenizer._close = GCHandle.Alloc(close);
+                mt.xClose = Marshal.GetFunctionPointerForDelegate(close);
+
+                SQLiteStdCallNativeTokenizer.xNext next = nextFn;
+                tokenizer._next = GCHandle.Alloc(next);
+                mt.xNext = Marshal.GetFunctionPointerForDelegate(next);
+
+                SQLiteStdCallNativeTokenizer.xLanguageid languageid = languageidFn;
+                tokenizer._languageid = GCHandle.Alloc(languageid);
+                mt.xLanguageid = Marshal.GetFunctionPointerForDelegate(languageid);
+            }
+            else
+            {
+                SQLiteCdeclNativeTokenizer.xCreate create = createFn;
+                tokenizer._create = GCHandle.Alloc(create);
+                mt.xCreate = Marshal.GetFunctionPointerForDelegate(create);
+
+                SQLiteCdeclNativeTokenizer.xDestroy destroy = destroyFn;
+                tokenizer._destroy = GCHandle.Alloc(destroy);
+                mt.xDestroy = Marshal.GetFunctionPointerForDelegate(destroy);
+
+                SQLiteCdeclNativeTokenizer.xOpen open = openFn;
+                tokenizer._open = GCHandle.Alloc(open);
+                mt.xOpen = Marshal.GetFunctionPointerForDelegate(open);
+
+                SQLiteCdeclNativeTokenizer.xClose close = closeFn;
+                tokenizer._close = GCHandle.Alloc(close);
+                mt.xClose = Marshal.GetFunctionPointerForDelegate(close);
+
+                SQLiteCdeclNativeTokenizer.xNext next = nextFn;
+                tokenizer._next = GCHandle.Alloc(next);
+                mt.xNext = Marshal.GetFunctionPointerForDelegate(next);
+
+                SQLiteCdeclNativeTokenizer.xLanguageid languageid = languageidFn;
+                tokenizer._languageid = GCHandle.Alloc(languageid);
+                mt.xLanguageid = Marshal.GetFunctionPointerForDelegate(languageid);
+            }
 
             // we need to copy struct's data again as structs are copied when pinned
             Marshal.StructureToPtr(mt, tokenizer._module.AddrOfPinnedObject(), false);
@@ -1319,27 +1520,17 @@ namespace SqlNado
 
         private sealed class NativeTokenizer : SQLiteTokenizer
         {
-            private readonly xDestroy _destroyFn;
-            private readonly xClose _closeFn;
-            private readonly xOpen _openFn;
-            private readonly xNext _nextFn;
-            //private readonly xLanguageid _languageidFn;
             private readonly IntPtr _tokenizer;
+            private readonly ISQLiteNativeTokenizer _native;
             private int _disposed;
 
             public NativeTokenizer(SQLiteDatabase database, string name, IntPtr ptr, params string[] arguments)
                 : base(database, name)
             {
-                var module = Marshal.PtrToStructure<sqlite3_tokenizer_module>(ptr);
-                Version = module.iVersion;
-                var create = Marshal.GetDelegateForFunctionPointer<xCreate>(module.xCreate);
-                _destroyFn = Marshal.GetDelegateForFunctionPointer<xDestroy>(module.xDestroy);
-                _openFn = Marshal.GetDelegateForFunctionPointer<xOpen>(module.xOpen);
-                _closeFn = Marshal.GetDelegateForFunctionPointer<xClose>(module.xClose);
-                _nextFn = Marshal.GetDelegateForFunctionPointer<xNext>(module.xNext);
-                //_languageidFn = module.xLanguageid != IntPtr.Zero ? Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid) : null;
+                _native = Native.GetTokenizer(ptr);
+                Version = _native.Version;
                 var argc = (arguments?.Length).GetValueOrDefault();
-                Database.CheckError(create(argc, arguments, out _tokenizer));
+                Database.CheckError(_native.xCreate(argc, arguments, out _tokenizer));
             }
 
             public override IEnumerable<SQLiteToken> Tokenize(string input)
@@ -1352,7 +1543,7 @@ namespace SqlNado
                 Marshal.Copy(bytes, 0, ptr, bytes.Length);
                 try
                 {
-                    Database.CheckError(_openFn(_tokenizer, ptr, bytes.Length, out var cursor));
+                    Database.CheckError(_native.xOpen(_tokenizer, ptr, bytes.Length, out var cursor));
 
                     // this is weird but, as we can see in sqlite3.c unicodeOpen implementation,
                     // the tokenizer is not copied to the cursor so we do it ourselves...
@@ -1362,7 +1553,7 @@ namespace SqlNado
                     {
                         do
                         {
-                            var error = _nextFn(cursor, out var token, out var len, out var startOffset, out var endOffset, out var position);
+                            var error = _native.xNext(cursor, out var token, out var len, out var startOffset, out var endOffset, out var position);
                             if (error == SQLiteErrorCode.SQLITE_DONE)
                                 yield break;
 
@@ -1375,7 +1566,7 @@ namespace SqlNado
                     }
                     finally
                     {
-                        _closeFn(cursor);
+                        _native.xClose(cursor);
                     }
                 }
                 finally
@@ -1393,62 +1584,16 @@ namespace SqlNado
                 if (disposing)
                 {
 #if DEBUG
-                    Database.CheckError(_destroyFn(_tokenizer), true);
+                    Database.CheckError(_native.xDestroy(_tokenizer), true);
 #else
-                    Database.CheckError(_destroyFn(_tokenizer), false);
+                    Database.CheckError(_native.xDestroy(_tokenizer), false);
 #endif
                 }
-
                 base.Dispose(disposing);
             }
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-#pragma warning disable IDE1006 // Naming Styles
-        private struct sqlite3_tokenizer_module
-#pragma warning restore IDE1006 // Naming Styles
-        {
-            public int iVersion;
-            public IntPtr xCreate;
-            public IntPtr xDestroy;
-            public IntPtr xOpen;
-            public IntPtr xClose;
-            public IntPtr xNext;
-            public IntPtr xLanguageid;
-        }
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        // note: this supports only ANSI, not UTF8 really, but let's say that's ok for arguments...
-        private delegate SQLiteErrorCode xCreate(int argc, [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] string[] argv, out IntPtr ppTokenizer);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode xDestroy(IntPtr pTokenizer);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode xClose(IntPtr pCursor);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode xLanguageid(IntPtr pCursor, int iLangid);
-
-        public virtual void SetScalarFunction(string name, int argumentsCount, bool deterministic, Action<SQLiteFunctionContext> function)
+        public virtual void SetScalarFunction(string name, int argumentsCount, bool deterministic, Action<SQLiteFunctionContext>? function)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -1463,62 +1608,60 @@ namespace SqlNado
             var key = name + "\0" + argumentsCount + "\0" + (int)enc;
             if (function == null)
             {
-                CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null, null, null));
+                CheckError(Native.sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, null, null, null));
                 _functionSinks.TryRemove(key, out _);
                 return;
             }
 
-            var sink = new ScalarFunctionSink
-            {
-                Database = this,
-                Function = function,
-                Name = name
-            };
+            var sink = new ScalarFunctionSink(this, function, name);
             _functionSinks[key] = sink;
 
-            CheckError(_sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback, null, null));
+            CheckError(Native.sqlite3_create_function16(CheckDisposed(), name, argumentsCount, SQLiteTextEncoding.SQLITE_UTF16, IntPtr.Zero, sink.Callback, null, null));
         }
 
         private sealed class ScalarFunctionSink
         {
-            public Action<SQLiteFunctionContext> Function;
-            public SQLiteDatabase Database;
-            public string Name;
-            public xFunc Callback;
+            private readonly SQLiteDatabase _database;
+            private readonly Action<SQLiteFunctionContext> _function;
+            private readonly string _name;
+            public Native.xFunc Callback;
 
-            public ScalarFunctionSink()
+            public ScalarFunctionSink(SQLiteDatabase database, Action<SQLiteFunctionContext> function, string name)
             {
-                Callback = new xFunc(Call);
+                _database = database;
+                _function = function;
+                _name = name;
+                Callback = new Native.xFunc(Call);
             }
 
             public void Call(IntPtr context, int argsCount, IntPtr[] args)
             {
-                var ctx = new SQLiteFunctionContext(Database, context, Name, argsCount, args);
-                Function(ctx);
+                var ctx = new SQLiteFunctionContext(_database, context, _name, argsCount, args);
+                _function(ctx);
             }
         }
 
         public virtual void UnsetScalarFunction(string name, int argumentsCount) => SetScalarFunction(name, argumentsCount, true, null);
 
-        public void LogInfo(object value, [CallerMemberName] string methodName = null) => Log(TraceLevel.Info, value, methodName);
-        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null) => Logger?.Log(level, value, methodName);
+        public void LogInfo(object value, [CallerMemberName] string? methodName = null) => Log(TraceLevel.Info, value, methodName);
+        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string? methodName = null) => Logger?.Log(level, value, methodName);
 
         public virtual void ShrinkMemory() => ExecuteNonQuery("PRAGMA shrink_memory");
         public virtual void Vacuum() => ExecuteNonQuery("VACUUM");
-        public virtual void CacheFlush() => CheckError(_sqlite3_db_cacheflush(CheckDisposed()));
+        public virtual void CacheFlush() => CheckError(Native.sqlite3_db_cacheflush(CheckDisposed()));
 
         public bool CheckIntegrity() => CheckIntegrity(100).FirstOrDefault().EqualsIgnoreCase("ok");
-        public IEnumerable<string> CheckIntegrity(int maximumErrors) => LoadObjects("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string)o[0]);
+        public IEnumerable<string?> CheckIntegrity(int maximumErrors) => LoadObjects("PRAGMA integrity_check(" + maximumErrors + ")").Select(o => (string?)o[0]);
 
-        public void EnableLoadExtension(bool enable, bool throwOnError = true) => CheckError(_sqlite3_enable_load_extension(Handle, enable ? 1 : 0), throwOnError);
+        public void EnableLoadExtension(bool enable, bool throwOnError = true) => CheckError(Native.sqlite3_enable_load_extension(Handle, enable ? 1 : 0), throwOnError);
 
-        public void LoadExtension(string fileName, string procedure = null, bool throwOnError = true)
+        public void LoadExtension(string fileName, string? procedure = null, bool throwOnError = true)
         {
-            var code = _sqlite3_load_extension(Handle, fileName, procedure, out var ptr);
+            var code = Native.sqlite3_load_extension(Handle, fileName, procedure, out var ptr);
             if (code == SQLiteErrorCode.SQLITE_OK)
                 return;
 
-            string msg = null;
+            string? msg = null;
             if (ptr != IntPtr.Zero)
             {
                 msg = Marshal.PtrToStringAnsi(ptr).Nullify();
@@ -1532,19 +1675,19 @@ namespace SqlNado
 
         public static void EnableSharedCache(bool enable, bool throwOnError = true)
         {
-            HookNativeProcs();
-            StaticCheckError(_sqlite3_enable_shared_cache(enable ? 1 : 0), throwOnError);
+            EnsureNativeLoaded();
+            StaticCheckError(Native.sqlite3_enable_shared_cache(enable ? 1 : 0), throwOnError);
         }
 
         public static void Configure(SQLiteConfiguration configuration, bool throwOnError = true, params object[] arguments)
         {
-            HookNativeProcs();
+            EnsureNativeLoaded();
             switch (configuration)
             {
                 case SQLiteConfiguration.SQLITE_CONFIG_SINGLETHREAD:
                 case SQLiteConfiguration.SQLITE_CONFIG_MULTITHREAD:
                 case SQLiteConfiguration.SQLITE_CONFIG_SERIALIZED:
-                    StaticCheckError(_sqlite3_config_0(configuration), throwOnError);
+                    StaticCheckError(Native.sqlite3_config_0(configuration), throwOnError);
                     break;
 
                 case SQLiteConfiguration.SQLITE_CONFIG_MEMSTATUS:
@@ -1558,7 +1701,7 @@ namespace SqlNado
                         throw new ArgumentNullException(nameof(arguments));
 
                     Check1(arguments);
-                    StaticCheckError(_sqlite3_config_2(configuration, Conversions.ChangeType<int>(arguments[0])), throwOnError);
+                    StaticCheckError(Native.sqlite3_config_2(configuration, Conversions.ChangeType<int>(arguments[0])), throwOnError);
                     break;
 
                 case SQLiteConfiguration.SQLITE_CONFIG_LOOKASIDE:
@@ -1566,7 +1709,7 @@ namespace SqlNado
                         throw new ArgumentNullException(nameof(arguments));
 
                     Check2(arguments);
-                    StaticCheckError(_sqlite3_config_4(configuration, Conversions.ChangeType<int>(arguments[0]), Conversions.ChangeType<int>(arguments[1])), throwOnError);
+                    StaticCheckError(Native.sqlite3_config_4(configuration, Conversions.ChangeType<int>(arguments[0]), Conversions.ChangeType<int>(arguments[1])), throwOnError);
                     break;
 
                 case SQLiteConfiguration.SQLITE_CONFIG_MMAP_SIZE:
@@ -1574,7 +1717,7 @@ namespace SqlNado
                         throw new ArgumentNullException(nameof(arguments));
 
                     Check2(arguments);
-                    StaticCheckError(_sqlite3_config_3(configuration, Conversions.ChangeType<long>(arguments[0]), Conversions.ChangeType<long>(arguments[1])), throwOnError);
+                    StaticCheckError(Native.sqlite3_config_3(configuration, Conversions.ChangeType<long>(arguments[0]), Conversions.ChangeType<long>(arguments[1])), throwOnError);
                     break;
 
                 case SQLiteConfiguration.SQLITE_CONFIG_MEMDB_MAXSIZE:
@@ -1582,7 +1725,7 @@ namespace SqlNado
                         throw new ArgumentNullException(nameof(arguments));
 
                     Check1(arguments);
-                    StaticCheckError(_sqlite3_config_1(configuration, Conversions.ChangeType<long>(arguments[0])), throwOnError);
+                    StaticCheckError(Native.sqlite3_config_1(configuration, Conversions.ChangeType<long>(arguments[0])), throwOnError);
                     break;
 
                 default:
@@ -1590,7 +1733,7 @@ namespace SqlNado
             }
         }
 
-        public virtual object Configure(SQLiteDatabaseConfiguration configuration, bool throwOnError = true, params object[] arguments)
+        public virtual object? Configure(SQLiteDatabaseConfiguration configuration, bool throwOnError = true, params object[] arguments)
         {
             if (arguments == null)
                 throw new ArgumentNullException(nameof(arguments));
@@ -1608,17 +1751,17 @@ namespace SqlNado
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_RESET_DATABASE:
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_DEFENSIVE:
                     Check1(arguments);
-                    CheckError(_sqlite3_db_config_0(CheckDisposed(), configuration, Conversions.ChangeType<int>(arguments[0]), out result), throwOnError);
+                    CheckError(Native.sqlite3_db_config_0(CheckDisposed(), configuration, Conversions.ChangeType<int>(arguments[0]), out result), throwOnError);
                     return result;
 
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_LOOKASIDE:
                     Check3(arguments);
-                    CheckError(_sqlite3_db_config_1(CheckDisposed(), configuration, Conversions.ChangeType<IntPtr>(arguments[0]), Conversions.ChangeType<int>(arguments[1]), Conversions.ChangeType<int>(arguments[2])), throwOnError);
+                    CheckError(Native.sqlite3_db_config_1(CheckDisposed(), configuration, Conversions.ChangeType<IntPtr>(arguments[0]), Conversions.ChangeType<int>(arguments[1]), Conversions.ChangeType<int>(arguments[2])), throwOnError);
                     return null;
 
                 case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_MAINDBNAME:
                     Check1(arguments);
-                    CheckError(_sqlite3_db_config_2(CheckDisposed(), configuration, Conversions.ChangeType<string>(arguments[0])), throwOnError);
+                    CheckError(Native.sqlite3_db_config_2(CheckDisposed(), configuration, Conversions.ChangeType<string>(arguments[0])), throwOnError);
                     return null;
 
                 default:
@@ -1645,9 +1788,9 @@ namespace SqlNado
                 throw new ArgumentException(null, nameof(arguments));
         }
 
-        public SQLiteTable GetTable<T>() => GetObjectTable<T>()?.Table;
-        public SQLiteTable GetTable(Type type) => GetObjectTable(type)?.Table;
-        public SQLiteTable GetTable(string name)
+        public SQLiteTable? GetTable<T>() => GetObjectTable<T>()?.Table;
+        public SQLiteTable? GetTable(Type type) => GetObjectTable(type)?.Table;
+        public SQLiteTable? GetTable(string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -1655,8 +1798,8 @@ namespace SqlNado
             return Tables.FirstOrDefault(t => name.EqualsIgnoreCase(t.Name));
         }
 
-        public SQLiteObjectTable SynchronizeIndices<T>(SQLiteSaveOptions options = null) => SynchronizeIndices(typeof(T), options);
-        public virtual SQLiteObjectTable SynchronizeIndices(Type type, SQLiteSaveOptions options = null)
+        public SQLiteObjectTable SynchronizeIndices<T>(SQLiteSaveOptions? options = null) => SynchronizeIndices(typeof(T), options);
+        public virtual SQLiteObjectTable SynchronizeIndices(Type type, SQLiteSaveOptions? options = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -1669,8 +1812,8 @@ namespace SqlNado
             return table;
         }
 
-        public SQLiteObjectTable SynchronizeSchema<T>(SQLiteSaveOptions options = null) => SynchronizeSchema(typeof(T), options);
-        public virtual SQLiteObjectTable SynchronizeSchema(Type type, SQLiteSaveOptions options = null)
+        public SQLiteObjectTable SynchronizeSchema<T>(SQLiteSaveOptions? options = null) => SynchronizeSchema(typeof(T), options);
+        public virtual SQLiteObjectTable SynchronizeSchema(Type type, SQLiteSaveOptions? options = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -1725,7 +1868,7 @@ namespace SqlNado
             return ExecuteScalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1 COLLATE NOCASE LIMIT 1", 0, name) > 0;
         }
 
-        public virtual object CoerceValueForBind(object value, SQLiteBindOptions bindOptions = null)
+        public virtual object? CoerceValueForBind(object? value, SQLiteBindOptions? bindOptions = null)
         {
             if (value == null || Convert.IsDBNull(value))
                 return null;
@@ -1765,7 +1908,7 @@ namespace SqlNado
             return type.ConvertFunc(ctx);
         }
 
-        private static Type GetObjectType(object obj)
+        private static Type GetObjectType(object? obj)
         {
             if (obj == null)
                 return typeof(DBNull);
@@ -1776,11 +1919,8 @@ namespace SqlNado
             return obj.GetType();
         }
 
-        public SQLiteBindType GetBindType(object obj) => GetBindType(GetObjectType(obj), null);
-        public SQLiteBindType GetBindType(object obj, SQLiteBindType defaultType) => GetBindType(GetObjectType(obj), defaultType);
-
-        public SQLiteBindType GetBindType(Type type) => GetBindType(type, null);
-        public virtual SQLiteBindType GetBindType(Type type, SQLiteBindType defaultType)
+        public SQLiteBindType GetBindType(object? obj, SQLiteBindType? defaultType = null) => GetBindType(GetObjectType(obj), defaultType);
+        public virtual SQLiteBindType GetBindType(Type type, SQLiteBindType? defaultType = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -1827,7 +1967,7 @@ namespace SqlNado
             }
         }
 
-        public virtual SQLiteBindType RemoveBindType(Type type)
+        public virtual SQLiteBindType? RemoveBindType(Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -1875,7 +2015,7 @@ namespace SqlNado
             return ExecuteNonQuery(sql);
         }
 
-        public virtual bool Delete(object obj, SQLiteDeleteOptions options = null)
+        public virtual bool Delete(object obj, SQLiteDeleteOptions? options = null)
         {
             if (obj == null)
                 return false;
@@ -1908,7 +2048,7 @@ namespace SqlNado
             return ExecuteScalar("SELECT count(*) FROM " + table.EscapedName, 0);
         }
 
-        public virtual bool Save(object obj, SQLiteSaveOptions options = null)
+        public virtual bool Save(object obj, SQLiteSaveOptions? options = null)
         {
             if (obj == null)
                 return false;
@@ -1935,8 +2075,8 @@ namespace SqlNado
             return table.Save(obj, options);
         }
 
-        public virtual int Save<T>(IEnumerable<T> enumerable, SQLiteSaveOptions options = null) => Save((IEnumerable)enumerable, options);
-        public virtual int Save(IEnumerable enumerable, SQLiteSaveOptions options = null)
+        public virtual int Save<T>(IEnumerable<T> enumerable, SQLiteSaveOptions? options = null) => Save((IEnumerable)enumerable, options);
+        public virtual int Save(IEnumerable enumerable, SQLiteSaveOptions? options = null)
         {
             if (enumerable == null)
                 return 0;
@@ -2013,7 +2153,7 @@ namespace SqlNado
             return count;
         }
 
-        public virtual T RunSavePoint<T>(Func<T> action, string name = null)
+        public virtual T RunSavePoint<T>(Func<T> action, string? name = null)
         {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
@@ -2037,7 +2177,7 @@ namespace SqlNado
             }
         }
 
-        public virtual void RunSavePoint(Action action, string name = null)
+        public virtual void RunSavePoint(Action action, string? name = null)
         {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
@@ -2121,7 +2261,7 @@ namespace SqlNado
         public virtual void Commit() => ExecuteNonQuery("COMMIT");
         public virtual void Rollback() => ExecuteNonQuery("ROLLBACK");
 
-        public virtual IEnumerable<T> LoadByForeignKey<T>(object instance, SQLiteLoadForeignKeyOptions options = null)
+        public virtual IEnumerable<T?> LoadByForeignKey<T>(object instance, SQLiteLoadForeignKeyOptions? options = null)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
@@ -2174,6 +2314,9 @@ namespace SqlNado
             {
                 if (setProp)
                 {
+                    if (obj == null)
+                        throw new InvalidOperationException();
+
                     fkCol.SetValue(options, obj, instance);
                 }
                 yield return obj;
@@ -2197,7 +2340,7 @@ namespace SqlNado
             return LoadRows(sql);
         }
 
-        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions options = null) => Load<T>(null, options);
+        public IEnumerable<T> LoadAll<T>(SQLiteLoadOptions? options = null) => Load<T>(null, options);
         public IEnumerable<object> LoadAll(Type objectType) => Load(objectType, null, null, null);
         public IEnumerable<T> LoadAll<T>(int maximumRows)
         {
@@ -2209,8 +2352,8 @@ namespace SqlNado
             return Load<T>(null, options);
         }
 
-        public IEnumerable<object> Load(Type objectType, string sql, params object[] args) => Load(objectType, sql, null, args);
-        public virtual IEnumerable<object> Load(Type objectType, string sql, SQLiteLoadOptions options, params object[] args)
+        public IEnumerable<object> Load(Type objectType, string? sql, params object?[]? args) => Load(objectType, sql, null, args);
+        public virtual IEnumerable<object> Load(Type objectType, string? sql, SQLiteLoadOptions? options, params object?[]? args)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
@@ -2245,7 +2388,7 @@ namespace SqlNado
                 var index = 0;
                 do
                 {
-                    var code = _sqlite3_step(statement.Handle);
+                    var code = Native.sqlite3_step(statement.Handle);
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
                         index++;
@@ -2288,8 +2431,8 @@ namespace SqlNado
             }
         }
 
-        public IEnumerable<T> Load<T>(string sql, params object[] args) => Load<T>(sql, null, args);
-        public virtual IEnumerable<T> Load<T>(string sql, SQLiteLoadOptions options, params object[] args)
+        public IEnumerable<T> Load<T>(string? sql, params object?[]? args) => Load<T>(sql, null, args);
+        public virtual IEnumerable<T> Load<T>(string? sql, SQLiteLoadOptions? options, params object?[]? args)
         {
             var table = GetObjectTable(typeof(T));
             if (table == null)
@@ -2346,7 +2489,7 @@ namespace SqlNado
                 var index = 0;
                 do
                 {
-                    var code = _sqlite3_step(statement.CheckDisposed());
+                    var code = Native.sqlite3_step(statement.CheckDisposed());
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
                         index++;
@@ -2395,8 +2538,8 @@ namespace SqlNado
             }
         }
 
-        public T LoadByPrimaryKeyOrCreate<T>(object key, SQLiteLoadOptions options = null) => (T)LoadByPrimaryKeyOrCreate(typeof(T), key, options);
-        public virtual object LoadByPrimaryKeyOrCreate(Type objectType, object key, SQLiteLoadOptions options = null)
+        public T? LoadByPrimaryKeyOrCreate<T>(object key, SQLiteLoadOptions? options = null) => (T?)LoadByPrimaryKeyOrCreate(typeof(T), key, options);
+        public virtual object? LoadByPrimaryKeyOrCreate(Type objectType, object key, SQLiteLoadOptions? options = null)
         {
             options = options ?? CreateLoadOptions();
             if (options == null)
@@ -2406,8 +2549,8 @@ namespace SqlNado
             return LoadByPrimaryKey(objectType, key, options);
         }
 
-        public virtual T LoadByPrimaryKey<T>(object key, SQLiteLoadOptions options = null) => (T)LoadByPrimaryKey(typeof(T), key, options);
-        public virtual object LoadByPrimaryKey(Type objectType, object key, SQLiteLoadOptions options = null)
+        public virtual T? LoadByPrimaryKey<T>(object key, SQLiteLoadOptions? options = null) => (T?)LoadByPrimaryKey(typeof(T), key, options);
+        public virtual object? LoadByPrimaryKey(Type objectType, object key, SQLiteLoadOptions? options = null)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
@@ -2437,7 +2580,7 @@ namespace SqlNado
             {
                 for (var i = 0; i < keys.Length; i++)
                 {
-                    if (keys[i] != null && !pk[i].ClrType.IsAssignableFrom(keys[i].GetType()) && TryChangeType(keys[i], pk[i].ClrType, out object k))
+                    if (keys[i] != null && !pk[i].ClrType.IsAssignableFrom(keys[i].GetType()) && TryChangeType(keys[i], pk[i].ClrType, out object? k) && k != null)
                     {
                         keys[i] = k;
                     }
@@ -2455,6 +2598,9 @@ namespace SqlNado
             if (obj == null && (options?.CreateIfNotLoaded).GetValueOrDefault())
             {
                 obj = table.GetInstance(objectType, null, options);
+                if (obj == null)
+                    throw new InvalidOperationException();
+
                 table.SetPrimaryKey(options, obj, keys);
             }
             return obj;
@@ -2467,9 +2613,9 @@ namespace SqlNado
                 if (key is Array array)
                 {
                     keys = new object[array.Length];
-                    for (int i = 0; i < keys.Length; i++)
+                    for (var i = 0; i < keys.Length; i++)
                     {
-                        keys[i] = array.GetValue(i);
+                        keys[i] = array.GetValue(i)!;
                     }
                 }
                 else if (!(key is string) && key is IEnumerable enumerable)
@@ -2487,8 +2633,8 @@ namespace SqlNado
         public virtual SQLiteQuery<T> Query<T>() => new SQLiteQuery<T>(this);
         public virtual SQLiteQuery<T> Query<T>(Expression expression) => new SQLiteQuery<T>(this, expression);
 
-        public T CreateObjectInstance<T>(SQLiteLoadOptions options = null) => (T)CreateObjectInstance(typeof(T), options);
-        public virtual object CreateObjectInstance(Type objectType, SQLiteLoadOptions options = null)
+        public T? CreateObjectInstance<T>(SQLiteLoadOptions? options = null) => (T?)CreateObjectInstance(typeof(T), options);
+        public virtual object? CreateObjectInstance(Type objectType, SQLiteLoadOptions? options = null)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
@@ -2500,13 +2646,16 @@ namespace SqlNado
             return table.GetInstance(objectType, null, options);
         }
 
-        public SQLiteObjectTable GetObjectTable<T>(SQLiteBuildTableOptions options = null) => GetObjectTable(typeof(T), options);
-        public virtual SQLiteObjectTable GetObjectTable(Type type, SQLiteBuildTableOptions options = null)
+        public SQLiteObjectTable GetObjectTable<T>(SQLiteBuildTableOptions? options = null) => GetObjectTable(typeof(T), options);
+        public virtual SQLiteObjectTable GetObjectTable(Type type, SQLiteBuildTableOptions? options = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
             var key = type.FullName;
+            if (key == null)
+                throw new ArgumentException(null, nameof(type));
+
             if (options?.CacheKey != null)
             {
                 // a character invalid in type names
@@ -2521,7 +2670,7 @@ namespace SqlNado
             return table;
         }
 
-        protected virtual SQLiteObjectTable BuildObjectTable(Type type, SQLiteBuildTableOptions options = null)
+        protected virtual SQLiteObjectTable BuildObjectTable(Type type, SQLiteBuildTableOptions? options = null)
         {
             var builder = CreateObjectTableBuilder(type, options);
             if (builder == null)
@@ -2532,9 +2681,9 @@ namespace SqlNado
 
         public override string ToString() => FilePath;
 
-        protected virtual SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type, SQLiteBuildTableOptions options = null) => new SQLiteObjectTableBuilder(this, type, options);
-        protected virtual SQLiteStatement CreateStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction> prepareErrorHandler) => new SQLiteStatement(this, sql, prepareErrorHandler);
-        protected virtual SQLiteRow CreateRow(int index, string[] names, object[] values) => new SQLiteRow(index, names, values);
+        protected virtual SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type, SQLiteBuildTableOptions? options = null) => new SQLiteObjectTableBuilder(this, type, options);
+        protected virtual SQLiteStatement CreateStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction>? prepareErrorHandler) => new SQLiteStatement(this, sql, prepareErrorHandler);
+        protected virtual SQLiteRow CreateRow(int index, string[] names, object?[] values) => new SQLiteRow(index, names, values);
         protected virtual SQLiteBlob CreateBlob(IntPtr handle, string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode) => new SQLiteBlob(this, handle, tableName, columnName, rowId, mode);
         public virtual SQLiteLoadOptions CreateLoadOptions() => new SQLiteLoadOptions(this);
         public virtual SQLiteLoadForeignKeyOptions CreateLoadForeignKeyOptions() => new SQLiteLoadForeignKeyOptions(this);
@@ -2571,7 +2720,7 @@ namespace SqlNado
             if (columnName == null)
                 throw new ArgumentNullException(nameof(columnName));
 
-            CheckError(_sqlite3_blob_open(CheckDisposed(), "main", tableName, columnName, rowId, (int)mode, out var handle));
+            CheckError(Native.sqlite3_blob_open(CheckDisposed(), "main", tableName, columnName, rowId, (int)mode, out var handle));
             var blob = CreateBlob(handle, tableName, columnName, rowId, mode);
             if (blob == null)
                 throw new InvalidOperationException();
@@ -2580,7 +2729,7 @@ namespace SqlNado
         }
 
         public SQLiteStatement PrepareStatement(string sql, params object[] args) => PrepareStatement(sql, null, args);
-        public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
+        public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
         {
             SQLiteStatement statement;
             if (errorHandler == null)
@@ -2642,7 +2791,7 @@ namespace SqlNado
             {
                 while (!_statements.IsEmpty)
                 {
-                    StatementPoolEntry entry = null;
+                    StatementPoolEntry? entry = null;
                     bool taken;
                     try
                     {
@@ -2658,13 +2807,13 @@ namespace SqlNado
                     {
                         // if the statement was still in use, we can't dispose it
                         // so we just mark it so the user will really dispose it when he'll call Dispose()
-                        if (Interlocked.CompareExchange(ref entry.Statement._locked, 1, 0) != 0)
+                        if (Interlocked.CompareExchange(ref entry._statement._locked, 1, 0) != 0)
                         {
-                            entry.Statement._realDispose = true;
+                            entry._statement._realDispose = true;
                         }
                         else
                         {
-                            entry.Statement.RealDispose();
+                            entry._statement.RealDispose();
                         }
                     }
                 }
@@ -2672,8 +2821,8 @@ namespace SqlNado
 
             public SQLiteStatement Get()
             {
-                var entry = _statements.FirstOrDefault(s => s.Statement._locked == 0);
-                if (entry != null && Interlocked.CompareExchange(ref entry.Statement._locked, 1, 0) != 0)
+                var entry = _statements.FirstOrDefault(s => s._statement._locked == 0);
+                if (entry != null && Interlocked.CompareExchange(ref entry._statement._locked, 1, 0) != 0)
                 {
                     // between the moment we got one and the moment we tried to lock it,
                     // another thread got it. In this case, we'll just create a new one...
@@ -2682,30 +2831,32 @@ namespace SqlNado
 
                 if (entry == null)
                 {
-                    entry = new StatementPoolEntry
-                    {
-                        CreationDate = DateTime.Now,
-                        Statement = CreateFunc(Sql)
-                    };
-                    entry.Statement._realDispose = false;
-                    entry.Statement._locked = 1;
+                    entry = new StatementPoolEntry(CreateFunc(Sql));
+                    entry._statement._realDispose = false;
+                    entry._statement._locked = 1;
                     _statements.Add(entry);
                 }
 
                 entry.LastUsageDate = DateTime.Now;
                 entry.Usage++;
-                return entry.Statement;
+                return entry._statement;
             }
         }
 
         private sealed class StatementPoolEntry
         {
-            public SQLiteStatement Statement;
+            public readonly SQLiteStatement _statement;
             public DateTime CreationDate;
             public DateTime LastUsageDate;
             public int Usage;
 
-            public override string ToString() => Usage + " => " + Statement;
+            public StatementPoolEntry(SQLiteStatement statement)
+            {
+                _statement = statement;
+                CreationDate = DateTime.Now;
+            }
+
+            public override string ToString() => Usage + " => " + _statement;
         }
 
         public virtual void ClearStatementsCache()
@@ -2743,10 +2894,10 @@ namespace SqlNado
             return list.ToArray();
         }
 
-        public T ExecuteScalar<T>(string sql, params object[] args) => ExecuteScalar(sql, default(T), null, args);
-        public T ExecuteScalar<T>(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args) => ExecuteScalar(sql, default(T), errorHandler, args);
-        public T ExecuteScalar<T>(string sql, T defaultValue, params object[] args) => ExecuteScalar(sql, defaultValue, null, args);
-        public virtual T ExecuteScalar<T>(string sql, T defaultValue, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
+        public T? ExecuteScalar<T>(string sql, params object[]? args) => ExecuteScalar(sql, default(T), null, args);
+        public T? ExecuteScalar<T>(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, default(T), errorHandler, args);
+        public T? ExecuteScalar<T>(string sql, T? defaultValue, params object?[]? args) => ExecuteScalar(sql, defaultValue, null, args);
+        public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
         {
             using (var statement = PrepareStatement(sql, errorHandler, args))
             {
@@ -2755,8 +2906,8 @@ namespace SqlNado
             }
         }
 
-        public object ExecuteScalar(string sql, params object[] args) => ExecuteScalar(sql, null, args);
-        public virtual object ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
+        public object? ExecuteScalar(string sql, params object?[]? args) => ExecuteScalar(sql, null, args);
+        public virtual object? ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
         {
             using (var statement = PrepareStatement(sql, errorHandler, args))
             {
@@ -2765,8 +2916,8 @@ namespace SqlNado
             }
         }
 
-        public int ExecuteNonQuery(string sql, params object[] args) => ExecuteNonQuery(sql, null, args);
-        public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
+        public int ExecuteNonQuery(string sql, params object?[]? args) => ExecuteNonQuery(sql, null, args);
+        public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
         {
             using (var statement = PrepareStatement(sql, errorHandler, args))
             {
@@ -2775,15 +2926,15 @@ namespace SqlNado
             }
         }
 
-        public IEnumerable<object[]> LoadObjects(string sql, params object[] args) => LoadObjects(sql, null, args);
-        public virtual IEnumerable<object[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
+        public IEnumerable<object?[]> LoadObjects(string sql, params object?[]? args) => LoadObjects(sql, null, args);
+        public virtual IEnumerable<object?[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
         {
             using (var statement = PrepareStatement(sql, errorHandler, args))
             {
                 var index = 0;
                 do
                 {
-                    var code = _sqlite3_step(statement.Handle);
+                    var code = Native.sqlite3_step(statement.Handle);
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
                         index++;
@@ -2823,14 +2974,14 @@ namespace SqlNado
         }
 
         public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRows(sql, null, args);
-        public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction> errorHandler, params object[] args)
+        public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args)
         {
             using (var statement = PrepareStatement(sql, errorHandler, args))
             {
                 var index = 0;
                 do
                 {
-                    var code = _sqlite3_step(statement.Handle);
+                    var code = Native.sqlite3_step(statement.Handle);
                     if (code == SQLiteErrorCode.SQLITE_DONE)
                     {
                         index++;
@@ -2874,21 +3025,21 @@ namespace SqlNado
             }
         }
 
-        public T ChangeType<T>(object input) => ChangeType<T>(input, default);
-        public T ChangeType<T>(object input, T defaultValue)
+        public T? ChangeType<T>(object? input) => ChangeType<T>(input, default);
+        public T? ChangeType<T>(object? input, T? defaultValue)
         {
-            if (TryChangeType(input, out T value))
+            if (TryChangeType(input, out T? value))
                 return value;
 
             return defaultValue;
         }
 
-        public object ChangeType(object input, Type conversionType)
+        public object? ChangeType(object? input, Type conversionType)
         {
             if (conversionType == null)
                 throw new ArgumentNullException(nameof(conversionType));
 
-            if (TryChangeType(input, conversionType, out object value))
+            if (TryChangeType(input, conversionType, out object? value))
                 return value;
 
             if (conversionType.IsValueType)
@@ -2897,12 +3048,12 @@ namespace SqlNado
             return null;
         }
 
-        public object ChangeType(object input, Type conversionType, object defaultValue)
+        public object? ChangeType(object? input, Type conversionType, object? defaultValue)
         {
             if (conversionType == null)
                 throw new ArgumentNullException(nameof(conversionType));
 
-            if (TryChangeType(input, conversionType, out object value))
+            if (TryChangeType(input, conversionType, out object? value))
                 return value;
 
             if (TryChangeType(defaultValue, conversionType, out value))
@@ -2915,7 +3066,7 @@ namespace SqlNado
         }
 
         // note: we always use invariant culture when writing an reading by ourselves to the database
-        public virtual bool TryChangeType(object input, Type conversionType, out object value)
+        public virtual bool TryChangeType(object? input, Type conversionType, out object? value)
         {
             if (conversionType == null)
                 throw new ArgumentNullException(nameof(conversionType));
@@ -2941,15 +3092,15 @@ namespace SqlNado
             return Conversions.TryChangeType(input, conversionType, CultureInfo.InvariantCulture, out value);
         }
 
-        public virtual bool TryChangeType<T>(object input, out T value)
+        public virtual bool TryChangeType<T>(object? input, out T? value)
         {
-            if (!TryChangeType(input, typeof(T), out object obj))
+            if (!TryChangeType(input, typeof(T), out object? obj))
             {
                 value = default;
                 return false;
             }
 
-            value = (T)obj;
+            value = (T?)obj;
             return true;
         }
 
@@ -2978,7 +3129,7 @@ namespace SqlNado
 
         public void CreateIndex(string name, string tableName, IEnumerable<SQLiteIndexedColumn> columns) => CreateIndex(null, name, false, tableName, columns, null);
         public void CreateIndex(string name, bool unique, string tableName, IEnumerable<SQLiteIndexedColumn> columns) => CreateIndex(null, name, unique, tableName, columns, null);
-        public virtual void CreateIndex(string schemaName, string name, bool unique, string tableName, IEnumerable<SQLiteIndexedColumn> columns, string whereExpression)
+        public virtual void CreateIndex(string? schemaName, string name, bool unique, string tableName, IEnumerable<SQLiteIndexedColumn> columns, string? whereExpression)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -3010,7 +3161,7 @@ namespace SqlNado
         }
 
         public void DeleteIndex(string name) => DeleteIndex(null, name);
-        public virtual void DeleteIndex(string schemaName, string name)
+        public virtual void DeleteIndex(string? schemaName, string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -3034,7 +3185,7 @@ namespace SqlNado
             return handle;
         }
 
-        internal static SQLiteException StaticCheckError(SQLiteErrorCode code, bool throwOnError)
+        internal static SQLiteException? StaticCheckError(SQLiteErrorCode code, bool throwOnError)
         {
             if (code == SQLiteErrorCode.SQLITE_OK)
                 return null;
@@ -3046,10 +3197,10 @@ namespace SqlNado
             return ex;
         }
 
-        protected internal SQLiteException CheckError(SQLiteErrorCode code, [CallerMemberName] string methodName = null) => CheckError(code, null, true, methodName);
-        protected internal SQLiteException CheckError(SQLiteErrorCode code, bool throwOnError, [CallerMemberName] string methodName = null) => CheckError(code, null, throwOnError, methodName);
-        protected internal SQLiteException CheckError(SQLiteErrorCode code, string sql, [CallerMemberName] string methodName = null) => CheckError(code, sql, true, methodName);
-        protected internal SQLiteException CheckError(SQLiteErrorCode code, string sql, bool throwOnError, [CallerMemberName] string methodName = null)
+        protected internal SQLiteException? CheckError(SQLiteErrorCode code, [CallerMemberName] string? methodName = null) => CheckError(code, null, true, methodName);
+        protected internal SQLiteException? CheckError(SQLiteErrorCode code, bool throwOnError, [CallerMemberName] string? methodName = null) => CheckError(code, null, throwOnError, methodName);
+        protected internal SQLiteException? CheckError(SQLiteErrorCode code, string? sql, [CallerMemberName] string? methodName = null) => CheckError(code, sql, true, methodName);
+        protected internal SQLiteException? CheckError(SQLiteErrorCode code, string? sql, bool throwOnError, [CallerMemberName] string? methodName = null)
         {
             if (code == SQLiteErrorCode.SQLITE_OK)
                 return null;
@@ -3073,722 +3224,18 @@ namespace SqlNado
         }
 
         public int SetLimit(SQLiteLimit id, int newValue) => SetLimit((int)id, newValue);
-        public virtual int SetLimit(int id, int newValue) => _sqlite3_limit(CheckDisposed(), id, newValue);
+        public virtual int SetLimit(int id, int newValue) => Native.sqlite3_limit(CheckDisposed(), id, newValue);
         public int GetLimit(SQLiteLimit id) => GetLimit((int)id);
-        public virtual int GetLimit(int id) => _sqlite3_limit(CheckDisposed(), id, -1);
+        public virtual int GetLimit(int id) => Native.sqlite3_limit(CheckDisposed(), id, -1);
 
-        public static string GetErrorMessage(IntPtr db)
+        public static string? GetErrorMessage(IntPtr db)
         {
             if (db == IntPtr.Zero)
                 return null;
 
-            HookNativeProcs();
-            var ptr = _sqlite3_errmsg16(db);
+            EnsureNativeLoaded();
+            var ptr = Native.sqlite3_errmsg16(db);
             return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUni(ptr);
-        }
-
-        // with this code, we support AnyCpu targets
-        private static IEnumerable<string> PossibleNativePaths
-        {
-            get
-            {
-                var bd = AppDomain.CurrentDomain.BaseDirectory;
-                var rsp = AppDomain.CurrentDomain.RelativeSearchPath;
-                var bitness = IntPtr.Size == 8 ? "64" : "86";
-                var searchRsp = rsp != null && !bd.EqualsIgnoreCase(rsp);
-
-                // look for an env variable
-                var env = GetEnvironmentVariable("SQLNADO_SQLITE_X" + bitness + "_DLL");
-                if (env != null)
-                {
-                    // full path?
-                    if (Path.IsPathRooted(env))
-                    {
-                        yield return env;
-                    }
-                    else
-                    {
-                        // relative path?
-                        yield return Path.Combine(bd, env);
-                        if (searchRsp)
-                            yield return Path.Combine(rsp, env);
-                    }
-                }
-
-                // look in appdomain path
-                var name = "sqlite3.x" + bitness + ".dll";
-                yield return Path.Combine(bd, name);
-                if (searchRsp)
-                    yield return Path.Combine(rsp, name);
-
-                // look in windows/azure
-                if (UseWindowsRuntime)
-                    yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "winsqlite3.dll");
-
-                name = "sqlite.dll";
-                yield return Path.Combine(bd, name); // last resort, hoping the bitness's right, we do not recommend it
-                if (searchRsp)
-                    yield return Path.Combine(rsp, name);
-            }
-        }
-
-        private static string GetEnvironmentVariable(string name)
-        {
-            try
-            {
-                var value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process).Nullify();
-                if (value != null)
-                    return value;
-
-                value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User).Nullify();
-                if (value != null)
-                    return value;
-
-                return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine).Nullify();
-            }
-            catch
-            {
-                // probably an access denied, continue
-                return null;
-            }
-        }
-
-        private static void HookNativeProcs()
-        {
-            if (_module != IntPtr.Zero)
-                return;
-
-            var path = PossibleNativePaths.FirstOrDefault(p => File.Exists(p));
-            if (path == null)
-                throw new SqlNadoException("0002: Cannot determine native sqlite dll path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
-
-            NativeDllPath = path;
-            IsUsingWindowsRuntime = Path.GetFileName(path).EqualsIgnoreCase("winsqlite3.dll");
-
-#if !WINSQLITE
-            if (IsUsingWindowsRuntime && IntPtr.Size == 4)
-                throw new SqlNadoException("0029: SQLNado compilation is invalid. The process is running as 32-bit, using the Windows/Azure 'winsqlite3.dll' but without the WINSQLITE define. Contact the developer.");
-#endif
-
-            _module = LoadLibrary(path);
-            if (_module == IntPtr.Zero)
-                throw new SqlNadoException("0003: Cannot load native sqlite dll from path '" + path + "'. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.", new Win32Exception(Marshal.GetLastWin32Error()));
-
-            _sqlite3_open_v2 = LoadProc<sqlite3_open_v2>();
-            _sqlite3_close = LoadProc<sqlite3_close>();
-            _sqlite3_errmsg16 = LoadProc<sqlite3_errmsg16>();
-            _sqlite3_limit = LoadProc<sqlite3_limit>();
-            _sqlite3_finalize = LoadProc<sqlite3_finalize>();
-            _sqlite3_column_count = LoadProc<sqlite3_column_count>();
-            _sqlite3_bind_parameter_count = LoadProc<sqlite3_bind_parameter_count>();
-            _sqlite3_bind_parameter_index = LoadProc<sqlite3_bind_parameter_index>();
-            _sqlite3_clear_bindings = LoadProc<sqlite3_clear_bindings>();
-            _sqlite3_step = LoadProc<sqlite3_step>();
-            _sqlite3_reset = LoadProc<sqlite3_reset>();
-            _sqlite3_column_type = LoadProc<sqlite3_column_type>();
-            _sqlite3_column_name16 = LoadProc<sqlite3_column_name16>();
-            _sqlite3_column_blob = LoadProc<sqlite3_column_blob>();
-            _sqlite3_column_bytes = LoadProc<sqlite3_column_bytes>();
-            _sqlite3_column_double = LoadProc<sqlite3_column_double>();
-            _sqlite3_column_int = LoadProc<sqlite3_column_int>();
-            _sqlite3_column_int64 = LoadProc<sqlite3_column_int64>();
-            _sqlite3_column_text16 = LoadProc<sqlite3_column_text16>();
-            _sqlite3_prepare16_v2 = LoadProc<sqlite3_prepare16_v2>();
-            _sqlite3_total_changes = LoadProc<sqlite3_total_changes>();
-            _sqlite3_changes = LoadProc<sqlite3_changes>();
-            _sqlite3_last_insert_rowid = LoadProc<sqlite3_last_insert_rowid>();
-            _sqlite3_bind_text16 = LoadProc<sqlite3_bind_text16>();
-            _sqlite3_bind_null = LoadProc<sqlite3_bind_null>();
-            _sqlite3_bind_blob = LoadProc<sqlite3_bind_blob>();
-            _sqlite3_bind_zeroblob = LoadProc<sqlite3_bind_zeroblob>();
-            _sqlite3_bind_int = LoadProc<sqlite3_bind_int>();
-            _sqlite3_bind_int64 = LoadProc<sqlite3_bind_int64>();
-            _sqlite3_bind_double = LoadProc<sqlite3_bind_double>();
-            _sqlite3_threadsafe = LoadProc<sqlite3_threadsafe>();
-            _sqlite3_db_config_0 = LoadProc<sqlite3_db_config_0>("sqlite3_db_config");
-            _sqlite3_db_config_1 = LoadProc<sqlite3_db_config_1>("sqlite3_db_config");
-            _sqlite3_db_config_2 = LoadProc<sqlite3_db_config_2>("sqlite3_db_config");
-            _sqlite3_enable_load_extension = LoadProc<sqlite3_enable_load_extension>();
-            _sqlite3_load_extension = LoadProc<sqlite3_load_extension>();
-            _sqlite3_config_0 = LoadProc<sqlite3_config_0>("sqlite3_config");
-            _sqlite3_config_1 = LoadProc<sqlite3_config_1>("sqlite3_config");
-            _sqlite3_config_2 = LoadProc<sqlite3_config_2>("sqlite3_config");
-            _sqlite3_config_3 = LoadProc<sqlite3_config_3>("sqlite3_config");
-            _sqlite3_config_4 = LoadProc<sqlite3_config_4>("sqlite3_config");
-            _sqlite3_enable_shared_cache = LoadProc<sqlite3_enable_shared_cache>();
-            _sqlite3_blob_bytes = LoadProc<sqlite3_blob_bytes>();
-            _sqlite3_blob_close = LoadProc<sqlite3_blob_close>();
-            _sqlite3_blob_open = LoadProc<sqlite3_blob_open>();
-            _sqlite3_blob_read = LoadProc<sqlite3_blob_read>();
-            _sqlite3_blob_reopen = LoadProc<sqlite3_blob_reopen>();
-            _sqlite3_blob_write = LoadProc<sqlite3_blob_write>();
-            _sqlite3_collation_needed16 = LoadProc<sqlite3_collation_needed16>();
-            _sqlite3_create_collation16 = LoadProc<sqlite3_create_collation16>();
-            _sqlite3_db_cacheflush = LoadProc<sqlite3_db_cacheflush>();
-            _sqlite3_table_column_metadata = LoadProc<sqlite3_table_column_metadata>();
-            _sqlite3_create_function16 = LoadProc<sqlite3_create_function16>();
-            _sqlite3_value_blob = LoadProc<sqlite3_value_blob>();
-            _sqlite3_value_double = LoadProc<sqlite3_value_double>();
-            _sqlite3_value_int = LoadProc<sqlite3_value_int>();
-            _sqlite3_value_int64 = LoadProc<sqlite3_value_int64>();
-            _sqlite3_value_text16 = LoadProc<sqlite3_value_text16>();
-            _sqlite3_value_bytes = LoadProc<sqlite3_value_bytes>();
-            _sqlite3_value_bytes16 = LoadProc<sqlite3_value_bytes16>();
-            _sqlite3_value_type = LoadProc<sqlite3_value_type>();
-            _sqlite3_result_blob = LoadProc<sqlite3_result_blob>();
-            _sqlite3_result_double = LoadProc<sqlite3_result_double>();
-            _sqlite3_result_error16 = LoadProc<sqlite3_result_error16>();
-            _sqlite3_result_error_code = LoadProc<sqlite3_result_error_code>();
-            _sqlite3_result_int = LoadProc<sqlite3_result_int>();
-            _sqlite3_result_int64 = LoadProc<sqlite3_result_int64>();
-            _sqlite3_result_null = LoadProc<sqlite3_result_null>();
-            _sqlite3_result_text16 = LoadProc<sqlite3_result_text16>();
-            _sqlite3_result_zeroblob = LoadProc<sqlite3_result_zeroblob>();
-        }
-
-        private static T LoadProc<T>() => LoadProc<T>(null);
-        private static T LoadProc<T>(string name)
-        {
-            if (name == null)
-            {
-                name = typeof(T).Name;
-            }
-
-            var address = GetProcAddress(_module, name);
-            if (address == IntPtr.Zero)
-                throw new SqlNadoException("0004: Cannot load library function '" + name + "' from '" + NativeDllPath + "'. Please make sure sqlite is the latest one.", new Win32Exception(Marshal.GetLastWin32Error()));
-
-            return (T)(object)Marshal.GetDelegateForFunctionPointer(address, typeof(T));
-        }
-
-        [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern IntPtr LoadLibrary(string lpFileName);
-
-        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
-#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
-        private static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string lpProcName);
-#pragma warning restore CA2101 // Specify marshaling for P/Invoke string arguments
-
-        [DllImport("kernel32")]
-        internal static extern long GetTickCount64();
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate IntPtr sqlite3_errmsg16(IntPtr db);
-        private static sqlite3_errmsg16 _sqlite3_errmsg16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate int sqlite3_limit(IntPtr db, int id, int newVal);
-        private static sqlite3_limit _sqlite3_limit;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
-        private static sqlite3_open_v2 _sqlite3_open_v2;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_close(IntPtr db);
-        private static sqlite3_close _sqlite3_close;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_finalize(IntPtr statement);
-        internal static sqlite3_finalize _sqlite3_finalize;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_column_count(IntPtr statement);
-        internal static sqlite3_column_count _sqlite3_column_count;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_bind_parameter_count(IntPtr statement);
-        internal static sqlite3_bind_parameter_count _sqlite3_bind_parameter_count;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_bind_parameter_index(IntPtr statement, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string name);
-        internal static sqlite3_bind_parameter_index _sqlite3_bind_parameter_index;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_clear_bindings(IntPtr statement);
-        internal static sqlite3_clear_bindings _sqlite3_clear_bindings;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_step(IntPtr statement);
-        internal static sqlite3_step _sqlite3_step;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_reset(IntPtr statement);
-        internal static sqlite3_reset _sqlite3_reset;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
-        internal static sqlite3_column_type _sqlite3_column_type;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate IntPtr sqlite3_column_name16(IntPtr statement, int index);
-        internal static sqlite3_column_name16 _sqlite3_column_name16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate IntPtr sqlite3_column_blob(IntPtr statement, int index);
-        internal static sqlite3_column_blob _sqlite3_column_blob;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_column_bytes(IntPtr statement, int index);
-        internal static sqlite3_column_bytes _sqlite3_column_bytes;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate double sqlite3_column_double(IntPtr statement, int index);
-        internal static sqlite3_column_double _sqlite3_column_double;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_column_int(IntPtr statement, int index);
-        internal static sqlite3_column_int _sqlite3_column_int;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate long sqlite3_column_int64(IntPtr statement, int index);
-        internal static sqlite3_column_int64 _sqlite3_column_int64;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate IntPtr sqlite3_column_text16(IntPtr statement, int index);
-        internal static sqlite3_column_text16 _sqlite3_column_text16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_prepare16_v2(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string sql, int numBytes, out IntPtr statement, IntPtr tail);
-        internal static sqlite3_prepare16_v2 _sqlite3_prepare16_v2;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate int sqlite3_total_changes(IntPtr db);
-        private static sqlite3_total_changes _sqlite3_total_changes;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate int sqlite3_changes(IntPtr db);
-        private static sqlite3_changes _sqlite3_changes;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate long sqlite3_last_insert_rowid(IntPtr db);
-        private static sqlite3_last_insert_rowid _sqlite3_last_insert_rowid;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_bind_text16(IntPtr statement, int index, [MarshalAs(UnmanagedType.LPWStr)] string text, int count, IntPtr xDel);
-        internal static sqlite3_bind_text16 _sqlite3_bind_text16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_bind_null(IntPtr statement, int index);
-        internal static sqlite3_bind_null _sqlite3_bind_null;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);
-        internal static sqlite3_bind_blob _sqlite3_bind_blob;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
-        internal static sqlite3_bind_zeroblob _sqlite3_bind_zeroblob;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_bind_double(IntPtr statement, int index, double value);
-        internal static sqlite3_bind_double _sqlite3_bind_double;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_bind_int64(IntPtr statement, int index, long value);
-        internal static sqlite3_bind_int64 _sqlite3_bind_int64;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
-        internal static sqlite3_bind_int _sqlite3_bind_int;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_blob_open(IntPtr db,
-            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string database,
-            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string table,
-            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string column,
-            long rowId, int flags, out IntPtr blob);
-        internal static sqlite3_blob_open _sqlite3_blob_open;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_blob_bytes(IntPtr blob);
-        internal static sqlite3_blob_bytes _sqlite3_blob_bytes;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_blob_close(IntPtr blob);
-        internal static sqlite3_blob_close _sqlite3_blob_close;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_blob_reopen(IntPtr blob, long rowId);
-        internal static sqlite3_blob_reopen _sqlite3_blob_reopen;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
-        internal static sqlite3_blob_read _sqlite3_blob_read;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
-        internal static sqlite3_blob_write _sqlite3_blob_write;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_db_cacheflush(IntPtr db);
-        private static sqlite3_db_cacheflush _sqlite3_db_cacheflush;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate int xCompare(IntPtr arg,
-            int lenA, IntPtr strA,
-            int lenB, IntPtr strB);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, xCompare comparer);
-        private static sqlite3_create_collation16 _sqlite3_create_collation16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate void collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, [MarshalAs(UnmanagedType.LPWStr)] string strB);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_collation_needed16(IntPtr db, IntPtr arg, collationNeeded callback);
-        private static sqlite3_collation_needed16 _sqlite3_collation_needed16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
-        internal static sqlite3_table_column_metadata _sqlite3_table_column_metadata;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate void xFunc(IntPtr context, int argsCount, [In, Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] IntPtr[] args);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate void xFinal(IntPtr context);
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_create_function16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name,
-            int argsCount, SQLiteTextEncoding encoding, IntPtr app, xFunc func, xFunc step, xFinal final);
-        private static sqlite3_create_function16 _sqlite3_create_function16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate IntPtr sqlite3_value_blob(IntPtr value);
-        internal static sqlite3_value_blob _sqlite3_value_blob;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate double sqlite3_value_double(IntPtr value);
-        internal static sqlite3_value_double _sqlite3_value_double;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_value_int(IntPtr value);
-        internal static sqlite3_value_int _sqlite3_value_int;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate long sqlite3_value_int64(IntPtr value);
-        internal static sqlite3_value_int64 _sqlite3_value_int64;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate IntPtr sqlite3_value_text16(IntPtr value);
-        internal static sqlite3_value_text16 _sqlite3_value_text16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_value_bytes16(IntPtr value);
-        internal static sqlite3_value_bytes16 _sqlite3_value_bytes16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate int sqlite3_value_bytes(IntPtr value);
-        internal static sqlite3_value_bytes _sqlite3_value_bytes;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate SQLiteColumnType sqlite3_value_type(IntPtr value);
-        internal static sqlite3_value_type _sqlite3_value_type;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
-        private static sqlite3_result_blob _sqlite3_result_blob;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate void sqlite3_result_double(IntPtr ctx, double value);
-        internal static sqlite3_result_double _sqlite3_result_double;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate void sqlite3_result_error16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len);
-        internal static sqlite3_result_error16 _sqlite3_result_error16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate void sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
-        internal static sqlite3_result_error_code _sqlite3_result_error_code;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate void sqlite3_result_int(IntPtr ctx, int value);
-        internal static sqlite3_result_int _sqlite3_result_int;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate void sqlite3_result_int64(IntPtr ctx, long value);
-        internal static sqlite3_result_int64 _sqlite3_result_int64;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate void sqlite3_result_null(IntPtr ctx);
-        internal static sqlite3_result_null _sqlite3_result_null;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate void sqlite3_result_text16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len, IntPtr xDel);
-        internal static sqlite3_result_text16 _sqlite3_result_text16;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        internal delegate void sqlite3_result_zeroblob(IntPtr ctx, int size);
-        internal static sqlite3_result_zeroblob _sqlite3_result_zeroblob;
-
-#pragma warning disable S2342
-        [Flags]
-        private enum SQLiteTextEncoding
-        {
-            SQLITE_UTF8 = 1,                /* IMP: R-37514-35566 */
-            SQLITE_UTF16LE = 2,             /* IMP: R-03371-37637 */
-            SQLITE_UTF16BE = 3,             /* IMP: R-51971-34154 */
-            SQLITE_UTF16 = 4,               /* Use native byte order */
-            SQLITE_ANY = 5,                 /* Deprecated */
-            SQLITE_UTF16_ALIGNED = 8,       /* sqlite3_create_collation only */
-            SQLITE_DETERMINISTIC = 0x800,    // function will always return the same result given the same inputs within a single SQL statement
-        }
-#pragma warning restore S2342
-
-        // https://sqlite.org/c3ref/threadsafe.html
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate int sqlite3_threadsafe();
-        private static sqlite3_threadsafe _sqlite3_threadsafe;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_enable_shared_cache(int i);
-        private static sqlite3_enable_shared_cache _sqlite3_enable_shared_cache;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
-        private static sqlite3_config_0 _sqlite3_config_0;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
-        private static sqlite3_config_1 _sqlite3_config_1;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
-        private static sqlite3_config_2 _sqlite3_config_2;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
-        private static sqlite3_config_3 _sqlite3_config_3;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
-        private static sqlite3_config_4 _sqlite3_config_4;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
-        private static sqlite3_db_config_0 _sqlite3_db_config_0;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
-        private static sqlite3_db_config_1 _sqlite3_db_config_1;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string s);
-        private static sqlite3_db_config_2 _sqlite3_db_config_2;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
-        private static sqlite3_enable_load_extension _sqlite3_enable_load_extension;
-
-#if !WINSQLITE
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-#endif
-        private delegate SQLiteErrorCode sqlite3_load_extension(IntPtr db,
-            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile,
-            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zProc,
-            out IntPtr pzErrMsg);
-        private static sqlite3_load_extension _sqlite3_load_extension;
-
-        internal class Utf8Marshaler : ICustomMarshaler
-        {
-            public static readonly Utf8Marshaler Instance = new Utf8Marshaler();
-
-            // *must* exist for a custom marshaler
-#pragma warning disable IDE0060 // Remove unused parameter
-            public static ICustomMarshaler GetInstance(string cookie) => Instance;
-#pragma warning restore IDE0060 // Remove unused parameter
-
-            public void CleanUpManagedData(object ManagedObj)
-            {
-                // nothing to do
-            }
-
-            public void CleanUpNativeData(IntPtr pNativeData)
-            {
-                if (pNativeData != IntPtr.Zero)
-                {
-                    Marshal.FreeCoTaskMem(pNativeData);
-                }
-            }
-
-            public int GetNativeDataSize() => -1;
-
-            public IntPtr MarshalManagedToNative(object ManagedObj)
-            {
-                if (ManagedObj == null)
-                    return IntPtr.Zero;
-
-                // add a terminating zero
-                var bytes = Encoding.UTF8.GetBytes((string)ManagedObj + '\0');
-                var ptr = Marshal.AllocCoTaskMem(bytes.Length);
-                Marshal.Copy(bytes, 0, ptr, bytes.Length);
-                return ptr;
-            }
-
-            public object MarshalNativeToManaged(IntPtr pNativeData)
-            {
-                if (pNativeData == IntPtr.Zero)
-                    return null;
-
-                // look for the terminating zero
-                var i = 0;
-                while (Marshal.ReadByte(pNativeData, i) != 0)
-                {
-                    i++;
-                }
-
-                var bytes = new byte[i];
-                Marshal.Copy(pNativeData, bytes, 0, bytes.Length);
-                return Encoding.UTF8.GetString(bytes);
-            }
         }
 
         protected virtual void Dispose(bool disposing)
@@ -3811,8 +3258,8 @@ namespace SqlNado
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {
-                _sqlite3_collation_needed16(handle, IntPtr.Zero, null);
-                _sqlite3_close(handle);
+                Native.sqlite3_collation_needed16(handle, IntPtr.Zero, null);
+                Native.sqlite3_close(handle);
             }
         }
 
@@ -4076,7 +3523,7 @@ namespace SqlNado
 
         public static string GetMessage(SQLiteErrorCode code)
         {
-            string msg = null;
+            string? msg = null;
             switch (code)
             {
                 case SQLiteErrorCode.SQLITE_ERROR:
@@ -4222,23 +3669,29 @@ namespace SqlNado
         public int Ordinal { get; internal set; }
 
         [SQLiteColumn(Name = "table")]
-        public string ReferencedTable { get; internal set; }
+        public string? ReferencedTable { get; internal set; }
 
         [SQLiteColumn(Name = "from")]
-        public string From { get; internal set; }
+        public string? From { get; internal set; }
 
         [SQLiteColumn(Name = "to")]
-        public string To { get; internal set; }
+        public string? To { get; internal set; }
 
         [SQLiteColumn(Name = "on_update")]
-        public string OnUpdate { get; internal set; }
+        public string? OnUpdate { get; internal set; }
 
         [SQLiteColumn(Name = "on_delete")]
-        public string OnDelete { get; internal set; }
+        public string? OnDelete { get; internal set; }
 
-        public string Match { get; internal set; }
+        public string? Match { get; internal set; }
 
-        public int CompareTo(SQLiteForeignKey other) => Ordinal.CompareTo(other.Ordinal);
+        public int CompareTo(SQLiteForeignKey? other)
+        {
+            if (other == null)
+                throw new ArgumentNullException(nameof(other));
+
+            return Ordinal.CompareTo(other.Ordinal);
+        }
 
         public override string ToString() => "(" + From + ") -> " + ReferencedTable + " (" + To + ")";
     }
@@ -4266,32 +3719,33 @@ namespace SqlNado
         public SQLiteDatabase Database { get; }
         public string FunctionName { get; }
         public SQLiteValue[] Values { get; }
-        public SQLiteBindOptions BindOptions { get; set; }
+        public SQLiteBindOptions? BindOptions { get; set; }
 
         public void SetError(SQLiteErrorCode code) => SetError(code, null);
         public void SetError(string message) => SetError(SQLiteErrorCode.SQLITE_ERROR, message);
-        public void SetError(SQLiteErrorCode code, string message)
+        public void SetError(SQLiteErrorCode code, string? message)
         {
             // note: order for setting code and message is important (1. message, 2. code)
-            if (!string.IsNullOrWhiteSpace(message))
+            if (message != null && !string.IsNullOrWhiteSpace(message))
             {
                 // note setting error or setting result with a string seems to do behave the same
-                SQLiteDatabase._sqlite3_result_error16(_handle, message, message.Length * 2);
+                SQLiteDatabase.Native.sqlite3_result_error16(_handle, message, message.Length * 2);
+                return;
             }
-            SQLiteDatabase._sqlite3_result_error_code(_handle, code);
+            SQLiteDatabase.Native.sqlite3_result_error_code(_handle, code);
         }
 
         public void SetResult(object value)
         {
             if (value == null || Convert.IsDBNull(value))
             {
-                SQLiteDatabase._sqlite3_result_null(_handle);
+                SQLiteDatabase.Native.sqlite3_result_null(_handle);
                 return;
             }
 
             if (value is SQLiteZeroBlob zb)
             {
-                SQLiteDatabase._sqlite3_result_zeroblob(_handle, zb.Size);
+                SQLiteDatabase.Native.sqlite3_result_zeroblob(_handle, zb.Size);
                 return;
             }
 
@@ -4299,31 +3753,31 @@ namespace SqlNado
             var cvalue = Database.CoerceValueForBind(value, bi);
             if (cvalue is int i)
             {
-                SQLiteDatabase._sqlite3_result_int(_handle, i);
+                SQLiteDatabase.Native.sqlite3_result_int(_handle, i);
                 return;
             }
 
             if (cvalue is string s)
             {
-                SQLiteDatabase._sqlite3_result_text16(_handle, s, s.Length * 2, IntPtr.Zero);
+                SQLiteDatabase.Native.sqlite3_result_text16(_handle, s, s.Length * 2, IntPtr.Zero);
                 return;
             }
 
             if (cvalue is bool b)
             {
-                SQLiteDatabase._sqlite3_result_int(_handle, b ? 1 : 0);
+                SQLiteDatabase.Native.sqlite3_result_int(_handle, b ? 1 : 0);
                 return;
             }
 
             if (cvalue is long l)
             {
-                SQLiteDatabase._sqlite3_result_int64(_handle, l);
+                SQLiteDatabase.Native.sqlite3_result_int64(_handle, l);
                 return;
             }
 
             if (cvalue is double d)
             {
-                SQLiteDatabase._sqlite3_result_double(_handle, d);
+                SQLiteDatabase.Native.sqlite3_result_double(_handle, d);
                 return;
             }
             throw new NotSupportedException();
@@ -4344,6 +3798,8 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(database));
 
             Database = database;
+            Name = string.Empty;
+            TableName = string.Empty;
         }
 
         [Browsable(false)] // remove from tablestring dumps
@@ -4355,13 +3811,13 @@ namespace SqlNado
         public string TableName { get; internal set; }
 
         public int RootPage { get; internal set; }
-        public string Sql { get; internal set; }
+        public string? Sql { get; internal set; }
 
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string? EscapedName => SQLiteStatement.EscapeName(Name);
 
-        public SQLiteTable Table => TableName != null ? Database.GetTable(TableName) : null;
-        public SQLiteTableIndex TableIndex => Table?.GetIndex(Name);
+        public SQLiteTable? Table => TableName != null ? Database.GetTable(TableName) : null;
+        public SQLiteTableIndex? TableIndex => Table?.GetIndex(Name);
 
         public override string ToString() => Name;
     }
@@ -4387,10 +3843,10 @@ namespace SqlNado
         }
 
         public string Name { get; }
-        public string SchemaName { get; set; }
+        public string? SchemaName { get; set; }
         public bool IsUnique { get; set; }
         public int Order { get; set; }
-        public string CollationName { get; set; }
+        public string? CollationName { get; set; }
         public SQLiteDirection? Direction { get; set; }
 
         public override string ToString()
@@ -4428,30 +3884,37 @@ namespace SqlNado
         internal SQLiteIndexColumn(SQLiteTableIndex index)
         {
             Index = index;
+            Name = string.Empty;
         }
 
         public SQLiteTableIndex Index { get; }
 
         [SQLiteColumn(Name = "seqno")]
         public int Ordinal { get; set; }
-        
+
         [SQLiteColumn(Name = "cid")]
         public int Id { get; set; }
-        
+
         [SQLiteColumn(Name = "key")]
         public bool IsKey { get; set; }
-        
+
         [SQLiteColumn(Name = "desc")]
         public bool IsReverse { get; set; }
-        
+
         public string Name { get; set; }
-        
+
         [SQLiteColumn(Name = "coll")]
-        public string Collation { get; set; }
-        
+        public string? Collation { get; set; }
+
         public bool IsRowId => Id == -1;
 
-        public int CompareTo(SQLiteIndexColumn other) => Ordinal.CompareTo(other.Ordinal);
+        public int CompareTo(SQLiteIndexColumn? other)
+        {
+            if (other == null)
+                throw new ArgumentNullException(nameof(other));
+
+            return Ordinal.CompareTo(other.Ordinal);
+        }
 
         public override string ToString() => Name;
     }
@@ -4471,8 +3934,8 @@ namespace SqlNado
 
         public string Name { get; }
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
-        public virtual string CollationName { get; set; }
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
+        public virtual string? CollationName { get; set; }
         public virtual SQLiteDirection? Direction { get; set; }
 
         public virtual string GetCreateSql()
@@ -4536,8 +3999,8 @@ namespace SqlNado
         }
 
         public bool SetForeignKeyPropertyValue { get; set; }
-        public string ForeignKeyColumnName { get; set; }
-        public SQLiteObjectColumn ForeignKeyColumn { get; set; }
+        public string? ForeignKeyColumnName { get; set; }
+        public SQLiteObjectColumn? ForeignKeyColumn { get; set; }
 
         public override string ToString()
         {
@@ -4572,10 +4035,10 @@ namespace SqlNado
         public virtual int Offset { get; set; }
         public virtual bool RemoveDuplicates { get; set; }
         public virtual bool TestTableExists { get; set; }
-        public virtual Func<Type, SQLiteStatement, SQLiteLoadOptions, object> GetInstanceFunc { get; set; }
-        public virtual Func<SQLiteError, SQLiteOnErrorAction> ErrorHandler { get; set; }
+        public virtual Func<Type, SQLiteStatement?, SQLiteLoadOptions?, object?>? GetInstanceFunc { get; set; }
+        public virtual Func<SQLiteError, SQLiteOnErrorAction>? ErrorHandler { get; set; }
 
-        public virtual bool TryChangeType(object input, Type conversionType, out object value) => Database.TryChangeType(input, conversionType, out value);
+        public virtual bool TryChangeType(object? input, Type conversionType, out object? value) => Database.TryChangeType(input, conversionType, out value);
 
         public override string ToString()
         {
@@ -4605,6 +4068,23 @@ namespace SqlNado
 
 namespace SqlNado
 {
+    [StructLayout(LayoutKind.Sequential)]
+#pragma warning disable IDE1006 // Naming Styles
+    public struct SQLiteNativeTokenizerModule // sqlite3_tokenizer_module
+#pragma warning restore IDE1006 // Naming Styles
+    {
+        public int iVersion;
+        public IntPtr xCreate;
+        public IntPtr xDestroy;
+        public IntPtr xOpen;
+        public IntPtr xClose;
+        public IntPtr xNext;
+        public IntPtr xLanguageid;
+    }
+}
+
+namespace SqlNado
+{
     public enum SQLiteObjectAction
     {
         Loading,
@@ -4620,7 +4100,7 @@ namespace SqlNado
     {
         public SQLiteObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
-            Action<SQLiteLoadOptions, object, object> setValueAction)
+            Action<SQLiteLoadOptions, object?, object?>? setValueAction)
         {
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
@@ -4648,30 +4128,30 @@ namespace SqlNado
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
         public string DataType { get; }
         public Type ClrType { get; }
         public int Index { get; internal set; }
         [Browsable(false)]
         public Func<object, object> GetValueFunc { get; }
         [Browsable(false)]
-        public Action<SQLiteLoadOptions, object, object> SetValueAction { get; }
+        public Action<SQLiteLoadOptions, object?, object?>? SetValueAction { get; }
         public virtual bool IsNullable { get; set; }
         public virtual bool IsReadOnly { get; set; }
         public virtual bool IsPrimaryKey { get; set; }
         public virtual SQLiteDirection PrimaryKeyDirection { get; set; }
         public virtual bool IsUnique { get; set; }
-        public virtual string CheckExpression { get; set; }
+        public virtual string? CheckExpression { get; set; }
         public virtual bool AutoIncrements { get; set; }
         public bool AutomaticValue => AutoIncrements && IsRowId;
         public bool ComputedValue => HasDefaultValue && IsDefaultValueIntrinsic && SQLiteObjectTableBuilder.IsComputedDefaultValue(DefaultValue as string);
         public virtual bool HasDefaultValue { get; set; }
         public virtual bool InsertOnly { get; set; }
         public virtual bool UpdateOnly { get; set; }
-        public virtual string Collation { get; set; }
+        public virtual string? Collation { get; set; }
         public virtual bool IsDefaultValueIntrinsic { get; set; }
-        public virtual object DefaultValue { get; set; }
-        public virtual SQLiteBindOptions BindOptions { get; set; }
+        public virtual object? DefaultValue { get; set; }
+        public virtual SQLiteBindOptions? BindOptions { get; set; }
         public virtual SQLiteAutomaticColumnType AutomaticType { get; set; }
         public bool HasNonConstantDefaultValue => HasDefaultValue && IsDefaultValueIntrinsic;
         public bool IsRowId { get; internal set; }
@@ -4695,7 +4175,7 @@ namespace SqlNado
 
         public static bool IsFtsIdName(string name) => name.EqualsIgnoreCase("docid") || IsRowIdName(name);
 
-        public static bool AreCollationsEqual(string collation1, string collation2)
+        public static bool AreCollationsEqual(string? collation1, string? collation2)
         {
             if (collation1.EqualsIgnoreCase(collation2))
                 return true;
@@ -4784,9 +4264,9 @@ namespace SqlNado
             return true;
         }
 
-        public virtual object GetDefaultValueForBind() => Table.Database.CoerceValueForBind(DefaultValue, BindOptions);
+        public virtual object? GetDefaultValueForBind() => Table.Database.CoerceValueForBind(DefaultValue, BindOptions);
 
-        public virtual object GetValueForBind(object obj)
+        public virtual object? GetValueForBind(object obj)
         {
             var value = GetValue(obj);
             return Table.Database.CoerceValueForBind(value, BindOptions);
@@ -4794,7 +4274,7 @@ namespace SqlNado
 
         public virtual object GetValue(object obj) => GetValueFunc(obj);
 
-        public virtual void SetValue(SQLiteLoadOptions options, object obj, object value)
+        public virtual void SetValue(SQLiteLoadOptions? options, object obj, object? value)
         {
             if (SetValueAction == null)
                 throw new InvalidOperationException();
@@ -4806,7 +4286,7 @@ namespace SqlNado
             var raiseOnErrorsChanged = false;
             var raiseOnPropertyChanging = false;
             var raiseOnPropertyChanged = false;
-            ISQLiteObjectChangeEvents ce = null;
+            ISQLiteObjectChangeEvents? ce = null;
 
             if (options.ObjectChangeEventsDisabled)
             {
@@ -4887,7 +4367,7 @@ namespace SqlNado
                 if ((options & SQLiteCreateSqlOptions.ForAlterColumn) == SQLiteCreateSqlOptions.ForAlterColumn && !IsNullable)
                 {
                     // we *must* define a default value or "Cannot add a NOT NULL column with default value NULL".
-                    object defaultValue = Activator.CreateInstance(ClrType);
+                    var defaultValue = Activator.CreateInstance(ClrType);
                     sql += " DEFAULT " + ToLiteral(defaultValue);
                 }
             }
@@ -4899,7 +4379,7 @@ namespace SqlNado
             return sql;
         }
 
-        public static object FromLiteral(object value)
+        public static object? FromLiteral(object? value)
         {
             if (value == null)
                 return null;
@@ -4922,7 +4402,7 @@ namespace SqlNado
             return value;
         }
 
-        protected virtual string ToLiteral(object value)
+        protected virtual string ToLiteral(object? value)
         {
             value = Table.Database.CoerceValueForBind(value, BindOptions);
             // from here, we should have a limited set of types, the types supported by SQLite
@@ -5013,7 +4493,7 @@ namespace SqlNado
                 }
                 else
                 {
-                    if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object value))
+                    if (!Table.Database.TryChangeType(attribute.DefaultValue, ClrType, out object? value))
                     {
                         var type = attribute.DefaultValue != null ? "'" + attribute.DefaultValue.GetType().FullName + "'" : "<null>";
                         throw new SqlNadoException("0028: Cannot convert attribute DefaultValue `" + attribute.DefaultValue + "` of type " + type + " for column '" + Name + "' of table '" + Table.Name + "'.");
@@ -5059,7 +4539,7 @@ namespace SqlNado
         public SQLiteObjectTable Table { get; }
         public string Name { get; }
         public IReadOnlyList<SQLiteIndexedColumn> Columns { get; }
-        public virtual string SchemaName { get; set; }
+        public virtual string? SchemaName { get; set; }
         public virtual bool IsUnique { get; set; }
 
         public override string ToString()
@@ -5093,10 +4573,10 @@ namespace SqlNado
 #pragma warning disable S2245
         private static readonly Random _random = new Random(Environment.TickCount);
 #pragma warning restore S2245
-        
+
         internal const string _tempTablePrefix = "__temp";
 
-        public SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions options = null)
+        public SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions? options = null)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -5110,30 +4590,30 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public SQLiteBuildTableOptions Options { get; }
+        public SQLiteBuildTableOptions? Options { get; }
         public string Name { get; }
-        public string Schema { get; set; } // unused in SqlNado's SQLite
-        public string Module { get; set; }
-        public string[] ModuleArguments { get; set; }
+        public string? Schema { get; set; } // unused in SqlNado's SQLite
+        public string? Module { get; set; }
+        public string?[]? ModuleArguments { get; set; }
         public virtual IReadOnlyList<SQLiteObjectColumn> Columns => _columns;
         public virtual IEnumerable<SQLiteObjectColumn> PrimaryKeyColumns => _columns.Where(c => c.IsPrimaryKey);
         public virtual IReadOnlyList<SQLiteObjectIndex> Indices => _indices;
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
         public bool HasPrimaryKey => _columns.Any(c => c.IsPrimaryKey);
         public bool Exists => Database.TableExists(Name);
         public bool HasRowId => Columns.Any(c => c.IsRowId);
         public bool IsVirtual => Module != null;
-        public SQLiteTable Table => Database.GetTable(Name);
+        public SQLiteTable? Table => Database.GetTable(Name);
         public virtual bool IsFts => IsFtsModule(Module);
-        public static bool IsFtsModule(string module) => module.EqualsIgnoreCase("fts3") || module.EqualsIgnoreCase("fts4") || module.EqualsIgnoreCase("fts5");
+        public static bool IsFtsModule(string? module) => module != null && (module.EqualsIgnoreCase("fts3") || module.EqualsIgnoreCase("fts4") || module.EqualsIgnoreCase("fts5"));
 
         [Browsable(false)]
-        public virtual Action<SQLiteStatement, SQLiteLoadOptions, object> LoadAction { get; set; }
+        public virtual Action<SQLiteStatement, SQLiteLoadOptions, object?>? LoadAction { get; set; }
         public virtual bool DisableRowId { get; set; }
 
         public override string ToString() => Name;
-        public SQLiteObjectColumn GetColumn(string name) => _columns.Find(c => c.Name.EqualsIgnoreCase(name));
+        public SQLiteObjectColumn? GetColumn(string name) => _columns.Find(c => c.Name.EqualsIgnoreCase(name));
 
         public virtual void AddIndex(SQLiteObjectIndex index)
         {
@@ -5237,12 +4717,16 @@ namespace SqlNado
             var list = new List<object>();
             foreach (var col in PrimaryKeyColumns)
             {
-                list.Add(col.GetValueForBind(obj));
+                var value = col.GetValueForBind(obj);
+                if (value == null)
+                    throw new InvalidOperationException();
+
+                list.Add(value);
             }
             return list.ToArray();
         }
 
-        public virtual void SetPrimaryKey(SQLiteLoadOptions options, object instance, object[] primaryKey)
+        public virtual void SetPrimaryKey(SQLiteLoadOptions? options, object instance, object[] primaryKey)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
@@ -5260,20 +4744,20 @@ namespace SqlNado
             }
         }
 
-        public virtual T GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions options = null)
+        public virtual T? GetInstance<T>(SQLiteStatement statement, SQLiteLoadOptions? options = null)
         {
             if (options?.GetInstanceFunc != null)
-                return (T)options.GetInstanceFunc(typeof(T), statement, options);
+                return (T?)options.GetInstanceFunc(typeof(T), statement, options);
 
-            return (T)GetInstance(typeof(T), statement, options);
+            return (T?)GetInstance(typeof(T), statement, options);
         }
 
-        public virtual object GetInstance(Type type, SQLiteStatement statement = null, SQLiteLoadOptions options = null)
+        public virtual object? GetInstance(Type type, SQLiteStatement? statement = null, SQLiteLoadOptions? options = null)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            object instance;
+            object? instance;
             if (options?.GetInstanceFunc != null)
             {
                 instance = options.GetInstanceFunc(type, statement, options);
@@ -5314,7 +4798,7 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual void InitializeAutomaticColumns(object instance)
+        public virtual void InitializeAutomaticColumns(object? instance)
         {
             if (instance == null)
                 return;
@@ -5381,28 +4865,6 @@ namespace SqlNado
                         else if (value is double)
                         {
                             col.SetValue(null, instance, _random.NextDouble());
-                        }
-                        break;
-
-                    case SQLiteAutomaticColumnType.EnvironmentTickCountIfZero:
-                        if (value is int i && i == 0)
-                        {
-                            col.SetValue(null, instance, Environment.TickCount);
-                        }
-                        else if (value is long l && l == 0)
-                        {
-                            col.SetValue(null, instance, SQLiteDatabase.GetTickCount64());
-                        }
-                        break;
-
-                    case SQLiteAutomaticColumnType.EnvironmentTickCount:
-                        if (value is int)
-                        {
-                            col.SetValue(null, instance, Environment.TickCount);
-                        }
-                        else if (value is long)
-                        {
-                            col.SetValue(null, instance, SQLiteDatabase.GetTickCount64());
                         }
                         break;
 
@@ -5478,7 +4940,7 @@ namespace SqlNado
             }
         }
 
-        public virtual T Load<T>(SQLiteStatement statement, SQLiteLoadOptions options = null)
+        public virtual T? Load<T>(SQLiteStatement statement, SQLiteLoadOptions? options = null)
         {
             if (statement == null)
                 throw new ArgumentNullException(nameof(statement));
@@ -5487,7 +4949,11 @@ namespace SqlNado
             if (options == null)
                 throw new InvalidOperationException();
 
-            var instance = (T)GetInstance(typeof(T), statement, options);
+            var instance = (T?)GetInstance(typeof(T), statement, options);
+
+            if (LoadAction == null)
+                throw new SqlNadoException("0014: Table '" + Name + "' does not define a LoadAction.");
+
             if (!options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObjectEvents;
@@ -5505,7 +4971,7 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual object Load(Type objectType, SQLiteStatement statement, SQLiteLoadOptions options = null)
+        public virtual object? Load(Type objectType, SQLiteStatement statement, SQLiteLoadOptions? options = null)
         {
             if (objectType == null)
                 throw new ArgumentNullException(nameof(objectType));
@@ -5518,6 +4984,10 @@ namespace SqlNado
                 throw new InvalidOperationException();
 
             var instance = GetInstance(objectType, statement, options);
+
+            if (LoadAction == null)
+                throw new SqlNadoException("0014: Table '" + Name + "' does not define a LoadAction.");
+
             if (!options.ObjectEventsDisabled)
             {
                 var lo = instance as ISQLiteObjectEvents;
@@ -5535,7 +5005,7 @@ namespace SqlNado
             return instance;
         }
 
-        public virtual bool Save(object instance, SQLiteSaveOptions options = null)
+        public virtual bool Save(object instance, SQLiteSaveOptions? options = null)
         {
             if (instance == null)
                 return false;
@@ -5550,15 +5020,15 @@ namespace SqlNado
             if (lo != null && !lo.OnSaveAction(SQLiteObjectAction.Saving, options))
                 return false;
 
-            var updateArgs = new List<object>();
-            var insertArgs = new List<object>();
+            var updateArgs = new List<object?>();
+            var insertArgs = new List<object?>();
             var pk = new List<object>();
             foreach (var col in Columns)
             {
                 if ((col.AutomaticValue || col.ComputedValue) && !col.IsPrimaryKey)
                     continue;
 
-                object value;
+                object? value;
                 if (options.GetValueForBindFunc != null)
                 {
                     value = options.GetValueForBindFunc(col, instance);
@@ -5571,7 +5041,7 @@ namespace SqlNado
                 if (col.HasDefaultValue && !col.IsDefaultValueIntrinsic && col.IsNullable)
                 {
                     var def = col.GetDefaultValueForBind();
-                    if (value.Equals(def))
+                    if (Equals(value, def))
                     {
                         value = null;
                     }
@@ -5592,6 +5062,9 @@ namespace SqlNado
 
                 if (col.IsPrimaryKey)
                 {
+                    if (value == null)
+                        throw new InvalidOperationException();
+
                     pk.Add(value);
                 }
             }
@@ -5610,7 +5083,7 @@ namespace SqlNado
                     // do this only on the 1st pass
                     if (retry == 0)
                     {
-                        pk.InsertRange(0, updateArgs);
+                        pk.InsertRange(0, updateArgs!);
                     }
                     count = Database.ExecuteNonQuery(sql, pk.ToArray());
                     // note the count is ok even if all values did not changed
@@ -5651,7 +5124,7 @@ namespace SqlNado
             return count > 0;
         }
 
-        private static string GetConflictResolutionClause(SQLiteConflictResolution res)
+        private static string? GetConflictResolutionClause(SQLiteConflictResolution res)
         {
             if (res == SQLiteConflictResolution.Abort) // default
                 return null;
@@ -5659,7 +5132,7 @@ namespace SqlNado
             return "OR " + res.ToString().ToUpperInvariant() + " ";
         }
 
-        public virtual void SynchronizeIndices(SQLiteSaveOptions options = null)
+        public virtual void SynchronizeIndices(SQLiteSaveOptions? options = null)
         {
             foreach (var index in Indices)
             {
@@ -5667,7 +5140,7 @@ namespace SqlNado
             }
         }
 
-        public virtual int SynchronizeSchema(SQLiteSaveOptions options = null)
+        public virtual int SynchronizeSchema(SQLiteSaveOptions? options = null)
         {
             if (Columns.Count == 0)
                 throw new SqlNadoException("0006: Object table '" + Name + "' has no columns.");
@@ -5810,7 +5283,7 @@ namespace SqlNado
 {
     public class SQLiteObjectTableBuilder
     {
-        public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions options = null)
+        public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions? options = null)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -5825,14 +5298,14 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public Type Type { get; }
-        public SQLiteBuildTableOptions Options { get; }
+        public SQLiteBuildTableOptions? Options { get; }
 
         protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
         protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
         protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name, Options);
         protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
             Func<object, object> getValueFunc,
-            Action<SQLiteLoadOptions, object, object> setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
+            Action<SQLiteLoadOptions, object?, object?>? setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
 
         public virtual SQLiteObjectTable Build()
         {
@@ -5842,6 +5315,8 @@ namespace SqlNado
             {
                 name = typeAtt.Name;
             }
+            if (name == null)
+                throw new InvalidOperationException();
 
             var table = CreateObjectTable(name);
             if (table == null)
@@ -5894,8 +5369,8 @@ namespace SqlNado
                     ((List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>)atts).Add(new Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>(attribute, idx));
                 }
 
-                var column = CreateObjectColumn(table, attribute.Name, attribute.DataType, attribute.ClrType,
-                    attribute.GetValueExpression.Compile(),
+                var column = CreateObjectColumn(table, attribute.Name!, attribute.DataType!, attribute.ClrType!,
+                    attribute.GetValueExpression!.Compile(),
                     attribute.SetValueExpression?.Compile());
                 if (column == null)
                     throw new InvalidOperationException();
@@ -5940,7 +5415,7 @@ namespace SqlNado
                 body = Expression.Empty();
             }
 
-            var lambda = Expression.Lambda<Action<SQLiteStatement, SQLiteLoadOptions, object>>(body,
+            var lambda = Expression.Lambda<Action<SQLiteStatement, SQLiteLoadOptions, object?>>(body,
                 statementParameter,
                 optionsParameter,
                 instanceParameter);
@@ -5972,9 +5447,12 @@ namespace SqlNado
 
                 var columns = new List<SQLiteIndexedColumn>();
                 var unique = false;
-                string schemaName = null;
+                string? schemaName = null;
                 foreach (var kv in list.OrderBy(l => l.Item2.Order))
                 {
+                    if (kv.Item1.Name == null)
+                        throw new InvalidOperationException();
+
                     var col = CreateIndexedColumn(kv.Item1.Name);
                     if (col == null)
                         throw new InvalidOperationException();
@@ -6008,7 +5486,7 @@ namespace SqlNado
 
         protected virtual IEnumerable<SQLiteColumnAttribute> EnumerateColumnAttributes()
         {
-            foreach (PropertyInfo property in Type.GetProperties())
+            foreach (var property in Type.GetProperties())
             {
                 if (property.GetIndexParameters().Length > 0)
                     continue;
@@ -6095,14 +5573,14 @@ namespace SqlNado
             return nameof(SQLiteColumnType.TEXT);
         }
 
-        internal static bool IsComputedDefaultValue(string value) =>
+        internal static bool IsComputedDefaultValue(string? value) =>
             value.EqualsIgnoreCase("CURRENT_TIME") ||
             value.EqualsIgnoreCase("CURRENT_DATE") ||
             value.EqualsIgnoreCase("CURRENT_TIMESTAMP");
 
         protected virtual SQLiteColumnAttribute CreateColumnAttribute() => new SQLiteColumnAttribute();
 
-        protected virtual SQLiteColumnAttribute AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute attribute)
+        protected virtual SQLiteColumnAttribute? AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute? attribute)
         {
             if (property == null)
                 throw new ArgumentNullException(nameof(property));
@@ -6112,7 +5590,7 @@ namespace SqlNado
             return attribute;
         }
 
-        protected virtual SQLiteColumnAttribute GetColumnAttribute(PropertyInfo property)
+        protected virtual SQLiteColumnAttribute? GetColumnAttribute(PropertyInfo property)
         {
             if (property == null)
                 throw new ArgumentNullException(nameof(property));
@@ -6202,7 +5680,7 @@ namespace SqlNado
                 // att.GetValueExpression = (o) => property.GetValue(o);
 
                 var instanceParameter = Expression.Parameter(typeof(object));
-                var instance = Expression.Convert(instanceParameter, property.DeclaringType);
+                var instance = Expression.Convert(instanceParameter, property.DeclaringType!);
                 Expression getValue = Expression.Property(instance, property);
                 if (att.ClrType != typeof(object))
                 {
@@ -6225,7 +5703,7 @@ namespace SqlNado
                 var optionsParameter = Expression.Parameter(typeof(SQLiteLoadOptions), "options");
                 var instanceParameter = Expression.Parameter(typeof(object), "instance");
                 var valueParameter = Expression.Parameter(typeof(object), "value");
-                var instance = Expression.Convert(instanceParameter, property.DeclaringType);
+                var instance = Expression.Convert(instanceParameter, property.DeclaringType!);
 
                 var expressions = new List<Expression>();
                 var variables = new List<ParameterExpression>();
@@ -6238,7 +5716,7 @@ namespace SqlNado
 
                     var tryConvert = Expression.Call(
                         optionsParameter,
-                        typeof(SQLiteLoadOptions).GetMethod(nameof(SQLiteLoadOptions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() }),
+                        typeof(SQLiteLoadOptions).GetMethod(nameof(SQLiteLoadOptions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() })!,
                         valueParameter,
                         Expression.Constant(att.ClrType, typeof(Type)),
                         convertedValue);
@@ -6254,7 +5732,7 @@ namespace SqlNado
 
                 expressions.Add(setValue);
                 var body = Expression.Block(variables, expressions);
-                var lambda = Expression.Lambda<Action<SQLiteLoadOptions, object, object>>(body, optionsParameter, instanceParameter, valueParameter);
+                var lambda = Expression.Lambda<Action<SQLiteLoadOptions, object?, object?>>(body, optionsParameter, instanceParameter, valueParameter);
                 att.SetValueExpression = lambda;
             }
 
@@ -6324,10 +5802,10 @@ namespace SqlNado
         }
 
         public SQLiteDatabase Database { get; }
-        public SQLiteBindOptions BindOptions { get; set; }
+        public SQLiteBindOptions? BindOptions { get; set; }
 
         protected virtual SQLiteQueryTranslator CreateTranslator(TextWriter writer) => new SQLiteQueryTranslator(Database, writer);
-        public IEnumerator<T> GetEnumerator() => (_provider.ExecuteEnumerable<T>(_expression)).GetEnumerator();
+        public IEnumerator<T> GetEnumerator() => _provider.ExecuteEnumerable<T>(_expression).GetEnumerator();
         public override string ToString() => GetQueryText(_expression);
 
         Expression IQueryable.Expression => _expression;
@@ -6355,7 +5833,7 @@ namespace SqlNado
         private sealed class QueryProvider : IQueryProvider
         {
             private readonly SQLiteQuery<T> _query;
-            private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance);
+            private static readonly MethodInfo _executeEnumerable = typeof(QueryProvider).GetMethod(nameof(ExecuteEnumerableWithText), BindingFlags.Public | BindingFlags.Instance)!;
 
             public QueryProvider(SQLiteQuery<T> query)
             {
@@ -6366,7 +5844,7 @@ namespace SqlNado
             public IQueryable<TElement> CreateQuery<TElement>(Expression expression) => new SQLiteQuery<TElement>(_query.Database, expression);
 
             // single value expected
-            public object Execute(Expression expression) => Execute<object>(expression);
+            public object? Execute(Expression expression) => Execute<object>(expression);
 
             // single value also expected, but we still support IEnumerable and IEnumerable<T>
             public TResult Execute<TResult>(Expression expression)
@@ -6382,15 +5860,15 @@ namespace SqlNado
                     if (typeof(TResult) != typeof(string) && typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))
                         return (TResult)_query.Database.Load(typeof(object), sql);
 
-                    return (TResult)(_query.Database.Load(typeof(TResult), sql).FirstOrDefault());
+                    return (TResult)_query.Database.Load(typeof(TResult), sql).FirstOrDefault()!;
                 }
 
                 var ee = _executeEnumerable.MakeGenericMethod(elementType);
-                return (TResult)ee.Invoke(this, new object[] { sql });
+                return (TResult)ee.Invoke(this, new object?[] { sql })!;
             }
 
             // poor man tentative to fix queries without Where() specified
-            private static string NormalizeSelect(string sql)
+            private static string? NormalizeSelect(string? sql)
             {
                 if (sql != null && sql.Length > 2)
                 {
@@ -6411,7 +5889,7 @@ namespace SqlNado
                 return sql;
             }
 
-            private IEnumerable<TResult> ExecuteEnumerableWithText<TResult>(string sql)
+            private IEnumerable<TResult> ExecuteEnumerableWithText<TResult>(string? sql)
             {
                 foreach (var item in _query.Database.Load<TResult>(sql))
                 {
@@ -6439,7 +5917,7 @@ namespace SqlNado
 {
     public class SQLiteQueryTranslator : ExpressionVisitor
     {
-        private SQLiteBindOptions _bindOptions;
+        private SQLiteBindOptions? _bindOptions;
 
         public SQLiteQueryTranslator(SQLiteDatabase database, TextWriter writer)
         {
@@ -6455,7 +5933,7 @@ namespace SqlNado
 
         public SQLiteDatabase Database { get; }
         public TextWriter Writer { get; }
-        public SQLiteBindOptions BindOptions { get => _bindOptions ?? Database.BindOptions; set => _bindOptions = value; }
+        public SQLiteBindOptions? BindOptions { get => _bindOptions ?? Database.BindOptions; set => _bindOptions = value; }
         public int? Skip { get; private set; }
         public int? Take { get; private set; }
 
@@ -6466,8 +5944,8 @@ namespace SqlNado
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
 
-            expression = PartialEvaluator.Eval(expression);
-            Visit(expression);
+            var expr = PartialEvaluator.Eval(expression);
+            Visit(expr);
             if (Skip.HasValue || Take.HasValue)
             {
                 Writer.Write(" LIMIT ");
@@ -6557,12 +6035,12 @@ namespace SqlNado
 
                     case nameof(Queryable.Take):
                         Visit(node.Arguments[0]);
-                        Take = (int)((ConstantExpression)node.Arguments[1]).Value;
+                        Take = (int)((ConstantExpression)node.Arguments[1]).Value!;
                         return node;
 
                     case nameof(Queryable.Skip):
                         Visit(node.Arguments[0]);
-                        Skip = (int)((ConstantExpression)node.Arguments[1]).Value;
+                        Skip = (int)((ConstantExpression)node.Arguments[1]).Value!;
                         return node;
                 }
             }
@@ -6753,7 +6231,7 @@ namespace SqlNado
                 return node;
             }
 
-            throw new SqlNadoException(BuildNotSupported("The method '" + node.Method.Name + "' of type '" + node.Method.DeclaringType.FullName + "'"));
+            throw new SqlNadoException(BuildNotSupported("The method '" + node.Method.Name + "' of type '" + node?.Method?.DeclaringType?.FullName + "'"));
         }
 
         private static bool IsQuoted(string s) => s != null && s.Length > 1 && s.StartsWith("'", StringComparison.Ordinal) && s.EndsWith("'", StringComparison.Ordinal);
@@ -6899,41 +6377,48 @@ namespace SqlNado
             else
             {
                 var value = Database.CoerceValueForBind(node.Value, BindOptions);
-                switch (Type.GetTypeCode(value.GetType()))
+                if (value == null)
                 {
-                    case TypeCode.Boolean:
-                        Writer.Write(((bool)value) ? 1 : 0);
-                        break;
-
-                    case TypeCode.DBNull:
-                        Writer.Write("NULL");
-                        break;
-
-                    case TypeCode.Double:
-                        break;
-
-                    case TypeCode.String:
-                        var s = (string)value;
-                        s = s.Replace("'", "''");
-                        Writer.Write('\'');
-                        Writer.Write(s);
-                        Writer.Write('\'');
-                        break;
-
-                    case TypeCode.Int32:
-                    case TypeCode.Int64:
-                        Writer.Write(string.Format(CultureInfo.InvariantCulture, "{0}", value));
-                        break;
-
-                    default:
-                        if (value is byte[] bytes)
-                        {
-                            var hex = "X'" + Conversions.ToHexa(bytes) + "'";
-                            Writer.Write(hex);
+                    Writer.Write("NULL");
+                }
+                else
+                {
+                    switch (Type.GetTypeCode(value.GetType()))
+                    {
+                        case TypeCode.Boolean:
+                            Writer.Write(((bool)value) ? 1 : 0);
                             break;
-                        }
 
-                        throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + node.Value + "' of type '" + node.Value.GetType().FullName + "') for '" + value + "'"));
+                        case TypeCode.DBNull:
+                            Writer.Write("NULL");
+                            break;
+
+                        case TypeCode.Double:
+                            break;
+
+                        case TypeCode.String:
+                            var s = (string)value;
+                            s = s.Replace("'", "''");
+                            Writer.Write('\'');
+                            Writer.Write(s);
+                            Writer.Write('\'');
+                            break;
+
+                        case TypeCode.Int32:
+                        case TypeCode.Int64:
+                            Writer.Write(string.Format(CultureInfo.InvariantCulture, "{0}", value));
+                            break;
+
+                        default:
+                            if (value is byte[] bytes)
+                            {
+                                var hex = "X'" + Conversions.ToHexa(bytes) + "'";
+                                Writer.Write(hex);
+                                break;
+                            }
+
+                            throw new SqlNadoException(BuildNotSupported("The constant '" + value + " of type '" + value.GetType().FullName + "' (from expression value constant '" + node.Value + "' of type '" + node.Value.GetType().FullName + "') for '" + value + "'"));
+                    }
                 }
             }
             return node;
@@ -6970,15 +6455,15 @@ namespace SqlNado
                 }
             }
 
-            throw new SqlNadoException(BuildNotSupported("The member '" + node.Member.Name + "'"));
+            throw new SqlNadoException(BuildNotSupported("The member '" + node.Member?.Name + "'"));
         }
 
         // from https://github.com/mattwar/iqtoolkit
         private sealed class PartialEvaluator
         {
-            public static Expression Eval(Expression expression) => Eval(expression, null, null);
-            public static Expression Eval(Expression expression, Func<Expression, bool> fnCanBeEvaluated) => Eval(expression, fnCanBeEvaluated, null);
-            public static Expression Eval(Expression expression, Func<Expression, bool> fnCanBeEvaluated, Func<ConstantExpression, Expression> fnPostEval)
+            public static Expression? Eval(Expression expression) => Eval(expression, null, null);
+            public static Expression? Eval(Expression expression, Func<Expression, bool>? fnCanBeEvaluated) => Eval(expression, fnCanBeEvaluated, null);
+            public static Expression? Eval(Expression expression, Func<Expression, bool>? fnCanBeEvaluated, Func<ConstantExpression, Expression>? fnPostEval)
             {
                 if (fnCanBeEvaluated == null)
                 {
@@ -6992,17 +6477,17 @@ namespace SqlNado
             private sealed class SubtreeEvaluator : ExpressionVisitor
             {
                 private readonly HashSet<Expression> _candidates;
-                private readonly Func<ConstantExpression, Expression> _evalFunc;
+                private readonly Func<ConstantExpression, Expression>? _evalFunc;
 
-                private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression> evalFunc)
+                private SubtreeEvaluator(HashSet<Expression> candidates, Func<ConstantExpression, Expression>? evalFunc)
                 {
                     _candidates = candidates;
                     _evalFunc = evalFunc;
                 }
 
-                internal static Expression DoEval(HashSet<Expression> candidates, Func<ConstantExpression, Expression> onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
+                internal static Expression? DoEval(HashSet<Expression> candidates, Func<ConstantExpression, Expression>? onEval, Expression exp) => new SubtreeEvaluator(candidates, onEval).Visit(exp);
 
-                public override Expression Visit(Expression node)
+                public override Expression? Visit(Expression? node)
                 {
                     if (node == null)
                         return null;
@@ -7075,7 +6560,7 @@ namespace SqlNado
                     return PostEval(constant);
                 }
 
-                private static object GetValue(MemberInfo member, object instance)
+                private static object? GetValue(MemberInfo member, object? instance)
                 {
                     switch (member.MemberType)
                     {
@@ -7113,7 +6598,7 @@ namespace SqlNado
                     return nominator._candidates;
                 }
 
-                public override Expression Visit(Expression node)
+                public override Expression? Visit(Expression? node)
                 {
                     if (node != null)
                     {
@@ -7143,9 +6628,9 @@ namespace SqlNado
 
 namespace SqlNado
 {
-    public class SQLiteRow : IDictionary<string, object>
+    public class SQLiteRow : IDictionary<string, object?>
     {
-        public SQLiteRow(int index, string[] names, object[] values)
+        public SQLiteRow(int index, string[] names, object?[] values)
         {
             if (names == null)
                 throw new ArgumentNullException(nameof(names));
@@ -7163,29 +6648,29 @@ namespace SqlNado
 
         public int Index { get; }
         public string[] Names { get; }
-        public object[] Values { get; }
+        public object?[] Values { get; }
         public int Count => Names.Length;
 
-        public object this[string name]
+        public object? this[string name]
         {
             get
             {
                 if (name == null)
                     throw new ArgumentNullException(nameof(name));
 
-                ((IDictionary<string, object>)this).TryGetValue(name, out object value);
+                ((IDictionary<string, object>)this).TryGetValue(name, out object? value);
                 return value;
             }
         }
 
-        ICollection<string> IDictionary<string, object>.Keys => Names;
-        ICollection<object> IDictionary<string, object>.Values => Values;
-        bool ICollection<KeyValuePair<string, object>>.IsReadOnly => true;
+        ICollection<string> IDictionary<string, object?>.Keys => Names;
+        ICollection<object?> IDictionary<string, object?>.Values => Values;
+        bool ICollection<KeyValuePair<string, object?>>.IsReadOnly => true;
 
-        bool IDictionary<string, object>.ContainsKey(string key) => Names.Any(n => n.EqualsIgnoreCase(key));
-        object IDictionary<string, object>.this[string key] { get => this[key]; set => throw new NotSupportedException(); }
+        bool IDictionary<string, object?>.ContainsKey(string key) => Names.Any(n => n.EqualsIgnoreCase(key));
+        object? IDictionary<string, object?>.this[string key] { get => this[key]; set => throw new NotSupportedException(); }
 
-        bool ICollection<KeyValuePair<string, object>>.Contains(KeyValuePair<string, object> item)
+        bool ICollection<KeyValuePair<string, object?>>.Contains(KeyValuePair<string, object?> item)
         {
             for (var i = 0; i < Count; i++)
             {
@@ -7200,13 +6685,13 @@ namespace SqlNado
                     continue;
                 }
 
-                if (Values[i].Equals(item.Value))
+                if (Values[i]!.Equals(item.Value))
                     return true;
             }
             return false;
         }
 
-        void ICollection<KeyValuePair<string, object>>.CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
+        void ICollection<KeyValuePair<string, object?>>.CopyTo(KeyValuePair<string, object?>[] array, int arrayIndex)
         {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
@@ -7219,21 +6704,21 @@ namespace SqlNado
 
             for (var i = 0; i < Count; i++)
             {
-                array[i + arrayIndex] = new KeyValuePair<string, object>(Names[i], Values[i]);
+                array[i + arrayIndex] = new KeyValuePair<string, object?>(Names[i], Values[i]);
             }
         }
 
-        public T GetValue<T>(string name, T defaultValue)
+        public T? GetValue<T>(string name, T? defaultValue)
         {
-            if (!TryGetValue(name, out T value))
+            if (!TryGetValue(name, out T? value))
                 return defaultValue;
 
             return value;
         }
 
-        public bool TryGetValue<T>(string name, out T value)
+        public bool TryGetValue<T>(string name, out T? value)
         {
-            if (!TryGetValue(name, out object obj))
+            if (!TryGetValue(name, out object? obj))
             {
                 value = default;
                 return false;
@@ -7242,7 +6727,7 @@ namespace SqlNado
             return Conversions.TryChangeType(obj, out value);
         }
 
-        public bool TryGetValue(string name, out object value)
+        public bool TryGetValue(string name, out object? value)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -7260,9 +6745,9 @@ namespace SqlNado
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        public IEnumerator<KeyValuePair<string, object>> GetEnumerator() => new Enumerator(this);
+        public IEnumerator<KeyValuePair<string, object?>> GetEnumerator() => new Enumerator(this);
 
-        private sealed class Enumerator : IEnumerator<KeyValuePair<string, object>>
+        private sealed class Enumerator : IEnumerator<KeyValuePair<string, object?>>
         {
             private readonly SQLiteRow _row;
             private int _index = -1;
@@ -7272,7 +6757,7 @@ namespace SqlNado
                 _row = row;
             }
 
-            public KeyValuePair<string, object> Current => new KeyValuePair<string, object>(_row.Names[_index], _row.Values[_index]);
+            public KeyValuePair<string, object?> Current => new KeyValuePair<string, object?>(_row.Names[_index], _row.Values[_index]);
 
             public bool MoveNext()
             {
@@ -7293,11 +6778,11 @@ namespace SqlNado
             object IEnumerator.Current => Current;
         }
 
-        void IDictionary<string, object>.Add(string key, object value) => throw new NotSupportedException();
-        void ICollection<KeyValuePair<string, object>>.Add(KeyValuePair<string, object> item) => throw new NotSupportedException();
-        void ICollection<KeyValuePair<string, object>>.Clear() => throw new NotSupportedException();
-        bool IDictionary<string, object>.Remove(string key) => throw new NotSupportedException();
-        bool ICollection<KeyValuePair<string, object>>.Remove(KeyValuePair<string, object> item) => throw new NotSupportedException();
+        void IDictionary<string, object?>.Add(string key, object? value) => throw new NotSupportedException();
+        void ICollection<KeyValuePair<string, object?>>.Add(KeyValuePair<string, object?> item) => throw new NotSupportedException();
+        void ICollection<KeyValuePair<string, object?>>.Clear() => throw new NotSupportedException();
+        bool IDictionary<string, object?>.Remove(string key) => throw new NotSupportedException();
+        bool ICollection<KeyValuePair<string, object?>>.Remove(KeyValuePair<string, object?> item) => throw new NotSupportedException();
     }
 }
 
@@ -7325,10 +6810,10 @@ namespace SqlNado
         public virtual bool UseTransactionForSchemaSynchronization { get; set; }
         public virtual bool UseSavePoint { get; set; }
         public virtual bool DontTryUpdate { get; set; }
-        public virtual Func<SQLiteObjectColumn, object, object> GetValueForBindFunc { get; set; }
-        public virtual string SavePointName { get; protected internal set; }
+        public virtual Func<SQLiteObjectColumn, object, object?>? GetValueForBindFunc { get; set; }
+        public virtual string? SavePointName { get; protected internal set; }
         public virtual int Index { get; protected internal set; }
-        public virtual SQLiteBuildTableOptions BuildTableOptions { get; set; }
+        public virtual SQLiteBuildTableOptions? BuildTableOptions { get; set; }
 
         public override string ToString()
         {
@@ -7355,10 +6840,10 @@ namespace SqlNado
         internal bool _realDispose = true;
         internal int _locked;
         private static readonly byte[] _zeroBytes = Array.Empty<byte>();
-        private Dictionary<string, int> _columnsIndices;
-        private string[] _columnsNames;
+        private Dictionary<string, int>? _columnsIndices;
+        private string[]? _columnsNames;
 
-        public SQLiteStatement(SQLiteDatabase database, string sql, Func<SQLiteError, SQLiteOnErrorAction> prepareErrorHandler)
+        public SQLiteStatement(SQLiteDatabase database, string sql, Func<SQLiteError, SQLiteOnErrorAction>? prepareErrorHandler)
         {
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
@@ -7372,7 +6857,7 @@ namespace SqlNado
 
             if (prepareErrorHandler != null)
             {
-                PrepareError = SQLiteDatabase._sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero);
+                PrepareError = SQLiteDatabase.Native.sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero);
                 if (PrepareError != SQLiteErrorCode.SQLITE_OK)
                 {
                     var error = new SQLiteError(this, -1, PrepareError);
@@ -7385,16 +6870,16 @@ namespace SqlNado
             }
             else
             {
-                database.CheckError(SQLiteDatabase._sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero), sql, true);
+                database.CheckError(SQLiteDatabase.Native.sqlite3_prepare16_v2(database.CheckDisposed(), sql, sql.Length * 2, out _handle, IntPtr.Zero), sql, true);
             }
         }
 
         [Browsable(false)]
         public SQLiteDatabase Database { get; }
-        
+
         [Browsable(false)]
         public IntPtr Handle => _handle;
-        
+
         public string Sql { get; }
         public SQLiteErrorCode PrepareError { get; }
 
@@ -7407,9 +6892,13 @@ namespace SqlNado
                     _columnsNames = new string[ColumnCount];
                     if (_handle != IntPtr.Zero)
                     {
-                        for (int i = 0; i < _columnsNames.Length; i++)
+                        for (var i = 0; i < _columnsNames.Length; i++)
                         {
-                            _columnsNames[i] = GetColumnName(i);
+                            var name = GetColumnName(i);
+                            if (name == null)
+                                throw new InvalidOperationException();
+
+                            _columnsNames[i] = name;
                         }
                     }
                 }
@@ -7426,10 +6915,10 @@ namespace SqlNado
                     _columnsIndices = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                     if (_handle != IntPtr.Zero)
                     {
-                        int count = ColumnCount;
-                        for (int i = 0; i < count; i++)
+                        var count = ColumnCount;
+                        for (var i = 0; i < count; i++)
                         {
-                            string name = GetColumnName(i);
+                            var name = GetColumnName(i);
                             if (name != null)
                             {
                                 _columnsIndices[name] = i;
@@ -7441,22 +6930,22 @@ namespace SqlNado
             }
         }
 
-        public virtual int ParameterCount => SQLiteDatabase._sqlite3_bind_parameter_count(CheckDisposed());
-        public virtual int ColumnCount => SQLiteDatabase._sqlite3_column_count(CheckDisposed());
+        public virtual int ParameterCount => SQLiteDatabase.Native.sqlite3_bind_parameter_count(CheckDisposed());
+        public virtual int ColumnCount => SQLiteDatabase.Native.sqlite3_column_count(CheckDisposed());
 
         public virtual void BindParameter(string name, object value)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            int index = GetParameterIndex(name);
+            var index = GetParameterIndex(name);
             if (index == 0)
                 throw new SqlNadoException("0005: Parameter '" + name + "' was not found.");
 
             BindParameter(index, value);
         }
 
-        public virtual void BindParameter(int index, object value)
+        public virtual void BindParameter(int index, object? value)
         {
             SQLiteErrorCode code;
             var type = Database.GetBindType(value); // never null
@@ -7467,7 +6956,7 @@ namespace SqlNado
             ctx.Statement = this;
             ctx.Value = value;
             ctx.Index = index;
-            object bindValue = type.ConvertFunc(ctx);
+            var bindValue = type.ConvertFunc(ctx);
             if (bindValue == null)
             {
                 Database.Log(TraceLevel.Verbose, "Index " + index + " as null");
@@ -7506,11 +6995,11 @@ namespace SqlNado
             }
             else if (bindValue is ISQLiteBlobObject blob)
             {
-                if (blob.TryGetData(out bytes))
+                if (blob.TryGetData(out var bytes2))
                 {
                     //Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[] from ISQLiteBlobObject: " + Conversions.ToHexa(bytes, 32));
-                    Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[" + bytes.Length + "] from ISQLiteBlobObject");
-                    code = BindParameter(index, bytes);
+                    Database.Log(TraceLevel.Verbose, "Index " + index + " as Byte[" + bytes2?.Length + "] from ISQLiteBlobObject");
+                    code = BindParameter(index, bytes2);
                 }
                 else
                 {
@@ -7530,30 +7019,30 @@ namespace SqlNado
         }
 
         // https://sqlite.org/c3ref/bind_blob.html
-        public SQLiteErrorCode BindParameter(int index, string value)
+        public SQLiteErrorCode BindParameter(int index, string? value)
         {
             if (value == null)
                 return BindParameterNull(index);
 
-            return SQLiteDatabase._sqlite3_bind_text16(CheckDisposed(), index, value, value.Length * 2, IntPtr.Zero);
+            return SQLiteDatabase.Native.sqlite3_bind_text16(CheckDisposed(), index, value, value.Length * 2, IntPtr.Zero);
         }
 
-        public SQLiteErrorCode BindParameter(int index, byte[] value)
+        public SQLiteErrorCode BindParameter(int index, byte[]? value)
         {
             if (value == null)
                 return BindParameterNull(index);
 
-            return SQLiteDatabase._sqlite3_bind_blob(CheckDisposed(), index, value, value.Length, IntPtr.Zero);
+            return SQLiteDatabase.Native.sqlite3_bind_blob(CheckDisposed(), index, value, value.Length, IntPtr.Zero);
         }
 
-        public SQLiteErrorCode BindParameter(int index, bool value) => SQLiteDatabase._sqlite3_bind_int(CheckDisposed(), index, value ? 1 : 0);
-        public SQLiteErrorCode BindParameter(int index, int value) => SQLiteDatabase._sqlite3_bind_int(CheckDisposed(), index, value);
-        public SQLiteErrorCode BindParameter(int index, long value) => SQLiteDatabase._sqlite3_bind_int64(CheckDisposed(), index, value);
-        public SQLiteErrorCode BindParameter(int index, double value) => SQLiteDatabase._sqlite3_bind_double(CheckDisposed(), index, value);
-        public SQLiteErrorCode BindParameterNull(int index) => SQLiteDatabase._sqlite3_bind_null(CheckDisposed(), index);
-        public SQLiteErrorCode BindParameterZeroBlob(int index, int size) => SQLiteDatabase._sqlite3_bind_zeroblob(CheckDisposed(), index, size);
+        public SQLiteErrorCode BindParameter(int index, bool value) => SQLiteDatabase.Native.sqlite3_bind_int(CheckDisposed(), index, value ? 1 : 0);
+        public SQLiteErrorCode BindParameter(int index, int value) => SQLiteDatabase.Native.sqlite3_bind_int(CheckDisposed(), index, value);
+        public SQLiteErrorCode BindParameter(int index, long value) => SQLiteDatabase.Native.sqlite3_bind_int64(CheckDisposed(), index, value);
+        public SQLiteErrorCode BindParameter(int index, double value) => SQLiteDatabase.Native.sqlite3_bind_double(CheckDisposed(), index, value);
+        public SQLiteErrorCode BindParameterNull(int index) => SQLiteDatabase.Native.sqlite3_bind_null(CheckDisposed(), index);
+        public SQLiteErrorCode BindParameterZeroBlob(int index, int size) => SQLiteDatabase.Native.sqlite3_bind_zeroblob(CheckDisposed(), index, size);
 
-        public virtual IEnumerable<object> BuildRow()
+        public virtual IEnumerable<object?> BuildRow()
         {
             for (var i = 0; i < ColumnCount; i++)
             {
@@ -7566,11 +7055,11 @@ namespace SqlNado
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            return SQLiteDatabase._sqlite3_bind_parameter_index(CheckDisposed(), name);
+            return SQLiteDatabase.Native.sqlite3_bind_parameter_index(CheckDisposed(), name);
         }
 
-        public virtual void ClearBindings() => SQLiteDatabase._sqlite3_clear_bindings(CheckDisposed());
-        public virtual void Reset() => SQLiteDatabase._sqlite3_reset(CheckDisposed());
+        public virtual void ClearBindings() => SQLiteDatabase.Native.sqlite3_clear_bindings(CheckDisposed());
+        public virtual void Reset() => SQLiteDatabase.Native.sqlite3_reset(CheckDisposed());
 
         protected internal IntPtr CheckDisposed()
         {
@@ -7581,30 +7070,30 @@ namespace SqlNado
             return handle;
         }
 
-        public string GetColumnString(int index)
+        public string? GetColumnString(int index)
         {
-            var ptr = SQLiteDatabase._sqlite3_column_text16(CheckDisposed(), index);
+            var ptr = SQLiteDatabase.Native.sqlite3_column_text16(CheckDisposed(), index);
             return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUni(ptr);
         }
 
-        public long GetColumnInt64(int index) => SQLiteDatabase._sqlite3_column_int64(CheckDisposed(), index);
-        public int GetColumnInt32(int index) => SQLiteDatabase._sqlite3_column_int(CheckDisposed(), index);
-        public double GetColumnDouble(int index) => SQLiteDatabase._sqlite3_column_double(CheckDisposed(), index);
+        public long GetColumnInt64(int index) => SQLiteDatabase.Native.sqlite3_column_int64(CheckDisposed(), index);
+        public int GetColumnInt32(int index) => SQLiteDatabase.Native.sqlite3_column_int(CheckDisposed(), index);
+        public double GetColumnDouble(int index) => SQLiteDatabase.Native.sqlite3_column_double(CheckDisposed(), index);
 
-        public virtual byte[] GetColumnByteArray(int index)
+        public virtual byte[]? GetColumnByteArray(int index)
         {
             var handle = CheckDisposed();
-            IntPtr ptr = SQLiteDatabase._sqlite3_column_blob(handle, index);
+            IntPtr ptr = SQLiteDatabase.Native.sqlite3_column_blob(handle, index);
             if (ptr == IntPtr.Zero)
                 return null;
 
-            int count = SQLiteDatabase._sqlite3_column_bytes(handle, index);
+            int count = SQLiteDatabase.Native.sqlite3_column_bytes(handle, index);
             var bytes = new byte[count];
             Marshal.Copy(ptr, bytes, 0, count);
             return bytes;
         }
 
-        public bool TryGetColumnValue(string name, out object value)
+        public bool TryGetColumnValue(string name, out object? value)
         {
             var i = GetColumnIndex(name);
             if (i < 0)
@@ -7617,7 +7106,7 @@ namespace SqlNado
             return true;
         }
 
-        public virtual string GetNullifiedColumnValue(string name)
+        public virtual string? GetNullifiedColumnValue(string name)
         {
             var i = GetColumnIndex(name);
             if (i < 0)
@@ -7633,7 +7122,7 @@ namespace SqlNado
             return string.Format(CultureInfo.InvariantCulture, "{0}", value).Nullify();
         }
 
-        public object GetColumnValue(string name)
+        public object? GetColumnValue(string name)
         {
             var i = GetColumnIndex(name);
             if (i < 0)
@@ -7642,10 +7131,10 @@ namespace SqlNado
             return GetColumnValue(i);
         }
 
-        public virtual object GetColumnValue(int index)
+        public virtual object? GetColumnValue(int index)
         {
             CheckDisposed();
-            object value;
+            object? value;
             SQLiteColumnType type = GetColumnType(index);
             switch (type)
             {
@@ -7684,7 +7173,7 @@ namespace SqlNado
             return value;
         }
 
-        public virtual T GetColumnValue<T>(string name, T defaultValue)
+        public virtual T? GetColumnValue<T>(string name, T? defaultValue)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -7696,10 +7185,10 @@ namespace SqlNado
             return GetColumnValue(index, defaultValue);
         }
 
-        public virtual T GetColumnValue<T>(int index, T defaultValue)
+        public virtual T? GetColumnValue<T>(int index, T? defaultValue)
         {
             var rawValue = GetColumnValue(index);
-            if (!Conversions.TryChangeType(rawValue, CultureInfo.InvariantCulture, out T value))
+            if (!Conversions.TryChangeType(rawValue, CultureInfo.InvariantCulture, out T? value))
                 return defaultValue;
 
             return value;
@@ -7716,21 +7205,21 @@ namespace SqlNado
             return -1;
         }
 
-        public string GetColumnName(int index)
+        public string? GetColumnName(int index)
         {
-            var ptr = SQLiteDatabase._sqlite3_column_name16(CheckDisposed(), index);
+            var ptr = SQLiteDatabase.Native.sqlite3_column_name16(CheckDisposed(), index);
             return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUni(ptr);
         }
 
-        public SQLiteColumnType GetColumnType(int index) => SQLiteDatabase._sqlite3_column_type(CheckDisposed(), index);
+        public SQLiteColumnType GetColumnType(int index) => SQLiteDatabase.Native.sqlite3_column_type(CheckDisposed(), index);
 
         public int StepAll() => StepAll(null);
-        public int StepAll(Func<SQLiteError, SQLiteOnErrorAction> errorHandler) => Step((s, i) => true, errorHandler);
+        public int StepAll(Func<SQLiteError, SQLiteOnErrorAction>? errorHandler) => Step((s, i) => true, errorHandler);
         public int StepOne() => StepOne(null);
-        public int StepOne(Func<SQLiteError, SQLiteOnErrorAction> errorHandler) => Step((s, i) => false, errorHandler);
+        public int StepOne(Func<SQLiteError, SQLiteOnErrorAction>? errorHandler) => Step((s, i) => false, errorHandler);
         public int StepMax(int maximumRows) => StepMax(maximumRows, null);
-        public int StepMax(int maximumRows, Func<SQLiteError, SQLiteOnErrorAction> errorHandler) => Step((s, i) => (i + 1) < maximumRows, errorHandler);
-        public virtual int Step(Func<SQLiteStatement, int, bool> func, Func<SQLiteError, SQLiteOnErrorAction> errorHandler)
+        public int StepMax(int maximumRows, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler) => Step((s, i) => (i + 1) < maximumRows, errorHandler);
+        public virtual int Step(Func<SQLiteStatement, int, bool> func, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler)
         {
             if (func == null)
                 throw new ArgumentNullException(nameof(func));
@@ -7739,7 +7228,7 @@ namespace SqlNado
             var handle = CheckDisposed();
             do
             {
-                var code = SQLiteDatabase._sqlite3_step(handle);
+                var code = SQLiteDatabase.Native.sqlite3_step(handle);
                 if (code == SQLiteErrorCode.SQLITE_DONE)
                 {
                     index++;
@@ -7784,7 +7273,7 @@ namespace SqlNado
             return index;
         }
 
-        public static string EscapeName(string name)
+        public static string? EscapeName(string? name)
         {
             if (name == null)
                 return null;
@@ -7799,9 +7288,9 @@ namespace SqlNado
             var handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);
             if (handle != IntPtr.Zero)
             {
-                SQLiteDatabase._sqlite3_reset(handle);
-                SQLiteDatabase._sqlite3_clear_bindings(handle);
-                SQLiteDatabase._sqlite3_finalize(handle);
+                SQLiteDatabase.Native.sqlite3_reset(handle);
+                SQLiteDatabase.Native.sqlite3_clear_bindings(handle);
+                SQLiteDatabase.Native.sqlite3_finalize(handle);
             }
             GC.SuppressFinalize(this);
         }
@@ -7816,8 +7305,8 @@ namespace SqlNado
             }
             else
             {
-                SQLiteDatabase._sqlite3_reset(_handle);
-                SQLiteDatabase._sqlite3_clear_bindings(_handle);
+                SQLiteDatabase.Native.sqlite3_reset(_handle);
+                SQLiteDatabase.Native.sqlite3_clear_bindings(_handle);
                 Interlocked.Exchange(ref _locked, 0);
             }
         }
@@ -7846,7 +7335,7 @@ namespace SqlNado
     [SQLiteTable(Name = "sqlite_master")]
     public sealed class SQLiteTable
     {
-        private string _sql;
+        private string? _sql;
 
         internal SQLiteTable(SQLiteDatabase database)
         {
@@ -7855,6 +7344,7 @@ namespace SqlNado
 
             Database = database;
             TokenizedSql = Array.Empty<string>();
+            Name = string.Empty;
         }
 
         [Browsable(false)] // remove from tablestring dumps
@@ -7864,15 +7354,15 @@ namespace SqlNado
         public int RootPage { get; internal set; }
 
         [Browsable(false)]
-        public string EscapedName => SQLiteStatement.EscapeName(Name);
+        public string EscapedName => SQLiteStatement.EscapeName(Name)!;
         public bool IsVirtual => Module != null;
         public bool IsFts => SQLiteObjectTable.IsFtsModule(Module);
-        public string Module { get; private set; }
-        
-        public string[] ModuleArguments { get; private set; }
-        public string[] TokenizedSql { get; private set; }
+        public string? Module { get; private set; }
 
-        public string Sql
+        public string?[]? ModuleArguments { get; private set; }
+        public string?[]? TokenizedSql { get; private set; }
+
+        public string? Sql
         {
             get => _sql;
             internal set
@@ -7889,13 +7379,16 @@ namespace SqlNado
                 }
                 else
                 {
-                    var split = Sql.Split(' ', '\t', '\r', '\n');
-                    TokenizedSql = split.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                    var split = Sql?.Split(' ', '\t', '\r', '\n');
+                    TokenizedSql = split!.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
                     for (var i = 0; i < TokenizedSql.Length; i++)
                     {
                         if (TokenizedSql[i].EqualsIgnoreCase("using") && (i + 1) < TokenizedSql.Length)
                         {
                             var usng = TokenizedSql[i + 1];
+                            if (usng == null)
+                                continue;
+
                             var pos = usng.IndexOf('(');
                             if (pos < 0)
                             {
@@ -7915,7 +7408,7 @@ namespace SqlNado
                                 {
                                     args = usng.Substring(pos + 1, end - pos - 1);
                                 }
-                                ModuleArguments = Conversions.SplitToList<string>(args, ',').ToArray();
+                                ModuleArguments = Conversions.SplitToList<string?>(args, ',').ToArray();
                             }
                         }
                     }
@@ -8025,10 +7518,10 @@ namespace SqlNado
         private sealed class ColumnNameComparer : IEqualityComparer<SQLiteColumn>
         {
             public int GetHashCode(SQLiteColumn obj) => obj.GetHashCode();
-            public bool Equals(SQLiteColumn x, SQLiteColumn y) => x?.Name.EqualsIgnoreCase(y?.Name) == true;
+            public bool Equals(SQLiteColumn? x, SQLiteColumn? y) => x?.Name.EqualsIgnoreCase(y?.Name) == true;
         }
 
-        public SQLiteTableIndex AutoPrimaryKey => Indices.FirstOrDefault(i => i.Origin.EqualsIgnoreCase("pk"));
+        public SQLiteTableIndex? AutoPrimaryKey => Indices.FirstOrDefault(i => i.Origin.EqualsIgnoreCase("pk"));
         public IEnumerable<SQLiteColumn> PrimaryKeyColumns => Columns.Where(c => c.IsPrimaryKey);
 
         public IEnumerable<SQLiteForeignKey> ForeignKeys
@@ -8088,7 +7581,7 @@ namespace SqlNado
 
         public void Delete(bool throwOnError = true) => Database.DeleteTable(Name, throwOnError);
 
-        public SQLiteColumn GetColumn(string name)
+        public SQLiteColumn? GetColumn(string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -8096,7 +7589,7 @@ namespace SqlNado
             return Columns.FirstOrDefault(c => name.EqualsIgnoreCase(c.Name));
         }
 
-        public SQLiteTableIndex GetIndex(string name)
+        public SQLiteTableIndex? GetIndex(string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -8113,15 +7606,15 @@ namespace SqlNado
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false)]
     public sealed class SQLiteTableAttribute : Attribute
     {
-        public string Name { get; set; }
-        public string Schema { get; set; } // unused in SqlNado's SQLite
-        public string Module { get; set; } // virtual table
-        public string ModuleArguments { get; set; } // virtual table
+        public string? Name { get; set; }
+        public string? Schema { get; set; } // unused in SqlNado's SQLite
+        public string? Module { get; set; } // virtual table
+        public string? ModuleArguments { get; set; } // virtual table
 
         // note every WITHOUT ROWID table must have a PRIMARY KEY
         public bool WithoutRowId { get; set; }
 
-        public override string ToString() => Name;
+        public override string? ToString() => Name;
     }
 }
 
@@ -8135,6 +7628,7 @@ namespace SqlNado
                 throw new ArgumentNullException(nameof(table));
 
             Table = table;
+            Name = string.Empty;
         }
 
         public SQLiteTable Table { get; }
@@ -8149,7 +7643,7 @@ namespace SqlNado
         public bool IsPartial { get; internal set; }
 
         public string Name { get; internal set; }
-        public string Origin { get; internal set; }
+        public string? Origin { get; internal set; }
 
         public IEnumerable<SQLiteColumn> Columns
         {
@@ -8194,6 +7688,23 @@ namespace SqlNado
         File,
         Memory,
     }
+}
+
+namespace SqlNado
+{
+#pragma warning disable S2342
+    [Flags]
+    public enum SQLiteTextEncoding
+    {
+        SQLITE_UTF8 = 1,                /* IMP: R-37514-35566 */
+        SQLITE_UTF16LE = 2,             /* IMP: R-03371-37637 */
+        SQLITE_UTF16BE = 3,             /* IMP: R-51971-34154 */
+        SQLITE_UTF16 = 4,               /* Use native byte order */
+        SQLITE_ANY = 5,                 /* Deprecated */
+        SQLITE_UTF16_ALIGNED = 8,       /* sqlite3_create_collation only */
+        SQLITE_DETERMINISTIC = 0x800,    // function will always return the same result given the same inputs within a single SQL statement
+    }
+#pragma warning restore S2342
 }
 
 namespace SqlNado
@@ -8339,7 +7850,7 @@ namespace SqlNado
         internal SQLiteValue(IntPtr handle)
         {
             // These routines must be called from the same thread as the SQL function that supplied the sqlite3_value* parameters.
-            Type = SQLiteDatabase._sqlite3_value_type(handle);
+            Type = SQLiteDatabase.Native.sqlite3_value_type(handle);
             IntPtr ptr;
             switch (Type)
             {
@@ -8347,20 +7858,20 @@ namespace SqlNado
                     break;
 
                 case SQLiteColumnType.INTEGER:
-                    Int64Value = SQLiteDatabase._sqlite3_value_int64(handle);
-                    Int32Value = SQLiteDatabase._sqlite3_value_int(handle);
+                    Int64Value = SQLiteDatabase.Native.sqlite3_value_int64(handle);
+                    Int32Value = SQLiteDatabase.Native.sqlite3_value_int(handle);
                     break;
 
                 case SQLiteColumnType.REAL:
-                    DoubleValue = SQLiteDatabase._sqlite3_value_double(handle);
+                    DoubleValue = SQLiteDatabase.Native.sqlite3_value_double(handle);
                     break;
 
                 case SQLiteColumnType.BLOB:
-                    Size = SQLiteDatabase._sqlite3_value_bytes(handle);
+                    Size = SQLiteDatabase.Native.sqlite3_value_bytes(handle);
                     if (Size >= 0)
                     {
                         BlobValue = new byte[Size];
-                        ptr = SQLiteDatabase._sqlite3_value_blob(handle);
+                        ptr = SQLiteDatabase.Native.sqlite3_value_blob(handle);
                         if (ptr != IntPtr.Zero)
                         {
                             Marshal.Copy(ptr, BlobValue, 0, BlobValue.Length);
@@ -8369,8 +7880,8 @@ namespace SqlNado
                     break;
 
                 default:
-                    Size = SQLiteDatabase._sqlite3_value_bytes16(handle);
-                    ptr = SQLiteDatabase._sqlite3_value_text16(handle);
+                    Size = SQLiteDatabase.Native.sqlite3_value_bytes16(handle);
+                    ptr = SQLiteDatabase.Native.sqlite3_value_text16(handle);
                     if (ptr != IntPtr.Zero)
                     {
                         StringValue = Marshal.PtrToStringUni(ptr, Size / 2);
@@ -8385,10 +7896,10 @@ namespace SqlNado
         public SQLiteColumnType Type { get; }
         public int Size { get; }
         public int SizeOfText { get; }
-        public string StringValue { get; }
-        public byte[] BlobValue { get; }
+        public string? StringValue { get; }
+        public byte[]? BlobValue { get; }
 
-        public override string ToString()
+        public override string? ToString()
         {
             switch (Type)
             {
@@ -8475,6 +7986,1673 @@ namespace SqlNado
     }
 }
 
+namespace SqlNado.Platforms
+{
+    public interface ISQLiteWindows
+    {
+        bool IsUsingWindowsRuntime { get; }
+    }
+}
+
+namespace SqlNado.Platforms
+{
+    public sealed class SQLiteCdeclNativeTokenizer : ISQLiteNativeTokenizer
+    {
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate SQLiteErrorCode xCreate(int argc, [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] string[]? argv, out IntPtr ppTokenizer);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate SQLiteErrorCode xDestroy(IntPtr pTokenizer);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate SQLiteErrorCode xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate SQLiteErrorCode xClose(IntPtr pCursor);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate SQLiteErrorCode xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate SQLiteErrorCode xLanguageid(IntPtr pCursor, int iLangid);
+
+        private readonly xCreate _create;
+        private readonly xDestroy _destroy;
+        private readonly xOpen _open;
+        private readonly xClose _close;
+        private readonly xNext _next;
+        private readonly xLanguageid? _languageid;
+
+        public SQLiteCdeclNativeTokenizer(IntPtr ptr)
+        {
+            if (ptr == IntPtr.Zero)
+                throw new ArgumentException(null, nameof(ptr));
+
+            var module = Marshal.PtrToStructure<SQLiteNativeTokenizerModule>(ptr);
+            Version = module.iVersion;
+            _create = Marshal.GetDelegateForFunctionPointer<xCreate>(module.xCreate);
+            _destroy = Marshal.GetDelegateForFunctionPointer<xDestroy>(module.xDestroy);
+            _open = Marshal.GetDelegateForFunctionPointer<xOpen>(module.xOpen);
+            _close = Marshal.GetDelegateForFunctionPointer<xClose>(module.xClose);
+            _next = Marshal.GetDelegateForFunctionPointer<xNext>(module.xNext);
+            if (module.xLanguageid != IntPtr.Zero)
+            {
+                _languageid = Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid);
+            }
+        }
+
+        public int Version { get; private set; }
+
+        SQLiteErrorCode ISQLiteNativeTokenizer.xClose(IntPtr pCursor) => _close(pCursor);
+        SQLiteErrorCode ISQLiteNativeTokenizer.xCreate(int argc, string[]? argv, out IntPtr ppTokenizer) => _create(argc, argv, out ppTokenizer);
+        SQLiteErrorCode ISQLiteNativeTokenizer.xDestroy(IntPtr pTokenizer) => _destroy(pTokenizer);
+        SQLiteErrorCode ISQLiteNativeTokenizer.xLanguageid(IntPtr pCursor, int iLangid) => _languageid != null ? _languageid(pCursor, iLangid) : SQLiteErrorCode.SQLITE_MISUSE;
+        SQLiteErrorCode ISQLiteNativeTokenizer.xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition) => _next(pCursor, out ppToken, out pnBytes, out piStartOffset, out piEndOffset, out piPosition);
+        SQLiteErrorCode ISQLiteNativeTokenizer.xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor) => _open(pTokenizer, pInput, nBytes, out ppCursor);
+    }
+}
+
+namespace SqlNado.Platforms
+{
+    // this binding is for Linux or Windows or other OSes that support sqlite3 as a shared library name with cdecl bindings
+    public class SQLiteSqlite3 : ISQLiteNative, ISQLiteWindows
+    {
+        // note: always compiled in cdecl
+        public const string DllName = "sqlite3";
+        private readonly Lazy<string?> _libraryPath;
+
+        public SQLiteSqlite3()
+        {
+            _libraryPath = new Lazy<string?>(GetLibraryPath);
+        }
+
+        public string? LibraryPath => _libraryPath.Value;
+        public bool IsUsingWindowsRuntime => false;
+        public CallingConvention CallingConvention => CallingConvention.Cdecl;
+
+        public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr) => new SQLiteCdeclNativeTokenizer(ptr);
+
+        public void Load()
+        {
+            // just force one load to check everything is ok
+            _ = sqlite3_threadsafe();
+        }
+
+        public override string? ToString() => LibraryPath;
+
+        private string? GetLibraryPath()
+        {
+            Load();
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
+            return dll?.FileName;
+        }
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_bind_double(IntPtr statement, int index, double value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_bind_int64(IntPtr statement, int index, long value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_bind_null(IntPtr statement, int index);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_bind_parameter_count(IntPtr statement);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_bind_parameter_index(IntPtr statement, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string name);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_bind_text16(IntPtr statement, int index, [MarshalAs(UnmanagedType.LPWStr)] string text, int count, IntPtr xDel);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_blob_bytes(IntPtr blob);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_blob_close(IntPtr blob);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_blob_open(IntPtr db,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string database,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string table,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string column,
+            long rowId, int flags, out IntPtr blob);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_blob_reopen(IntPtr blob, long rowId);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_changes(IntPtr db);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_clear_bindings(IntPtr statement);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_close(IntPtr db);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_collation_needed16(IntPtr db, IntPtr arg, Native.collationNeeded? callback);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static IntPtr sqlite3_column_blob(IntPtr statement, int index);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_column_bytes(IntPtr statement, int index);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_column_count(IntPtr statement);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static double sqlite3_column_double(IntPtr statement, int index);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_column_int(IntPtr statement, int index);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static long sqlite3_column_int64(IntPtr statement, int index);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static IntPtr sqlite3_column_name16(IntPtr statement, int index);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static IntPtr sqlite3_column_text16(IntPtr statement, int index);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, Native.xCompare? comparer);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_create_function16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, Native.xFunc? func, Native.xFunc? step, Native.xFinal? final);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_db_cacheflush(IntPtr db);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_db_config")]
+        private extern static SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_db_config")]
+        private extern static SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_db_config")]
+        private extern static SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? s);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_enable_shared_cache(int i);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static IntPtr sqlite3_errmsg16(IntPtr db);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_finalize(IntPtr statement);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static long sqlite3_last_insert_rowid(IntPtr db);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_limit(IntPtr db, int id, int newVal);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_load_extension(IntPtr db, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? zProc, out IntPtr pzErrMsg);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_prepare16_v2(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string sql, int numBytes, out IntPtr statement, IntPtr tail);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_reset(IntPtr statement);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_double(IntPtr ctx, double value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_error16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_int(IntPtr ctx, int value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_int64(IntPtr ctx, long value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_null(IntPtr ctx);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_text16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len, IntPtr xDel);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static void sqlite3_result_zeroblob(IntPtr ctx, int size);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_step(IntPtr statement);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_total_changes(IntPtr db);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_threadsafe();
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static IntPtr sqlite3_value_blob(IntPtr value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_value_bytes(IntPtr value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_value_bytes16(IntPtr value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static double sqlite3_value_double(IntPtr value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static int sqlite3_value_int(IntPtr value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static long sqlite3_value_int64(IntPtr value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static IntPtr sqlite3_value_text16(IntPtr value);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private extern static SQLiteColumnType sqlite3_value_type(IntPtr value);
+
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel) => sqlite3_bind_blob(statement, index, data, size, xDel);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_double(IntPtr statement, int index, double value) => sqlite3_bind_double(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_int(IntPtr statement, int index, int value) => sqlite3_bind_int(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_int64(IntPtr statement, int index, long value) => sqlite3_bind_int64(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_null(IntPtr statement, int index) => sqlite3_bind_null(statement, index);
+        int ISQLiteNative.sqlite3_bind_parameter_count(IntPtr statement) => sqlite3_bind_parameter_count(statement);
+        int ISQLiteNative.sqlite3_bind_parameter_index(IntPtr statement, string name) => sqlite3_bind_parameter_index(statement, name);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_text16(IntPtr statement, int index, string text, int count, IntPtr xDel) => sqlite3_bind_text16(statement, index, text, count, xDel);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_zeroblob(IntPtr statement, int index, int size) => sqlite3_bind_zeroblob(statement, index, size);
+        int ISQLiteNative.sqlite3_blob_bytes(IntPtr blob) => sqlite3_blob_bytes(blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_close(IntPtr blob) => sqlite3_blob_close(blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_open(IntPtr db, string database, string table, string column, long rowId, int flags, out IntPtr blob) => sqlite3_blob_open(db, database, table, column, rowId, flags, out blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset) => sqlite3_blob_read(blob, buffer, count, offset);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_reopen(IntPtr blob, long rowId) => sqlite3_blob_reopen(blob, rowId);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset) => sqlite3_blob_write(blob, buffer, count, offset);
+        int ISQLiteNative.sqlite3_changes(IntPtr db) => sqlite3_changes(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_clear_bindings(IntPtr statement) => sqlite3_clear_bindings(statement);
+        SQLiteErrorCode ISQLiteNative.sqlite3_close(IntPtr db) => sqlite3_close(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_collation_needed16(IntPtr db, IntPtr arg, Native.collationNeeded? callback) => sqlite3_collation_needed16(db, arg, callback);
+        IntPtr ISQLiteNative.sqlite3_column_blob(IntPtr statement, int index) => sqlite3_column_blob(statement, index);
+        int ISQLiteNative.sqlite3_column_bytes(IntPtr statement, int index) => sqlite3_column_bytes(statement, index);
+        int ISQLiteNative.sqlite3_column_count(IntPtr statement) => sqlite3_column_count(statement);
+        double ISQLiteNative.sqlite3_column_double(IntPtr statement, int index) => sqlite3_column_double(statement, index);
+        int ISQLiteNative.sqlite3_column_int(IntPtr statement, int index) => sqlite3_column_int(statement, index);
+        long ISQLiteNative.sqlite3_column_int64(IntPtr statement, int index) => sqlite3_column_int64(statement, index);
+        IntPtr ISQLiteNative.sqlite3_column_name16(IntPtr statement, int index) => sqlite3_column_name16(statement, index);
+        IntPtr ISQLiteNative.sqlite3_column_text16(IntPtr statement, int index) => sqlite3_column_text16(statement, index);
+        SQLiteColumnType ISQLiteNative.sqlite3_column_type(IntPtr statement, int index) => sqlite3_column_type(statement, index);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_0(SQLiteConfiguration op) => sqlite3_config_0(op);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_1(SQLiteConfiguration op, long i) => sqlite3_config_1(op, i);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_2(SQLiteConfiguration op, int i) => sqlite3_config_2(op, i);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_3(SQLiteConfiguration op, long i1, long i2) => sqlite3_config_3(op, i1, i2);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_4(SQLiteConfiguration op, int i1, int i2) => sqlite3_config_4(op, i1, i2);
+        SQLiteErrorCode ISQLiteNative.sqlite3_create_collation16(IntPtr db, string name, SQLiteTextEncoding encoding, IntPtr arg, Native.xCompare? comparer) => sqlite3_create_collation16(db, name, encoding, arg, comparer);
+        SQLiteErrorCode ISQLiteNative.sqlite3_create_function16(IntPtr db, string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, Native.xFunc? func, Native.xFunc? step, Native.xFinal? final) => sqlite3_create_function16(db, name, argsCount, encoding, app, func, step, final);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_cacheflush(IntPtr db) => sqlite3_db_cacheflush(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result) => sqlite3_db_config_0(db, op, i, out result);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1) => sqlite3_db_config_1(db, op, ptr, i0, i1);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, string? s) => sqlite3_db_config_2(db, op, s);
+        SQLiteErrorCode ISQLiteNative.sqlite3_enable_load_extension(IntPtr db, int onoff) => sqlite3_enable_load_extension(db, onoff);
+        SQLiteErrorCode ISQLiteNative.sqlite3_enable_shared_cache(int i) => sqlite3_enable_shared_cache(i);
+        IntPtr ISQLiteNative.sqlite3_errmsg16(IntPtr db) => sqlite3_errmsg16(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_finalize(IntPtr statement) => sqlite3_finalize(statement);
+        long ISQLiteNative.sqlite3_last_insert_rowid(IntPtr db) => sqlite3_last_insert_rowid(db);
+        int ISQLiteNative.sqlite3_limit(IntPtr db, int id, int newVal) => sqlite3_limit(db, id, newVal);
+        SQLiteErrorCode ISQLiteNative.sqlite3_load_extension(IntPtr db, string zFile, string? zProc, out IntPtr pzErrMsg) => sqlite3_load_extension(db, zFile, zProc, out pzErrMsg);
+        SQLiteErrorCode ISQLiteNative.sqlite3_open_v2(string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs) => sqlite3_open_v2(filename, out ppDb, flags, zvfs);
+        SQLiteErrorCode ISQLiteNative.sqlite3_prepare16_v2(IntPtr db, string sql, int numBytes, out IntPtr statement, IntPtr tail) => sqlite3_prepare16_v2(db, sql, numBytes, out statement, tail);
+        SQLiteErrorCode ISQLiteNative.sqlite3_reset(IntPtr statement) => sqlite3_reset(statement);
+        void ISQLiteNative.sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel) => sqlite3_result_blob(ctx, buffer, size, xDel);
+        void ISQLiteNative.sqlite3_result_double(IntPtr ctx, double value) => sqlite3_result_double(ctx, value);
+        void ISQLiteNative.sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value) => sqlite3_result_error_code(ctx, value);
+        void ISQLiteNative.sqlite3_result_error16(IntPtr ctx, string value, int len) => sqlite3_result_error16(ctx, value, len);
+        void ISQLiteNative.sqlite3_result_int(IntPtr ctx, int value) => sqlite3_result_int(ctx, value);
+        void ISQLiteNative.sqlite3_result_int64(IntPtr ctx, long value) => sqlite3_result_int64(ctx, value);
+        void ISQLiteNative.sqlite3_result_null(IntPtr ctx) => sqlite3_result_null(ctx);
+        void ISQLiteNative.sqlite3_result_text16(IntPtr ctx, string value, int len, IntPtr xDel) => sqlite3_result_text16(ctx, value, len, xDel);
+        void ISQLiteNative.sqlite3_result_zeroblob(IntPtr ctx, int size) => sqlite3_result_zeroblob(ctx, size);
+        SQLiteErrorCode ISQLiteNative.sqlite3_step(IntPtr statement) => sqlite3_step(statement);
+        SQLiteErrorCode ISQLiteNative.sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc) => sqlite3_table_column_metadata(db, dbname, tablename, columnname, out dataType, out collation, out notNull, out pk, out autoInc);
+        int ISQLiteNative.sqlite3_total_changes(IntPtr db) => sqlite3_total_changes(db);
+        int ISQLiteNative.sqlite3_threadsafe() => sqlite3_threadsafe();
+        IntPtr ISQLiteNative.sqlite3_value_blob(IntPtr value) => sqlite3_value_blob(value);
+        int ISQLiteNative.sqlite3_value_bytes(IntPtr value) => sqlite3_value_bytes(value);
+        int ISQLiteNative.sqlite3_value_bytes16(IntPtr value) => sqlite3_value_bytes16(value);
+        double ISQLiteNative.sqlite3_value_double(IntPtr value) => sqlite3_value_double(value);
+        int ISQLiteNative.sqlite3_value_int(IntPtr value) => sqlite3_value_int(value);
+        long ISQLiteNative.sqlite3_value_int64(IntPtr value) => sqlite3_value_int64(value);
+        IntPtr ISQLiteNative.sqlite3_value_text16(IntPtr value) => sqlite3_value_text16(value);
+        SQLiteColumnType ISQLiteNative.sqlite3_value_type(IntPtr value) => sqlite3_value_type(value);
+    }
+}
+
+namespace SqlNado.Platforms
+{
+    public sealed class SQLiteStdCallNativeTokenizer : ISQLiteNativeTokenizer
+    {
+        public delegate SQLiteErrorCode xCreate(int argc, [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] string[]? argv, out IntPtr ppTokenizer);
+        public delegate SQLiteErrorCode xDestroy(IntPtr pTokenizer);
+        public delegate SQLiteErrorCode xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor);
+        public delegate SQLiteErrorCode xClose(IntPtr pCursor);
+        public delegate SQLiteErrorCode xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition);
+        public delegate SQLiteErrorCode xLanguageid(IntPtr pCursor, int iLangid);
+
+        private readonly xCreate _create;
+        private readonly xDestroy _destroy;
+        private readonly xOpen _open;
+        private readonly xClose _close;
+        private readonly xNext _next;
+        private readonly xLanguageid? _languageid;
+
+        public SQLiteStdCallNativeTokenizer(IntPtr ptr)
+        {
+            if (ptr == IntPtr.Zero)
+                throw new ArgumentException(null, nameof(ptr));
+
+            var module = Marshal.PtrToStructure<SQLiteNativeTokenizerModule>(ptr);
+            Version = module.iVersion;
+            _create = Marshal.GetDelegateForFunctionPointer<xCreate>(module.xCreate);
+            _destroy = Marshal.GetDelegateForFunctionPointer<xDestroy>(module.xDestroy);
+            _open = Marshal.GetDelegateForFunctionPointer<xOpen>(module.xOpen);
+            _close = Marshal.GetDelegateForFunctionPointer<xClose>(module.xClose);
+            _next = Marshal.GetDelegateForFunctionPointer<xNext>(module.xNext);
+            if (module.xLanguageid != IntPtr.Zero)
+            {
+                _languageid = Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid);
+            }
+        }
+
+        public int Version { get; private set; }
+
+        SQLiteErrorCode ISQLiteNativeTokenizer.xClose(IntPtr pCursor) => _close(pCursor);
+        SQLiteErrorCode ISQLiteNativeTokenizer.xCreate(int argc, string[]? argv, out IntPtr ppTokenizer) => _create(argc, argv, out ppTokenizer);
+        SQLiteErrorCode ISQLiteNativeTokenizer.xDestroy(IntPtr pTokenizer) => _destroy(pTokenizer);
+        SQLiteErrorCode ISQLiteNativeTokenizer.xLanguageid(IntPtr pCursor, int iLangid) => _languageid != null ? _languageid(pCursor, iLangid) : SQLiteErrorCode.SQLITE_MISUSE;
+        SQLiteErrorCode ISQLiteNativeTokenizer.xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition) => _next(pCursor, out ppToken, out pnBytes, out piStartOffset, out piEndOffset, out piPosition);
+        SQLiteErrorCode ISQLiteNativeTokenizer.xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor) => _open(pTokenizer, pInput, nBytes, out ppCursor);
+    }
+}
+
+namespace SqlNado.Platforms
+{
+    public class SQLiteWindowsDynamic : ISQLiteNative, ISQLiteWindows
+    {
+        private static IntPtr _module;
+        private readonly string _initialLibraryPath;
+        private readonly Lazy<string?> _libraryPath;
+
+        public SQLiteWindowsDynamic(string libraryPath, CallingConvention callingConvention)
+        {
+            if (libraryPath == null)
+                throw new ArgumentNullException(nameof(libraryPath));
+
+            _initialLibraryPath = libraryPath;
+            CallingConvention = callingConvention;
+            _libraryPath = new Lazy<string?>(GetLibraryPath);
+        }
+
+        public CallingConvention CallingConvention { get; private set; }
+        public bool IsUsingWindowsRuntime { get; private set; }
+        private bool IsStdCall => CallingConvention != CallingConvention.Cdecl;
+        public string? LibraryPath => _libraryPath.Value;
+
+        public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr)
+        {
+            if (IsStdCall)
+                return new SQLiteStdCallNativeTokenizer(ptr);
+
+            return new SQLiteCdeclNativeTokenizer(ptr);
+        }
+
+        public override string? ToString() => LibraryPath;
+
+        private string? GetLibraryPath()
+        {
+            Load();
+            var name = Path.GetFileName(_initialLibraryPath);
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.EqualsIgnoreCase(name));
+            return dll?.FileName;
+        }
+
+        public virtual void Load()
+        {
+            if (_module != IntPtr.Zero)
+                return;
+
+            IsUsingWindowsRuntime = Path.GetFileName(_initialLibraryPath).EqualsIgnoreCase(SQLiteWinsqlite3.DllName + ".dll");
+            if (IsUsingWindowsRuntime)
+            {
+                CallingConvention = CallingConvention.StdCall;
+            }
+
+            _module = LoadLibrary(_initialLibraryPath);
+            if (_module == IntPtr.Zero)
+                throw new SqlNadoException("0003: Cannot load native sqlite shared library from path '" + _initialLibraryPath + "'. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.", new Win32Exception(Marshal.GetLastWin32Error()));
+
+            if (IsStdCall)
+            {
+                _sqlite3_open_v2 = LoadProc<sqlite3_open_v2>();
+                _sqlite3_close = LoadProc<sqlite3_close>();
+                _sqlite3_errmsg16 = LoadProc<sqlite3_errmsg16>();
+                _sqlite3_limit = LoadProc<sqlite3_limit>();
+                _sqlite3_finalize = LoadProc<sqlite3_finalize>();
+                _sqlite3_column_count = LoadProc<sqlite3_column_count>();
+                _sqlite3_bind_parameter_count = LoadProc<sqlite3_bind_parameter_count>();
+                _sqlite3_bind_parameter_index = LoadProc<sqlite3_bind_parameter_index>();
+                _sqlite3_clear_bindings = LoadProc<sqlite3_clear_bindings>();
+                _sqlite3_step = LoadProc<sqlite3_step>();
+                _sqlite3_reset = LoadProc<sqlite3_reset>();
+                _sqlite3_column_type = LoadProc<sqlite3_column_type>();
+                _sqlite3_column_name16 = LoadProc<sqlite3_column_name16>();
+                _sqlite3_column_blob = LoadProc<sqlite3_column_blob>();
+                _sqlite3_column_bytes = LoadProc<sqlite3_column_bytes>();
+                _sqlite3_column_double = LoadProc<sqlite3_column_double>();
+                _sqlite3_column_int = LoadProc<sqlite3_column_int>();
+                _sqlite3_column_int64 = LoadProc<sqlite3_column_int64>();
+                _sqlite3_column_text16 = LoadProc<sqlite3_column_text16>();
+                _sqlite3_prepare16_v2 = LoadProc<sqlite3_prepare16_v2>();
+                _sqlite3_total_changes = LoadProc<sqlite3_total_changes>();
+                _sqlite3_changes = LoadProc<sqlite3_changes>();
+                _sqlite3_last_insert_rowid = LoadProc<sqlite3_last_insert_rowid>();
+                _sqlite3_bind_text16 = LoadProc<sqlite3_bind_text16>();
+                _sqlite3_bind_null = LoadProc<sqlite3_bind_null>();
+                _sqlite3_bind_blob = LoadProc<sqlite3_bind_blob>();
+                _sqlite3_bind_zeroblob = LoadProc<sqlite3_bind_zeroblob>();
+                _sqlite3_bind_int = LoadProc<sqlite3_bind_int>();
+                _sqlite3_bind_int64 = LoadProc<sqlite3_bind_int64>();
+                _sqlite3_bind_double = LoadProc<sqlite3_bind_double>();
+                _sqlite3_threadsafe = LoadProc<sqlite3_threadsafe>();
+                _sqlite3_db_config_0 = LoadProc<sqlite3_db_config_0>("sqlite3_db_config");
+                _sqlite3_db_config_1 = LoadProc<sqlite3_db_config_1>("sqlite3_db_config");
+                _sqlite3_db_config_2 = LoadProc<sqlite3_db_config_2>("sqlite3_db_config");
+                _sqlite3_enable_load_extension = LoadProc<sqlite3_enable_load_extension>();
+                _sqlite3_load_extension = LoadProc<sqlite3_load_extension>();
+                _sqlite3_config_0 = LoadProc<sqlite3_config_0>("sqlite3_config");
+                _sqlite3_config_1 = LoadProc<sqlite3_config_1>("sqlite3_config");
+                _sqlite3_config_2 = LoadProc<sqlite3_config_2>("sqlite3_config");
+                _sqlite3_config_3 = LoadProc<sqlite3_config_3>("sqlite3_config");
+                _sqlite3_config_4 = LoadProc<sqlite3_config_4>("sqlite3_config");
+                _sqlite3_enable_shared_cache = LoadProc<sqlite3_enable_shared_cache>();
+                _sqlite3_blob_bytes = LoadProc<sqlite3_blob_bytes>();
+                _sqlite3_blob_close = LoadProc<sqlite3_blob_close>();
+                _sqlite3_blob_open = LoadProc<sqlite3_blob_open>();
+                _sqlite3_blob_read = LoadProc<sqlite3_blob_read>();
+                _sqlite3_blob_reopen = LoadProc<sqlite3_blob_reopen>();
+                _sqlite3_blob_write = LoadProc<sqlite3_blob_write>();
+                _sqlite3_collation_needed16 = LoadProc<sqlite3_collation_needed16>();
+                _sqlite3_create_collation16 = LoadProc<sqlite3_create_collation16>();
+                _sqlite3_db_cacheflush = LoadProc<sqlite3_db_cacheflush>();
+                _sqlite3_table_column_metadata = LoadProc<sqlite3_table_column_metadata>();
+                _sqlite3_create_function16 = LoadProc<sqlite3_create_function16>();
+                _sqlite3_value_blob = LoadProc<sqlite3_value_blob>();
+                _sqlite3_value_double = LoadProc<sqlite3_value_double>();
+                _sqlite3_value_int = LoadProc<sqlite3_value_int>();
+                _sqlite3_value_int64 = LoadProc<sqlite3_value_int64>();
+                _sqlite3_value_text16 = LoadProc<sqlite3_value_text16>();
+                _sqlite3_value_bytes = LoadProc<sqlite3_value_bytes>();
+                _sqlite3_value_bytes16 = LoadProc<sqlite3_value_bytes16>();
+                _sqlite3_value_type = LoadProc<sqlite3_value_type>();
+                _sqlite3_result_blob = LoadProc<sqlite3_result_blob>();
+                _sqlite3_result_double = LoadProc<sqlite3_result_double>();
+                _sqlite3_result_error16 = LoadProc<sqlite3_result_error16>();
+                _sqlite3_result_error_code = LoadProc<sqlite3_result_error_code>();
+                _sqlite3_result_int = LoadProc<sqlite3_result_int>();
+                _sqlite3_result_int64 = LoadProc<sqlite3_result_int64>();
+                _sqlite3_result_null = LoadProc<sqlite3_result_null>();
+                _sqlite3_result_text16 = LoadProc<sqlite3_result_text16>();
+                _sqlite3_result_zeroblob = LoadProc<sqlite3_result_zeroblob>();
+            }
+            else
+            {
+                _cdecl_sqlite3_open_v2 = LoadProc<cdecl_sqlite3_open_v2>();
+                _cdecl_sqlite3_close = LoadProc<cdecl_sqlite3_close>();
+                _cdecl_sqlite3_errmsg16 = LoadProc<cdecl_sqlite3_errmsg16>();
+                _cdecl_sqlite3_limit = LoadProc<cdecl_sqlite3_limit>();
+                _cdecl_sqlite3_finalize = LoadProc<cdecl_sqlite3_finalize>();
+                _cdecl_sqlite3_column_count = LoadProc<cdecl_sqlite3_column_count>();
+                _cdecl_sqlite3_bind_parameter_count = LoadProc<cdecl_sqlite3_bind_parameter_count>();
+                _cdecl_sqlite3_bind_parameter_index = LoadProc<cdecl_sqlite3_bind_parameter_index>();
+                _cdecl_sqlite3_clear_bindings = LoadProc<cdecl_sqlite3_clear_bindings>();
+                _cdecl_sqlite3_step = LoadProc<cdecl_sqlite3_step>();
+                _cdecl_sqlite3_reset = LoadProc<cdecl_sqlite3_reset>();
+                _cdecl_sqlite3_column_type = LoadProc<cdecl_sqlite3_column_type>();
+                _cdecl_sqlite3_column_name16 = LoadProc<cdecl_sqlite3_column_name16>();
+                _cdecl_sqlite3_column_blob = LoadProc<cdecl_sqlite3_column_blob>();
+                _cdecl_sqlite3_column_bytes = LoadProc<cdecl_sqlite3_column_bytes>();
+                _cdecl_sqlite3_column_double = LoadProc<cdecl_sqlite3_column_double>();
+                _cdecl_sqlite3_column_int = LoadProc<cdecl_sqlite3_column_int>();
+                _cdecl_sqlite3_column_int64 = LoadProc<cdecl_sqlite3_column_int64>();
+                _cdecl_sqlite3_column_text16 = LoadProc<cdecl_sqlite3_column_text16>();
+                _cdecl_sqlite3_prepare16_v2 = LoadProc<cdecl_sqlite3_prepare16_v2>();
+                _cdecl_sqlite3_total_changes = LoadProc<cdecl_sqlite3_total_changes>();
+                _cdecl_sqlite3_changes = LoadProc<cdecl_sqlite3_changes>();
+                _cdecl_sqlite3_last_insert_rowid = LoadProc<cdecl_sqlite3_last_insert_rowid>();
+                _cdecl_sqlite3_bind_text16 = LoadProc<cdecl_sqlite3_bind_text16>();
+                _cdecl_sqlite3_bind_null = LoadProc<cdecl_sqlite3_bind_null>();
+                _cdecl_sqlite3_bind_blob = LoadProc<cdecl_sqlite3_bind_blob>();
+                _cdecl_sqlite3_bind_zeroblob = LoadProc<cdecl_sqlite3_bind_zeroblob>();
+                _cdecl_sqlite3_bind_int = LoadProc<cdecl_sqlite3_bind_int>();
+                _cdecl_sqlite3_bind_int64 = LoadProc<cdecl_sqlite3_bind_int64>();
+                _cdecl_sqlite3_bind_double = LoadProc<cdecl_sqlite3_bind_double>();
+                _cdecl_sqlite3_threadsafe = LoadProc<cdecl_sqlite3_threadsafe>();
+                _cdecl_sqlite3_db_config_0 = LoadProc<cdecl_sqlite3_db_config_0>("sqlite3_db_config");
+                _cdecl_sqlite3_db_config_1 = LoadProc<cdecl_sqlite3_db_config_1>("sqlite3_db_config");
+                _cdecl_sqlite3_db_config_2 = LoadProc<cdecl_sqlite3_db_config_2>("sqlite3_db_config");
+                _cdecl_sqlite3_enable_load_extension = LoadProc<cdecl_sqlite3_enable_load_extension>();
+                _cdecl_sqlite3_load_extension = LoadProc<cdecl_sqlite3_load_extension>();
+                _cdecl_sqlite3_config_0 = LoadProc<cdecl_sqlite3_config_0>("sqlite3_config");
+                _cdecl_sqlite3_config_1 = LoadProc<cdecl_sqlite3_config_1>("sqlite3_config");
+                _cdecl_sqlite3_config_2 = LoadProc<cdecl_sqlite3_config_2>("sqlite3_config");
+                _cdecl_sqlite3_config_3 = LoadProc<cdecl_sqlite3_config_3>("sqlite3_config");
+                _cdecl_sqlite3_config_4 = LoadProc<cdecl_sqlite3_config_4>("sqlite3_config");
+                _cdecl_sqlite3_enable_shared_cache = LoadProc<cdecl_sqlite3_enable_shared_cache>();
+                _cdecl_sqlite3_blob_bytes = LoadProc<cdecl_sqlite3_blob_bytes>();
+                _cdecl_sqlite3_blob_close = LoadProc<cdecl_sqlite3_blob_close>();
+                _cdecl_sqlite3_blob_open = LoadProc<cdecl_sqlite3_blob_open>();
+                _cdecl_sqlite3_blob_read = LoadProc<cdecl_sqlite3_blob_read>();
+                _cdecl_sqlite3_blob_reopen = LoadProc<cdecl_sqlite3_blob_reopen>();
+                _cdecl_sqlite3_blob_write = LoadProc<cdecl_sqlite3_blob_write>();
+                _cdecl_sqlite3_collation_needed16 = LoadProc<cdecl_sqlite3_collation_needed16>();
+                _cdecl_sqlite3_create_collation16 = LoadProc<cdecl_sqlite3_create_collation16>();
+                _cdecl_sqlite3_db_cacheflush = LoadProc<cdecl_sqlite3_db_cacheflush>();
+                _cdecl_sqlite3_table_column_metadata = LoadProc<cdecl_sqlite3_table_column_metadata>();
+                _cdecl_sqlite3_create_function16 = LoadProc<cdecl_sqlite3_create_function16>();
+                _cdecl_sqlite3_value_blob = LoadProc<cdecl_sqlite3_value_blob>();
+                _cdecl_sqlite3_value_double = LoadProc<cdecl_sqlite3_value_double>();
+                _cdecl_sqlite3_value_int = LoadProc<cdecl_sqlite3_value_int>();
+                _cdecl_sqlite3_value_int64 = LoadProc<cdecl_sqlite3_value_int64>();
+                _cdecl_sqlite3_value_text16 = LoadProc<cdecl_sqlite3_value_text16>();
+                _cdecl_sqlite3_value_bytes = LoadProc<cdecl_sqlite3_value_bytes>();
+                _cdecl_sqlite3_value_bytes16 = LoadProc<cdecl_sqlite3_value_bytes16>();
+                _cdecl_sqlite3_value_type = LoadProc<cdecl_sqlite3_value_type>();
+                _cdecl_sqlite3_result_blob = LoadProc<cdecl_sqlite3_result_blob>();
+                _cdecl_sqlite3_result_double = LoadProc<cdecl_sqlite3_result_double>();
+                _cdecl_sqlite3_result_error16 = LoadProc<cdecl_sqlite3_result_error16>();
+                _cdecl_sqlite3_result_error_code = LoadProc<cdecl_sqlite3_result_error_code>();
+                _cdecl_sqlite3_result_int = LoadProc<cdecl_sqlite3_result_int>();
+                _cdecl_sqlite3_result_int64 = LoadProc<cdecl_sqlite3_result_int64>();
+                _cdecl_sqlite3_result_null = LoadProc<cdecl_sqlite3_result_null>();
+                _cdecl_sqlite3_result_text16 = LoadProc<cdecl_sqlite3_result_text16>();
+                _cdecl_sqlite3_result_zeroblob = LoadProc<cdecl_sqlite3_result_zeroblob>();
+            }
+        }
+
+        private T LoadProc<T>() => LoadProc<T>(null);
+        private T LoadProc<T>(string? name)
+        {
+            if (name == null)
+            {
+                name = typeof(T).Name;
+                const string cdecl = "cdecl_";
+                if (name.StartsWith(cdecl))
+                {
+                    name = name.Substring(cdecl.Length);
+                }
+            }
+
+            var address = GetProcAddress(_module, name);
+            if (address == IntPtr.Zero)
+                throw new SqlNadoException("0004: Cannot load library function '" + name + "' from '" + LibraryPath + "'. Please make sure sqlite is the latest one.", new Win32Exception(Marshal.GetLastWin32Error()));
+
+            return (T)(object)Marshal.GetDelegateForFunctionPointer(address, typeof(T));
+        }
+
+        // with this code, we support AnyCpu targets
+        public static IEnumerable<string> GetPossibleNativePaths(bool useWindowsRuntime)
+        {
+            var bd = AppDomain.CurrentDomain.BaseDirectory;
+            var rsp = AppDomain.CurrentDomain.RelativeSearchPath;
+            var bitness = IntPtr.Size == 8 ? "64" : "86";
+            var searchRsp = rsp != null && !bd.EqualsIgnoreCase(rsp);
+
+            // look for an env variable
+            var env = GetEnvironmentVariable("SQLNADO_SQLITE_X" + bitness + "_DLL");
+            if (env != null)
+            {
+                // full path?
+                if (Path.IsPathRooted(env))
+                {
+                    yield return env;
+                }
+                else
+                {
+                    // relative path?
+                    yield return Path.Combine(bd, env);
+                    if (searchRsp)
+                        yield return Path.Combine(rsp!, env);
+                }
+            }
+
+            // look in appdomain path
+            var name = "sqlite3.x" + bitness + ".dll";
+            yield return Path.Combine(bd, name);
+            if (searchRsp)
+                yield return Path.Combine(rsp!, name);
+
+            // look in windows/azure
+            if (useWindowsRuntime)
+                yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), SQLiteWinsqlite3.DllName + ".dll");
+
+            name = "sqlite.dll";
+            yield return Path.Combine(bd, name); // last resort, hoping the bitness's right, we do not recommend it
+            if (searchRsp)
+                yield return Path.Combine(rsp!, name);
+        }
+
+        private static string? GetEnvironmentVariable(string name)
+        {
+            try
+            {
+                var value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process).Nullify();
+                if (value != null)
+                    return value;
+
+                value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User).Nullify();
+                if (value != null)
+                    return value;
+
+                return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine).Nullify();
+            }
+            catch
+            {
+                // probably an access denied, continue
+                return null;
+            }
+        }
+
+        [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr LoadLibrary(string lpLibFileName);
+
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
+#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
+        private static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string lpProcName);
+#pragma warning restore CA2101 // Specify marshaling for P/Invoke string arguments
+
+        private delegate void cdecl_collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, string strB);
+        private delegate int cdecl_xCompare(IntPtr arg, int lenA, IntPtr strA, int lenB, IntPtr strB);
+        private delegate void cdecl_xFunc(IntPtr context, int argsCount, [In, Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] IntPtr[] args);
+        private delegate void cdecl_xFinal(IntPtr context);
+
+        private delegate void collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, string strB);
+        private delegate int xCompare(IntPtr arg, int lenA, IntPtr strA, int lenB, IntPtr strB);
+        private delegate void xFunc(IntPtr context, int argsCount, [In, Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] IntPtr[] args);
+        private delegate void xFinal(IntPtr context);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr cdecl_sqlite3_errmsg16(IntPtr db);
+        private static cdecl_sqlite3_errmsg16? _cdecl_sqlite3_errmsg16;
+
+        private delegate IntPtr sqlite3_errmsg16(IntPtr db);
+        private static sqlite3_errmsg16? _sqlite3_errmsg16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_limit(IntPtr db, int id, int newVal);
+        private static cdecl_sqlite3_limit? _cdecl_sqlite3_limit;
+
+        private delegate int sqlite3_limit(IntPtr db, int id, int newVal);
+        private static sqlite3_limit? _sqlite3_limit;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
+        private static cdecl_sqlite3_open_v2? _cdecl_sqlite3_open_v2;
+
+        private delegate SQLiteErrorCode sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
+        private static sqlite3_open_v2? _sqlite3_open_v2;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_close(IntPtr db);
+        private static cdecl_sqlite3_close? _cdecl_sqlite3_close;
+
+        private delegate SQLiteErrorCode sqlite3_close(IntPtr db);
+        private static sqlite3_close? _sqlite3_close;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_finalize(IntPtr statement);
+        private static cdecl_sqlite3_finalize? _cdecl_sqlite3_finalize;
+
+        private delegate SQLiteErrorCode sqlite3_finalize(IntPtr statement);
+        private static sqlite3_finalize? _sqlite3_finalize;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_column_count(IntPtr statement);
+        private static cdecl_sqlite3_column_count? _cdecl_sqlite3_column_count;
+
+        private delegate int sqlite3_column_count(IntPtr statement);
+        private static sqlite3_column_count? _sqlite3_column_count;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_bind_parameter_count(IntPtr statement);
+        private static cdecl_sqlite3_bind_parameter_count? _cdecl_sqlite3_bind_parameter_count;
+
+        private delegate int sqlite3_bind_parameter_count(IntPtr statement);
+        private static sqlite3_bind_parameter_count? _sqlite3_bind_parameter_count;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_bind_parameter_index(IntPtr statement, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string name);
+        private static cdecl_sqlite3_bind_parameter_index? _cdecl_sqlite3_bind_parameter_index;
+
+        private delegate int sqlite3_bind_parameter_index(IntPtr statement, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string name);
+        private static sqlite3_bind_parameter_index? _sqlite3_bind_parameter_index;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_clear_bindings(IntPtr statement);
+        private static cdecl_sqlite3_clear_bindings? _cdecl_sqlite3_clear_bindings;
+
+        private delegate SQLiteErrorCode sqlite3_clear_bindings(IntPtr statement);
+        private static sqlite3_clear_bindings? _sqlite3_clear_bindings;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_step(IntPtr statement);
+        private static cdecl_sqlite3_step? _cdecl_sqlite3_step;
+
+        private delegate SQLiteErrorCode sqlite3_step(IntPtr statement);
+        private static sqlite3_step? _sqlite3_step;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_reset(IntPtr statement);
+        private static cdecl_sqlite3_reset? _cdecl_sqlite3_reset;
+
+        private delegate SQLiteErrorCode sqlite3_reset(IntPtr statement);
+        private static sqlite3_reset? _sqlite3_reset;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteColumnType cdecl_sqlite3_column_type(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_type? _cdecl_sqlite3_column_type;
+
+        private delegate SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
+        private static sqlite3_column_type? _sqlite3_column_type;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr cdecl_sqlite3_column_name16(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_name16? _cdecl_sqlite3_column_name16;
+
+        private delegate IntPtr sqlite3_column_name16(IntPtr statement, int index);
+        private static sqlite3_column_name16? _sqlite3_column_name16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr cdecl_sqlite3_column_blob(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_blob? _cdecl_sqlite3_column_blob;
+
+        private delegate IntPtr sqlite3_column_blob(IntPtr statement, int index);
+        private static sqlite3_column_blob? _sqlite3_column_blob;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_column_bytes(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_bytes? _cdecl_sqlite3_column_bytes;
+
+        private delegate int sqlite3_column_bytes(IntPtr statement, int index);
+        private static sqlite3_column_bytes? _sqlite3_column_bytes;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate double cdecl_sqlite3_column_double(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_double? _cdecl_sqlite3_column_double;
+
+        private delegate double sqlite3_column_double(IntPtr statement, int index);
+        private static sqlite3_column_double? _sqlite3_column_double;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_column_int(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_int? _cdecl_sqlite3_column_int;
+
+        private delegate int sqlite3_column_int(IntPtr statement, int index);
+        private static sqlite3_column_int? _sqlite3_column_int;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate long cdecl_sqlite3_column_int64(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_int64? _cdecl_sqlite3_column_int64;
+
+        private delegate long sqlite3_column_int64(IntPtr statement, int index);
+        private static sqlite3_column_int64? _sqlite3_column_int64;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr cdecl_sqlite3_column_text16(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_text16? _cdecl_sqlite3_column_text16;
+
+        private delegate IntPtr sqlite3_column_text16(IntPtr statement, int index);
+        private static sqlite3_column_text16? _sqlite3_column_text16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_prepare16_v2(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string sql, int numBytes, out IntPtr statement, IntPtr tail);
+        private static cdecl_sqlite3_prepare16_v2? _cdecl_sqlite3_prepare16_v2;
+
+        private delegate SQLiteErrorCode sqlite3_prepare16_v2(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string sql, int numBytes, out IntPtr statement, IntPtr tail);
+        private static sqlite3_prepare16_v2? _sqlite3_prepare16_v2;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_total_changes(IntPtr db);
+        private static cdecl_sqlite3_total_changes? _cdecl_sqlite3_total_changes;
+
+        private delegate int sqlite3_total_changes(IntPtr db);
+        private static sqlite3_total_changes? _sqlite3_total_changes;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_changes(IntPtr db);
+        private static cdecl_sqlite3_changes? _cdecl_sqlite3_changes;
+
+        private delegate int sqlite3_changes(IntPtr db);
+        private static sqlite3_changes? _sqlite3_changes;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate long cdecl_sqlite3_last_insert_rowid(IntPtr db);
+        private static cdecl_sqlite3_last_insert_rowid? _cdecl_sqlite3_last_insert_rowid;
+
+        private delegate long sqlite3_last_insert_rowid(IntPtr db);
+        private static sqlite3_last_insert_rowid? _sqlite3_last_insert_rowid;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_bind_text16(IntPtr statement, int index, [MarshalAs(UnmanagedType.LPWStr)] string text, int count, IntPtr xDel);
+        private static cdecl_sqlite3_bind_text16? _cdecl_sqlite3_bind_text16;
+
+        private delegate SQLiteErrorCode sqlite3_bind_text16(IntPtr statement, int index, [MarshalAs(UnmanagedType.LPWStr)] string text, int count, IntPtr xDel);
+        private static sqlite3_bind_text16? _sqlite3_bind_text16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_bind_null(IntPtr statement, int index);
+        private static cdecl_sqlite3_bind_null? _cdecl_sqlite3_bind_null;
+
+        private delegate SQLiteErrorCode sqlite3_bind_null(IntPtr statement, int index);
+        private static sqlite3_bind_null? _sqlite3_bind_null;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);
+        private static cdecl_sqlite3_bind_blob? _cdecl_sqlite3_bind_blob;
+
+        private delegate SQLiteErrorCode sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);
+        private static sqlite3_bind_blob? _sqlite3_bind_blob;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
+        private static cdecl_sqlite3_bind_zeroblob? _cdecl_sqlite3_bind_zeroblob;
+
+        private delegate SQLiteErrorCode sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
+        private static sqlite3_bind_zeroblob? _sqlite3_bind_zeroblob;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_bind_double(IntPtr statement, int index, double value);
+        private static cdecl_sqlite3_bind_double? _cdecl_sqlite3_bind_double;
+
+        private delegate SQLiteErrorCode sqlite3_bind_double(IntPtr statement, int index, double value);
+        private static sqlite3_bind_double? _sqlite3_bind_double;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_bind_int64(IntPtr statement, int index, long value);
+        private static cdecl_sqlite3_bind_int64? _cdecl_sqlite3_bind_int64;
+
+        private delegate SQLiteErrorCode sqlite3_bind_int64(IntPtr statement, int index, long value);
+        private static sqlite3_bind_int64? _sqlite3_bind_int64;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_bind_int(IntPtr statement, int index, int value);
+        private static cdecl_sqlite3_bind_int? _cdecl_sqlite3_bind_int;
+
+        private delegate SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
+        private static sqlite3_bind_int? _sqlite3_bind_int;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_blob_open(IntPtr db,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string database,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string table,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string column,
+            long rowId, int flags, out IntPtr blob);
+        private static cdecl_sqlite3_blob_open? _cdecl_sqlite3_blob_open;
+
+        private delegate SQLiteErrorCode sqlite3_blob_open(IntPtr db,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string database,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string table,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string column,
+            long rowId, int flags, out IntPtr blob);
+        private static sqlite3_blob_open? _sqlite3_blob_open;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_blob_bytes(IntPtr blob);
+        private static cdecl_sqlite3_blob_bytes? _cdecl_sqlite3_blob_bytes;
+
+        private delegate int sqlite3_blob_bytes(IntPtr blob);
+        private static sqlite3_blob_bytes? _sqlite3_blob_bytes;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_blob_close(IntPtr blob);
+        private static cdecl_sqlite3_blob_close? _cdecl_sqlite3_blob_close;
+
+        private delegate SQLiteErrorCode sqlite3_blob_close(IntPtr blob);
+        private static sqlite3_blob_close? _sqlite3_blob_close;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_blob_reopen(IntPtr blob, long rowId);
+        private static cdecl_sqlite3_blob_reopen? _cdecl_sqlite3_blob_reopen;
+
+        private delegate SQLiteErrorCode sqlite3_blob_reopen(IntPtr blob, long rowId);
+        private static sqlite3_blob_reopen? _sqlite3_blob_reopen;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
+        private static cdecl_sqlite3_blob_read? _cdecl_sqlite3_blob_read;
+
+        private delegate SQLiteErrorCode sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
+        private static sqlite3_blob_read? _sqlite3_blob_read;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
+        private static cdecl_sqlite3_blob_write? _cdecl_sqlite3_blob_write;
+
+        private delegate SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
+        private static sqlite3_blob_write? _sqlite3_blob_write;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_db_cacheflush(IntPtr db);
+        private static cdecl_sqlite3_db_cacheflush? _cdecl_sqlite3_db_cacheflush;
+
+        private delegate SQLiteErrorCode sqlite3_db_cacheflush(IntPtr db);
+        private static sqlite3_db_cacheflush? _sqlite3_db_cacheflush;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, cdecl_xCompare? comparer);
+        private static cdecl_sqlite3_create_collation16? _cdecl_sqlite3_create_collation16;
+
+        private delegate SQLiteErrorCode sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, xCompare? comparer);
+        private static sqlite3_create_collation16? _sqlite3_create_collation16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_collation_needed16(IntPtr db, IntPtr arg, cdecl_collationNeeded? callback);
+        private static cdecl_sqlite3_collation_needed16? _cdecl_sqlite3_collation_needed16;
+
+        private delegate SQLiteErrorCode sqlite3_collation_needed16(IntPtr db, IntPtr arg, collationNeeded? callback);
+        private static sqlite3_collation_needed16? _sqlite3_collation_needed16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
+        private static cdecl_sqlite3_table_column_metadata? _cdecl_sqlite3_table_column_metadata;
+
+        private delegate SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
+        private static sqlite3_table_column_metadata? _sqlite3_table_column_metadata;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_create_function16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, cdecl_xFunc? func, cdecl_xFunc? step, cdecl_xFinal? final);
+        private static cdecl_sqlite3_create_function16? _cdecl_sqlite3_create_function16;
+
+        private delegate SQLiteErrorCode sqlite3_create_function16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, xFunc? func, xFunc? step, xFinal? final);
+        private static sqlite3_create_function16? _sqlite3_create_function16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr cdecl_sqlite3_value_blob(IntPtr value);
+        private static cdecl_sqlite3_value_blob? _cdecl_sqlite3_value_blob;
+
+        private delegate IntPtr sqlite3_value_blob(IntPtr value);
+        private static sqlite3_value_blob? _sqlite3_value_blob;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate double cdecl_sqlite3_value_double(IntPtr value);
+        private static cdecl_sqlite3_value_double? _cdecl_sqlite3_value_double;
+
+        private delegate double sqlite3_value_double(IntPtr value);
+        private static sqlite3_value_double? _sqlite3_value_double;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_value_int(IntPtr value);
+        private static cdecl_sqlite3_value_int? _cdecl_sqlite3_value_int;
+
+        private delegate int sqlite3_value_int(IntPtr value);
+        private static sqlite3_value_int? _sqlite3_value_int;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate long cdecl_sqlite3_value_int64(IntPtr value);
+        private static cdecl_sqlite3_value_int64? _cdecl_sqlite3_value_int64;
+
+        private delegate long sqlite3_value_int64(IntPtr value);
+        private static sqlite3_value_int64? _sqlite3_value_int64;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr cdecl_sqlite3_value_text16(IntPtr value);
+        private static cdecl_sqlite3_value_text16? _cdecl_sqlite3_value_text16;
+
+        private delegate IntPtr sqlite3_value_text16(IntPtr value);
+        private static sqlite3_value_text16? _sqlite3_value_text16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_value_bytes16(IntPtr value);
+        private static cdecl_sqlite3_value_bytes16? _cdecl_sqlite3_value_bytes16;
+
+        private delegate int sqlite3_value_bytes16(IntPtr value);
+        private static sqlite3_value_bytes16? _sqlite3_value_bytes16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_value_bytes(IntPtr value);
+        private static cdecl_sqlite3_value_bytes? _cdecl_sqlite3_value_bytes;
+
+        private delegate int sqlite3_value_bytes(IntPtr value);
+        private static sqlite3_value_bytes? _sqlite3_value_bytes;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteColumnType cdecl_sqlite3_value_type(IntPtr value);
+        private static cdecl_sqlite3_value_type? _cdecl_sqlite3_value_type;
+
+        private delegate SQLiteColumnType sqlite3_value_type(IntPtr value);
+        private static sqlite3_value_type? _sqlite3_value_type;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
+        private static cdecl_sqlite3_result_blob? _cdecl_sqlite3_result_blob;
+
+        private delegate void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
+        private static sqlite3_result_blob? _sqlite3_result_blob;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_double(IntPtr ctx, double value);
+        private static cdecl_sqlite3_result_double? _cdecl_sqlite3_result_double;
+
+        private delegate void sqlite3_result_double(IntPtr ctx, double value);
+        private static sqlite3_result_double? _sqlite3_result_double;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_error16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len);
+        private static cdecl_sqlite3_result_error16? _cdecl_sqlite3_result_error16;
+
+        private delegate void sqlite3_result_error16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len);
+        private static sqlite3_result_error16? _sqlite3_result_error16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
+        private static cdecl_sqlite3_result_error_code? _cdecl_sqlite3_result_error_code;
+
+        private delegate void sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
+        private static sqlite3_result_error_code? _sqlite3_result_error_code;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_int(IntPtr ctx, int value);
+        private static cdecl_sqlite3_result_int? _cdecl_sqlite3_result_int;
+
+        private delegate void sqlite3_result_int(IntPtr ctx, int value);
+        private static sqlite3_result_int? _sqlite3_result_int;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_int64(IntPtr ctx, long value);
+        private static cdecl_sqlite3_result_int64? _cdecl_sqlite3_result_int64;
+
+        private delegate void sqlite3_result_int64(IntPtr ctx, long value);
+        private static sqlite3_result_int64? _sqlite3_result_int64;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_null(IntPtr ctx);
+        private static cdecl_sqlite3_result_null? _cdecl_sqlite3_result_null;
+
+        private delegate void sqlite3_result_null(IntPtr ctx);
+        private static sqlite3_result_null? _sqlite3_result_null;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_text16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len, IntPtr xDel);
+        private static cdecl_sqlite3_result_text16? _cdecl_sqlite3_result_text16;
+
+        private delegate void sqlite3_result_text16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len, IntPtr xDel);
+        private static sqlite3_result_text16? _sqlite3_result_text16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void cdecl_sqlite3_result_zeroblob(IntPtr ctx, int size);
+        private static cdecl_sqlite3_result_zeroblob? _cdecl_sqlite3_result_zeroblob;
+
+        private delegate void sqlite3_result_zeroblob(IntPtr ctx, int size);
+        private static sqlite3_result_zeroblob? _sqlite3_result_zeroblob;
+
+        // https://sqlite.org/c3ref/threadsafe.html
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_threadsafe();
+        private static cdecl_sqlite3_threadsafe? _cdecl_sqlite3_threadsafe;
+
+        private delegate int sqlite3_threadsafe();
+        private static sqlite3_threadsafe? _sqlite3_threadsafe;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_enable_shared_cache(int i);
+        private static cdecl_sqlite3_enable_shared_cache? _cdecl_sqlite3_enable_shared_cache;
+
+        private delegate SQLiteErrorCode sqlite3_enable_shared_cache(int i);
+        private static sqlite3_enable_shared_cache? _sqlite3_enable_shared_cache;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_config_0(SQLiteConfiguration op);
+        private static cdecl_sqlite3_config_0? _cdecl_sqlite3_config_0;
+
+        private delegate SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
+        private static sqlite3_config_0? _sqlite3_config_0;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_config_1(SQLiteConfiguration op, long i);
+        private static cdecl_sqlite3_config_1? _cdecl_sqlite3_config_1;
+
+        private delegate SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
+        private static sqlite3_config_1? _sqlite3_config_1;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_config_2(SQLiteConfiguration op, int i);
+        private static cdecl_sqlite3_config_2? _cdecl_sqlite3_config_2;
+
+        private delegate SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
+        private static sqlite3_config_2? _sqlite3_config_2;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
+        private static cdecl_sqlite3_config_3? _cdecl_sqlite3_config_3;
+
+        private delegate SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
+        private static sqlite3_config_3? _sqlite3_config_3;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
+        private static cdecl_sqlite3_config_4? _cdecl_sqlite3_config_4;
+
+        private delegate SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
+        private static sqlite3_config_4? _sqlite3_config_4;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
+        private static cdecl_sqlite3_db_config_0? _cdecl_sqlite3_db_config_0;
+
+        private delegate SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
+        private static sqlite3_db_config_0? _sqlite3_db_config_0;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
+        private static cdecl_sqlite3_db_config_1? _cdecl_sqlite3_db_config_1;
+
+        private delegate SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
+        private static sqlite3_db_config_1? _sqlite3_db_config_1;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? s);
+        private static cdecl_sqlite3_db_config_2? _cdecl_sqlite3_db_config_2;
+
+        private delegate SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? s);
+        private static sqlite3_db_config_2? _sqlite3_db_config_2;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_enable_load_extension(IntPtr db, int onoff);
+        private static cdecl_sqlite3_enable_load_extension? _cdecl_sqlite3_enable_load_extension;
+
+        private delegate SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
+        private static sqlite3_enable_load_extension? _sqlite3_enable_load_extension;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate SQLiteErrorCode cdecl_sqlite3_load_extension(IntPtr db,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? zProc,
+            out IntPtr pzErrMsg);
+        private static cdecl_sqlite3_load_extension? _cdecl_sqlite3_load_extension;
+
+        private delegate SQLiteErrorCode sqlite3_load_extension(IntPtr db,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? zProc,
+            out IntPtr pzErrMsg);
+        private static sqlite3_load_extension? _sqlite3_load_extension;
+
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel) => IsStdCall ? _sqlite3_bind_blob!(statement, index, data, size, xDel) : _cdecl_sqlite3_bind_blob!(statement, index, data, size, xDel);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_double(IntPtr statement, int index, double value) => IsStdCall ? _sqlite3_bind_double!(statement, index, value) : _cdecl_sqlite3_bind_double!(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_int(IntPtr statement, int index, int value) => IsStdCall ? _sqlite3_bind_int!(statement, index, value) : _cdecl_sqlite3_bind_int!(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_int64(IntPtr statement, int index, long value) => IsStdCall ? _sqlite3_bind_int64!(statement, index, value) : _cdecl_sqlite3_bind_int64!(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_null(IntPtr statement, int index) => IsStdCall ? _sqlite3_bind_null!(statement, index) : _cdecl_sqlite3_bind_null!(statement, index);
+        int ISQLiteNative.sqlite3_bind_parameter_count(IntPtr statement) => IsStdCall ? _sqlite3_bind_parameter_count!(statement) : _cdecl_sqlite3_bind_parameter_count!(statement);
+        int ISQLiteNative.sqlite3_bind_parameter_index(IntPtr statement, string name) => IsStdCall ? _sqlite3_bind_parameter_index!(statement, name) : _cdecl_sqlite3_bind_parameter_index!(statement, name);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_text16(IntPtr statement, int index, string text, int count, IntPtr xDel) => IsStdCall ? _sqlite3_bind_text16!(statement, index, text, count, xDel) : _cdecl_sqlite3_bind_text16!(statement, index, text, count, xDel);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_zeroblob(IntPtr statement, int index, int size) => IsStdCall ? _sqlite3_bind_zeroblob!(statement, index, size) : _cdecl_sqlite3_bind_zeroblob!(statement, index, size);
+        int ISQLiteNative.sqlite3_blob_bytes(IntPtr blob) => IsStdCall ? _sqlite3_blob_bytes!(blob) : _cdecl_sqlite3_blob_bytes!(blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_close(IntPtr blob) => IsStdCall ? _sqlite3_blob_close!(blob) : _cdecl_sqlite3_blob_close!(blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_open(IntPtr db, string database, string table, string column, long rowId, int flags, out IntPtr blob) => IsStdCall ? _sqlite3_blob_open!(db, database, table, column, rowId, flags, out blob) : _cdecl_sqlite3_blob_open!(db, database, table, column, rowId, flags, out blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset) => IsStdCall ? _sqlite3_blob_read!(blob, buffer, count, offset) : _cdecl_sqlite3_blob_read!(blob, buffer, count, offset);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_reopen(IntPtr blob, long rowId) => IsStdCall ? _sqlite3_blob_reopen!(blob, rowId) : _cdecl_sqlite3_blob_reopen!(blob, rowId);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset) => IsStdCall ? _sqlite3_blob_write!(blob, buffer, count, offset) : _cdecl_sqlite3_blob_write!(blob, buffer, count, offset);
+        int ISQLiteNative.sqlite3_changes(IntPtr db) => IsStdCall ? _sqlite3_changes!(db) : _cdecl_sqlite3_changes!(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_clear_bindings(IntPtr statement) => IsStdCall ? _sqlite3_clear_bindings!(statement) : _cdecl_sqlite3_clear_bindings!(statement);
+        SQLiteErrorCode ISQLiteNative.sqlite3_close(IntPtr db) => IsStdCall ? _sqlite3_close!(db) : _cdecl_sqlite3_close!(db);
+        IntPtr ISQLiteNative.sqlite3_column_blob(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_blob!(statement, index) : _cdecl_sqlite3_column_blob!(statement, index);
+        int ISQLiteNative.sqlite3_column_bytes(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_bytes!(statement, index) : _cdecl_sqlite3_column_bytes!(statement, index);
+        int ISQLiteNative.sqlite3_column_count(IntPtr statement) => IsStdCall ? _sqlite3_column_count!(statement) : _cdecl_sqlite3_column_count!(statement);
+        double ISQLiteNative.sqlite3_column_double(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_double!(statement, index) : _cdecl_sqlite3_column_double!(statement, index);
+        int ISQLiteNative.sqlite3_column_int(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_int!(statement, index) : _cdecl_sqlite3_column_int!(statement, index);
+        long ISQLiteNative.sqlite3_column_int64(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_int64!(statement, index) : _cdecl_sqlite3_column_int64!(statement, index);
+        IntPtr ISQLiteNative.sqlite3_column_name16(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_name16!(statement, index) : _cdecl_sqlite3_column_name16!(statement, index);
+        IntPtr ISQLiteNative.sqlite3_column_text16(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_text16!(statement, index) : _cdecl_sqlite3_column_text16!(statement, index);
+        SQLiteColumnType ISQLiteNative.sqlite3_column_type(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_type!(statement, index) : _cdecl_sqlite3_column_type!(statement, index);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_0(SQLiteConfiguration op) => IsStdCall ? _sqlite3_config_0!(op) : _cdecl_sqlite3_config_0!(op);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_1(SQLiteConfiguration op, long i) => IsStdCall ? _sqlite3_config_1!(op, i) : _cdecl_sqlite3_config_1!(op, i);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_2(SQLiteConfiguration op, int i) => IsStdCall ? _sqlite3_config_2!(op, i) : _cdecl_sqlite3_config_2!(op, i);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_3(SQLiteConfiguration op, long i1, long i2) => IsStdCall ? _sqlite3_config_3!(op, i1, i2) : _cdecl_sqlite3_config_3!(op, i1, i2);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_4(SQLiteConfiguration op, int i1, int i2) => IsStdCall ? _sqlite3_config_4!(op, i1, i2) : _cdecl_sqlite3_config_4!(op, i1, i2);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_cacheflush(IntPtr db) => IsStdCall ? _sqlite3_db_cacheflush!(db) : _cdecl_sqlite3_db_cacheflush!(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result) => IsStdCall ? _sqlite3_db_config_0!(db, op, i, out result) : _cdecl_sqlite3_db_config_0!(db, op, i, out result);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1) => IsStdCall ? _sqlite3_db_config_1!(db, op, ptr, i0, i1) : _cdecl_sqlite3_db_config_1!(db, op, ptr, i0, i1);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, string? s) => IsStdCall ? _sqlite3_db_config_2!(db, op, s) : _cdecl_sqlite3_db_config_2!(db, op, s);
+        SQLiteErrorCode ISQLiteNative.sqlite3_enable_load_extension(IntPtr db, int onoff) => IsStdCall ? _sqlite3_enable_load_extension!(db, onoff) : _cdecl_sqlite3_enable_load_extension!(db, onoff);
+        SQLiteErrorCode ISQLiteNative.sqlite3_enable_shared_cache(int i) => IsStdCall ? _sqlite3_enable_shared_cache!(i) : _cdecl_sqlite3_enable_shared_cache!(i);
+        IntPtr ISQLiteNative.sqlite3_errmsg16(IntPtr db) => IsStdCall ? _sqlite3_errmsg16!(db) : _cdecl_sqlite3_errmsg16!(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_finalize(IntPtr statement) => IsStdCall ? _sqlite3_finalize!(statement) : _cdecl_sqlite3_finalize!(statement);
+        long ISQLiteNative.sqlite3_last_insert_rowid(IntPtr db) => IsStdCall ? _sqlite3_last_insert_rowid!(db) : _cdecl_sqlite3_last_insert_rowid!(db);
+        int ISQLiteNative.sqlite3_limit(IntPtr db, int id, int newVal) => IsStdCall ? _sqlite3_limit!(db, id, newVal) : _cdecl_sqlite3_limit!(db, id, newVal);
+        SQLiteErrorCode ISQLiteNative.sqlite3_load_extension(IntPtr db, string zFile, string? zProc, out IntPtr pzErrMsg) => IsStdCall ? _sqlite3_load_extension!(db, zFile, zProc, out pzErrMsg) : _cdecl_sqlite3_load_extension!(db, zFile, zProc, out pzErrMsg);
+        SQLiteErrorCode ISQLiteNative.sqlite3_open_v2(string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs) => IsStdCall ? _sqlite3_open_v2!(filename, out ppDb, flags, zvfs) : _cdecl_sqlite3_open_v2!(filename, out ppDb, flags, zvfs);
+        SQLiteErrorCode ISQLiteNative.sqlite3_prepare16_v2(IntPtr db, string sql, int numBytes, out IntPtr statement, IntPtr tail) => IsStdCall ? _sqlite3_prepare16_v2!(db, sql, numBytes, out statement, tail) : _cdecl_sqlite3_prepare16_v2!(db, sql, numBytes, out statement, tail);
+        SQLiteErrorCode ISQLiteNative.sqlite3_reset(IntPtr statement) => IsStdCall ? _sqlite3_reset!(statement) : _cdecl_sqlite3_reset!(statement);
+        void ISQLiteNative.sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel) { if (IsStdCall) _sqlite3_result_blob!(ctx, buffer, size, xDel); else _cdecl_sqlite3_result_blob!(ctx, buffer, size, xDel); }
+        void ISQLiteNative.sqlite3_result_double(IntPtr ctx, double value) { if (IsStdCall) _sqlite3_result_double!(ctx, value); else _cdecl_sqlite3_result_double!(ctx, value); }
+        void ISQLiteNative.sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value) { if (IsStdCall) _sqlite3_result_error_code!(ctx, value); else _cdecl_sqlite3_result_error_code!(ctx, value); }
+        void ISQLiteNative.sqlite3_result_error16(IntPtr ctx, string value, int len) { if (IsStdCall) _sqlite3_result_error16!(ctx, value, len); else _cdecl_sqlite3_result_error16!(ctx, value, len); }
+        void ISQLiteNative.sqlite3_result_int(IntPtr ctx, int value) { if (IsStdCall) _sqlite3_result_int!(ctx, value); else _cdecl_sqlite3_result_int!(ctx, value); }
+        void ISQLiteNative.sqlite3_result_int64(IntPtr ctx, long value) { if (IsStdCall) _sqlite3_result_int64!(ctx, value); else _cdecl_sqlite3_result_int64!(ctx, value); }
+        void ISQLiteNative.sqlite3_result_null(IntPtr ctx) { if (IsStdCall) _sqlite3_result_null!(ctx); else _cdecl_sqlite3_result_null!(ctx); }
+        void ISQLiteNative.sqlite3_result_text16(IntPtr ctx, string value, int len, IntPtr xDel) { if (IsStdCall) _sqlite3_result_text16!(ctx, value, len, xDel); else _cdecl_sqlite3_result_text16!(ctx, value, len, xDel); }
+        void ISQLiteNative.sqlite3_result_zeroblob(IntPtr ctx, int size) { if (IsStdCall) _sqlite3_result_zeroblob!(ctx, size); else _cdecl_sqlite3_result_zeroblob!(ctx, size); }
+        SQLiteErrorCode ISQLiteNative.sqlite3_step(IntPtr statement) => IsStdCall ? _sqlite3_step!(statement) : _cdecl_sqlite3_step!(statement);
+        SQLiteErrorCode ISQLiteNative.sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc) => IsStdCall ? _sqlite3_table_column_metadata!(db, dbname, tablename, columnname, out dataType, out collation, out notNull, out pk, out autoInc) : _cdecl_sqlite3_table_column_metadata!(db, dbname, tablename, columnname, out dataType, out collation, out notNull, out pk, out autoInc);
+        int ISQLiteNative.sqlite3_total_changes(IntPtr db) => IsStdCall ? _sqlite3_total_changes!(db) : _cdecl_sqlite3_total_changes!(db);
+        int ISQLiteNative.sqlite3_threadsafe() => IsStdCall ? _sqlite3_threadsafe!() : _cdecl_sqlite3_threadsafe!();
+        IntPtr ISQLiteNative.sqlite3_value_blob(IntPtr value) => IsStdCall ? _sqlite3_value_blob!(value) : _cdecl_sqlite3_value_blob!(value);
+        int ISQLiteNative.sqlite3_value_bytes(IntPtr value) => IsStdCall ? _sqlite3_value_bytes!(value) : _cdecl_sqlite3_value_bytes!(value);
+        int ISQLiteNative.sqlite3_value_bytes16(IntPtr value) => IsStdCall ? _sqlite3_value_bytes16!(value) : _cdecl_sqlite3_value_bytes16!(value);
+        double ISQLiteNative.sqlite3_value_double(IntPtr value) => IsStdCall ? _sqlite3_value_double!(value) : _cdecl_sqlite3_value_double!(value);
+        int ISQLiteNative.sqlite3_value_int(IntPtr value) => IsStdCall ? _sqlite3_value_int!(value) : _cdecl_sqlite3_value_int!(value);
+        long ISQLiteNative.sqlite3_value_int64(IntPtr value) => IsStdCall ? _sqlite3_value_int64!(value) : _cdecl_sqlite3_value_int64!(value);
+        IntPtr ISQLiteNative.sqlite3_value_text16(IntPtr value) => IsStdCall ? _sqlite3_value_text16!(value) : _cdecl_sqlite3_value_text16!(value);
+        SQLiteColumnType ISQLiteNative.sqlite3_value_type(IntPtr value) => IsStdCall ? _sqlite3_value_type!(value) : _cdecl_sqlite3_value_type!(value);
+
+        SQLiteErrorCode ISQLiteNative.sqlite3_collation_needed16(IntPtr db, IntPtr arg, Native.collationNeeded? callback)
+        {
+            if (IsStdCall)
+                return _sqlite3_collation_needed16!(db, arg, callback != null ? (a, b, c, d) => callback(a, b, c, d) : null);
+
+            return _cdecl_sqlite3_collation_needed16!(db, arg, callback != null ? (a, b, c, d) => callback(a, b, c, d) : null);
+        }
+
+        SQLiteErrorCode ISQLiteNative.sqlite3_create_collation16(IntPtr db, string name, SQLiteTextEncoding encoding, IntPtr arg, Native.xCompare? comparer)
+        {
+            if (IsStdCall)
+                return _sqlite3_create_collation16!(db, name, encoding, arg, comparer != null ? (a, b, c, d, e) => comparer(a, b, c, d, e) : null);
+
+            return _cdecl_sqlite3_create_collation16!(db, name, encoding, arg, comparer != null ? (a, b, c, d, e) => comparer(a, b, c, d, e) : null);
+        }
+
+        SQLiteErrorCode ISQLiteNative.sqlite3_create_function16(IntPtr db, string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, Native.xFunc? func, Native.xFunc? step, Native.xFinal? final)
+        {
+            if (IsStdCall)
+                return _sqlite3_create_function16!(db, name, argsCount, encoding, app,
+                    func != null ? (a, b, c) => func(a, b, c) : null,
+                    step != null ? (a, b, c) => step(a, b, c) : null,
+                    final != null ? a => final(a) : null);
+
+            return _cdecl_sqlite3_create_function16!(db, name, argsCount, encoding, app,
+                    func != null ? (a, b, c) => func(a, b, c) : null,
+                    step != null ? (a, b, c) => step(a, b, c) : null,
+                    final != null ? a => final(a) : null);
+        }
+    }
+}
+
+namespace SqlNado.Platforms
+{
+    // works on Azure web apps too
+    public class SQLiteWinsqlite3 : ISQLiteNative, ISQLiteWindows
+    {
+        // note: always compiled in stdcall
+        public const string DllName = "winsqlite3";
+        private readonly Lazy<string?> _libraryPath;
+
+        public SQLiteWinsqlite3()
+        {
+            _libraryPath = new Lazy<string?>(GetLibraryPath);
+        }
+
+        public string? LibraryPath => _libraryPath.Value;
+        public bool IsUsingWindowsRuntime => true;
+        public CallingConvention CallingConvention => CallingConvention.StdCall;
+
+        public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr) => new SQLiteStdCallNativeTokenizer(ptr);
+
+        public void Load()
+        {
+            // just force one load to check everything is ok
+            _ = sqlite3_threadsafe();
+        }
+
+        public override string? ToString() => LibraryPath;
+
+        private string? GetLibraryPath()
+        {
+            Load();
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.EqualsIgnoreCase(DllName + ".dll"));
+            return dll?.FileName;
+        }
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_bind_double(IntPtr statement, int index, double value);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_bind_int64(IntPtr statement, int index, long value);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_bind_null(IntPtr statement, int index);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_bind_parameter_count(IntPtr statement);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_bind_parameter_index(IntPtr statement, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string name);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_bind_text16(IntPtr statement, int index, [MarshalAs(UnmanagedType.LPWStr)] string text, int count, IntPtr xDel);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_blob_bytes(IntPtr blob);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_blob_close(IntPtr blob);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_blob_open(IntPtr db,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string database,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string table,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string column,
+            long rowId, int flags, out IntPtr blob);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_blob_reopen(IntPtr blob, long rowId);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_changes(IntPtr db);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_clear_bindings(IntPtr statement);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_close(IntPtr db);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_collation_needed16(IntPtr db, IntPtr arg, Native.collationNeeded? callback);
+
+        [DllImport(DllName)]
+        private extern static IntPtr sqlite3_column_blob(IntPtr statement, int index);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_column_bytes(IntPtr statement, int index);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_column_count(IntPtr statement);
+
+        [DllImport(DllName)]
+        private extern static double sqlite3_column_double(IntPtr statement, int index);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_column_int(IntPtr statement, int index);
+
+        [DllImport(DllName)]
+        private extern static long sqlite3_column_int64(IntPtr statement, int index);
+
+        [DllImport(DllName)]
+        private extern static IntPtr sqlite3_column_name16(IntPtr statement, int index);
+
+        [DllImport(DllName)]
+        private extern static IntPtr sqlite3_column_text16(IntPtr statement, int index);
+
+        [DllImport(DllName)]
+        private extern static SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_2(SQLiteConfiguration op, int i);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_3(SQLiteConfiguration op, long i1, long i2);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_config")]
+        private extern static SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, Native.xCompare? comparer);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_create_function16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, Native.xFunc? func, Native.xFunc? step, Native.xFinal? final);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_db_cacheflush(IntPtr db);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_db_config")]
+        private extern static SQLiteErrorCode sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_db_config")]
+        private extern static SQLiteErrorCode sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1);
+
+        [DllImport(DllName, EntryPoint = "sqlite3_db_config")]
+        private extern static SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? s);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_enable_shared_cache(int i);
+
+        [DllImport(DllName)]
+        private extern static IntPtr sqlite3_errmsg16(IntPtr db);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_finalize(IntPtr statement);
+
+        [DllImport(DllName)]
+        private extern static long sqlite3_last_insert_rowid(IntPtr db);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_limit(IntPtr db, int id, int newVal);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_load_extension(IntPtr db, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? zProc, out IntPtr pzErrMsg);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_prepare16_v2(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string sql, int numBytes, out IntPtr statement, IntPtr tail);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_reset(IntPtr statement);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_double(IntPtr ctx, double value);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_error16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_int(IntPtr ctx, int value);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_int64(IntPtr ctx, long value);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_null(IntPtr ctx);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_text16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len, IntPtr xDel);
+
+        [DllImport(DllName)]
+        private extern static void sqlite3_result_zeroblob(IntPtr ctx, int size);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_step(IntPtr statement);
+
+        [DllImport(DllName)]
+        private extern static SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_total_changes(IntPtr db);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_threadsafe();
+
+        [DllImport(DllName)]
+        private extern static IntPtr sqlite3_value_blob(IntPtr value);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_value_bytes(IntPtr value);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_value_bytes16(IntPtr value);
+
+        [DllImport(DllName)]
+        private extern static double sqlite3_value_double(IntPtr value);
+
+        [DllImport(DllName)]
+        private extern static int sqlite3_value_int(IntPtr value);
+
+        [DllImport(DllName)]
+        private extern static long sqlite3_value_int64(IntPtr value);
+
+        [DllImport(DllName)]
+        private extern static IntPtr sqlite3_value_text16(IntPtr value);
+
+        [DllImport(DllName)]
+        private extern static SQLiteColumnType sqlite3_value_type(IntPtr value);
+
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel) => sqlite3_bind_blob(statement, index, data, size, xDel);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_double(IntPtr statement, int index, double value) => sqlite3_bind_double(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_int(IntPtr statement, int index, int value) => sqlite3_bind_int(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_int64(IntPtr statement, int index, long value) => sqlite3_bind_int64(statement, index, value);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_null(IntPtr statement, int index) => sqlite3_bind_null(statement, index);
+        int ISQLiteNative.sqlite3_bind_parameter_count(IntPtr statement) => sqlite3_bind_parameter_count(statement);
+        int ISQLiteNative.sqlite3_bind_parameter_index(IntPtr statement, string name) => sqlite3_bind_parameter_index(statement, name);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_text16(IntPtr statement, int index, string text, int count, IntPtr xDel) => sqlite3_bind_text16(statement, index, text, count, xDel);
+        SQLiteErrorCode ISQLiteNative.sqlite3_bind_zeroblob(IntPtr statement, int index, int size) => sqlite3_bind_zeroblob(statement, index, size);
+        int ISQLiteNative.sqlite3_blob_bytes(IntPtr blob) => sqlite3_blob_bytes(blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_close(IntPtr blob) => sqlite3_blob_close(blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_open(IntPtr db, string database, string table, string column, long rowId, int flags, out IntPtr blob) => sqlite3_blob_open(db, database, table, column, rowId, flags, out blob);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset) => sqlite3_blob_read(blob, buffer, count, offset);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_reopen(IntPtr blob, long rowId) => sqlite3_blob_reopen(blob, rowId);
+        SQLiteErrorCode ISQLiteNative.sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset) => sqlite3_blob_write(blob, buffer, count, offset);
+        int ISQLiteNative.sqlite3_changes(IntPtr db) => sqlite3_changes(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_clear_bindings(IntPtr statement) => sqlite3_clear_bindings(statement);
+        SQLiteErrorCode ISQLiteNative.sqlite3_close(IntPtr db) => sqlite3_close(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_collation_needed16(IntPtr db, IntPtr arg, Native.collationNeeded? callback) => sqlite3_collation_needed16(db, arg, callback);
+        IntPtr ISQLiteNative.sqlite3_column_blob(IntPtr statement, int index) => sqlite3_column_blob(statement, index);
+        int ISQLiteNative.sqlite3_column_bytes(IntPtr statement, int index) => sqlite3_column_bytes(statement, index);
+        int ISQLiteNative.sqlite3_column_count(IntPtr statement) => sqlite3_column_count(statement);
+        double ISQLiteNative.sqlite3_column_double(IntPtr statement, int index) => sqlite3_column_double(statement, index);
+        int ISQLiteNative.sqlite3_column_int(IntPtr statement, int index) => sqlite3_column_int(statement, index);
+        long ISQLiteNative.sqlite3_column_int64(IntPtr statement, int index) => sqlite3_column_int64(statement, index);
+        IntPtr ISQLiteNative.sqlite3_column_name16(IntPtr statement, int index) => sqlite3_column_name16(statement, index);
+        IntPtr ISQLiteNative.sqlite3_column_text16(IntPtr statement, int index) => sqlite3_column_text16(statement, index);
+        SQLiteColumnType ISQLiteNative.sqlite3_column_type(IntPtr statement, int index) => sqlite3_column_type(statement, index);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_0(SQLiteConfiguration op) => sqlite3_config_0(op);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_1(SQLiteConfiguration op, long i) => sqlite3_config_1(op, i);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_2(SQLiteConfiguration op, int i) => sqlite3_config_2(op, i);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_3(SQLiteConfiguration op, long i1, long i2) => sqlite3_config_3(op, i1, i2);
+        SQLiteErrorCode ISQLiteNative.sqlite3_config_4(SQLiteConfiguration op, int i1, int i2) => sqlite3_config_4(op, i1, i2);
+        SQLiteErrorCode ISQLiteNative.sqlite3_create_collation16(IntPtr db, string name, SQLiteTextEncoding encoding, IntPtr arg, Native.xCompare? comparer) => sqlite3_create_collation16(db, name, encoding, arg, comparer);
+        SQLiteErrorCode ISQLiteNative.sqlite3_create_function16(IntPtr db, string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, Native.xFunc? func, Native.xFunc? step, Native.xFinal? final) => sqlite3_create_function16(db, name, argsCount, encoding, app, func, step, final);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_cacheflush(IntPtr db) => sqlite3_db_cacheflush(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_0(IntPtr db, SQLiteDatabaseConfiguration op, int i, out int result) => sqlite3_db_config_0(db, op, i, out result);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_1(IntPtr db, SQLiteDatabaseConfiguration op, IntPtr ptr, int i0, int i1) => sqlite3_db_config_1(db, op, ptr, i0, i1);
+        SQLiteErrorCode ISQLiteNative.sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, string? s) => sqlite3_db_config_2(db, op, s);
+        SQLiteErrorCode ISQLiteNative.sqlite3_enable_load_extension(IntPtr db, int onoff) => sqlite3_enable_load_extension(db, onoff);
+        SQLiteErrorCode ISQLiteNative.sqlite3_enable_shared_cache(int i) => sqlite3_enable_shared_cache(i);
+        IntPtr ISQLiteNative.sqlite3_errmsg16(IntPtr db) => sqlite3_errmsg16(db);
+        SQLiteErrorCode ISQLiteNative.sqlite3_finalize(IntPtr statement) => sqlite3_finalize(statement);
+        long ISQLiteNative.sqlite3_last_insert_rowid(IntPtr db) => sqlite3_last_insert_rowid(db);
+        int ISQLiteNative.sqlite3_limit(IntPtr db, int id, int newVal) => sqlite3_limit(db, id, newVal);
+        SQLiteErrorCode ISQLiteNative.sqlite3_load_extension(IntPtr db, string zFile, string? zProc, out IntPtr pzErrMsg) => sqlite3_load_extension(db, zFile, zProc, out pzErrMsg);
+        SQLiteErrorCode ISQLiteNative.sqlite3_open_v2(string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs) => sqlite3_open_v2(filename, out ppDb, flags, zvfs);
+        SQLiteErrorCode ISQLiteNative.sqlite3_prepare16_v2(IntPtr db, string sql, int numBytes, out IntPtr statement, IntPtr tail) => sqlite3_prepare16_v2(db, sql, numBytes, out statement, tail);
+        SQLiteErrorCode ISQLiteNative.sqlite3_reset(IntPtr statement) => sqlite3_reset(statement);
+        void ISQLiteNative.sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel) => sqlite3_result_blob(ctx, buffer, size, xDel);
+        void ISQLiteNative.sqlite3_result_double(IntPtr ctx, double value) => sqlite3_result_double(ctx, value);
+        void ISQLiteNative.sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value) => sqlite3_result_error_code(ctx, value);
+        void ISQLiteNative.sqlite3_result_error16(IntPtr ctx, string value, int len) => sqlite3_result_error16(ctx, value, len);
+        void ISQLiteNative.sqlite3_result_int(IntPtr ctx, int value) => sqlite3_result_int(ctx, value);
+        void ISQLiteNative.sqlite3_result_int64(IntPtr ctx, long value) => sqlite3_result_int64(ctx, value);
+        void ISQLiteNative.sqlite3_result_null(IntPtr ctx) => sqlite3_result_null(ctx);
+        void ISQLiteNative.sqlite3_result_text16(IntPtr ctx, string value, int len, IntPtr xDel) => sqlite3_result_text16(ctx, value, len, xDel);
+        void ISQLiteNative.sqlite3_result_zeroblob(IntPtr ctx, int size) => sqlite3_result_zeroblob(ctx, size);
+        SQLiteErrorCode ISQLiteNative.sqlite3_step(IntPtr statement) => sqlite3_step(statement);
+        SQLiteErrorCode ISQLiteNative.sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc) => sqlite3_table_column_metadata(db, dbname, tablename, columnname, out dataType, out collation, out notNull, out pk, out autoInc);
+        int ISQLiteNative.sqlite3_total_changes(IntPtr db) => sqlite3_total_changes(db);
+        int ISQLiteNative.sqlite3_threadsafe() => sqlite3_threadsafe();
+        IntPtr ISQLiteNative.sqlite3_value_blob(IntPtr value) => sqlite3_value_blob(value);
+        int ISQLiteNative.sqlite3_value_bytes(IntPtr value) => sqlite3_value_bytes(value);
+        int ISQLiteNative.sqlite3_value_bytes16(IntPtr value) => sqlite3_value_bytes16(value);
+        double ISQLiteNative.sqlite3_value_double(IntPtr value) => sqlite3_value_double(value);
+        int ISQLiteNative.sqlite3_value_int(IntPtr value) => sqlite3_value_int(value);
+        long ISQLiteNative.sqlite3_value_int64(IntPtr value) => sqlite3_value_int64(value);
+        IntPtr ISQLiteNative.sqlite3_value_text16(IntPtr value) => sqlite3_value_text16(value);
+        SQLiteColumnType ISQLiteNative.sqlite3_value_type(IntPtr value) => sqlite3_value_type(value);
+    }
+}
+
 namespace SqlNado.Utilities
 {
     public abstract class ChangeTrackingDictionaryObject : DictionaryObject, IChangeTrackingDictionaryObject
@@ -8498,13 +9676,13 @@ namespace SqlNado.Utilities
 
         // this is better than the base impl because we are sure to get the original value
         // while the base impl only knows the last value
-        protected override DictionaryObjectProperty DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty oldProperty, DictionaryObjectProperty newProperty)
+        protected override DictionaryObjectProperty? DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty)
         {
-            DictionaryObjectChangedProperties.TryGetValue(name, out DictionaryObjectProperty prop);
+            DictionaryObjectChangedProperties.TryGetValue(name, out var prop);
             return prop; // null is ok
         }
 
-        protected override DictionaryObjectProperty DictionaryObjectUpdatedProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty oldProperty, DictionaryObjectProperty newProperty)
+        protected override DictionaryObjectProperty? DictionaryObjectUpdatedProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty)
         {
             // we always keep the first or last commited value
             if (oldProperty != null)
@@ -8536,7 +9714,7 @@ namespace SqlNado.Utilities
 
         public bool AddThreadId { get; set; }
 
-        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string methodName = null)
+        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string? methodName = null)
         {
             switch (level)
             {
@@ -8556,7 +9734,7 @@ namespace SqlNado.Utilities
                     return;
             }
 
-            string tid = AddThreadId ? "[" + Environment.CurrentManagedThreadId + "]:" : null;
+            var tid = AddThreadId ? "[" + Environment.CurrentManagedThreadId + "]:" : null;
 
             if (!string.IsNullOrWhiteSpace(methodName))
             {
@@ -8577,7 +9755,7 @@ namespace SqlNado.Utilities
     {
         private static readonly char[] _enumSeparators = new char[] { ',', ';', '+', '|', ' ' };
 
-        public static Type GetEnumeratedType(Type collectionType)
+        public static Type? GetEnumeratedType(Type collectionType)
         {
             if (collectionType == null)
                 throw new ArgumentNullException(nameof(collectionType));
@@ -8595,7 +9773,7 @@ namespace SqlNado.Utilities
             return null;
         }
 
-        private static Type GetEnumeratedItemType(Type type)
+        private static Type? GetEnumeratedItemType(Type type)
         {
             if (!type.IsGenericType)
                 return null;
@@ -8644,7 +9822,7 @@ namespace SqlNado.Utilities
             return bytes;
         }
 
-        public static byte[] ToBytes(string text)
+        public static byte[]? ToBytes(string? text)
         {
             if (text == null)
                 return null;
@@ -8653,7 +9831,7 @@ namespace SqlNado.Utilities
                 return Array.Empty<byte>();
 
             var list = new List<byte>();
-            bool lo = false;
+            var lo = false;
             byte prev = 0;
             int offset;
 
@@ -8667,9 +9845,9 @@ namespace SqlNado.Utilities
                 offset = 0;
             }
 
-            for (int i = 0; i < text.Length - offset; i++)
+            for (var i = 0; i < text.Length - offset; i++)
             {
-                byte b = GetHexaByte(text[i + offset]);
+                var b = GetHexaByte(text[i + offset]);
                 if (b == 0xFF)
                     continue;
 
@@ -8701,9 +9879,9 @@ namespace SqlNado.Utilities
             return 0xFF;
         }
 
-        public static string ToHexa(this byte[] bytes) => ToHexa(bytes, 0, (bytes?.Length).GetValueOrDefault());
-        public static string ToHexa(this byte[] bytes, int count) => ToHexa(bytes, 0, count);
-        public static string ToHexa(this byte[] bytes, int offset, int count)
+        public static string? ToHexa(this byte[]? bytes) => ToHexa(bytes, 0, (bytes?.Length).GetValueOrDefault());
+        public static string? ToHexa(this byte[]? bytes, int count) => ToHexa(bytes, 0, count);
+        public static string? ToHexa(this byte[]? bytes, int offset, int count)
         {
             if (bytes == null)
                 return null;
@@ -8728,8 +9906,7 @@ namespace SqlNado.Utilities
             return sb.ToString();
         }
 
-        public static string ToHexaDump(string text) => ToHexaDump(text, null);
-        public static string ToHexaDump(string text, Encoding encoding)
+        public static string? ToHexaDump(string text, Encoding? encoding = null)
         {
             if (text == null)
                 return null;
@@ -8750,7 +9927,7 @@ namespace SqlNado.Utilities
             return ToHexaDump(bytes, null);
         }
 
-        public static string ToHexaDump(this byte[] bytes, string prefix)
+        public static string ToHexaDump(this byte[] bytes, string? prefix)
         {
             if (bytes == null)
                 throw new ArgumentNullException(nameof(bytes));
@@ -8759,7 +9936,7 @@ namespace SqlNado.Utilities
         }
 
         public static string ToHexaDump(this IntPtr ptr, int count) => ToHexaDump(ptr, 0, count, null, true);
-        public static string ToHexaDump(this IntPtr ptr, int offset, int count, string prefix, bool addHeader)
+        public static string ToHexaDump(this IntPtr ptr, int offset, int count, string? prefix, bool addHeader)
         {
             if (ptr == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(ptr));
@@ -8771,7 +9948,7 @@ namespace SqlNado.Utilities
 
         public static string ToHexaDump(this byte[] bytes, int count) => ToHexaDump(bytes, 0, count, null, true);
         public static string ToHexaDump(this byte[] bytes, int offset, int count) => ToHexaDump(bytes, offset, count, null, true);
-        public static string ToHexaDump(this byte[] bytes, int offset, int count, string prefix, bool addHeader)
+        public static string ToHexaDump(this byte[] bytes, int offset, int count, string? prefix, bool addHeader)
         {
             if (bytes == null)
                 throw new ArgumentNullException(nameof(bytes));
@@ -8835,16 +10012,16 @@ namespace SqlNado.Utilities
             return sb.ToString();
         }
 
-        public static IList<T> SplitToList<T>(string text, params char[] separators) => SplitToList<T>(text, null, separators);
-        public static IList<T> SplitToList<T>(string text, IFormatProvider provider, params char[] separators)
+        public static IList<T?> SplitToList<T>(string? text, params char[] separators) => SplitToList<T>(text, null, separators);
+        public static IList<T?> SplitToList<T>(string? text, IFormatProvider? provider, params char[] separators)
         {
-            var al = new List<T>();
+            var al = new List<T?>();
             if (text == null || separators == null || separators.Length == 0)
                 return al;
 
-            foreach (string s in text.Split(separators))
+            foreach (var s in text.Split(separators))
             {
-                string value = s.Nullify();
+                var value = s.Nullify();
                 if (value == null)
                     continue;
 
@@ -8854,8 +10031,7 @@ namespace SqlNado.Utilities
             return al;
         }
 
-        public static bool EqualsIgnoreCase(this string thisString, string text) => EqualsIgnoreCase(thisString, text, false);
-        public static bool EqualsIgnoreCase(this string thisString, string text, bool trim)
+        public static bool EqualsIgnoreCase(this string? thisString, string? text, bool trim = false)
         {
             if (trim)
             {
@@ -8875,7 +10051,7 @@ namespace SqlNado.Utilities
             return string.Compare(thisString, text, StringComparison.OrdinalIgnoreCase) == 0;
         }
 
-        public static string Nullify(this string text)
+        public static string? Nullify(this string? text)
         {
             if (text == null)
                 return null;
@@ -8887,7 +10063,7 @@ namespace SqlNado.Utilities
             return t.Length == 0 ? null : t;
         }
 
-        public static Type GetNullableTypeArgument(this Type type)
+        public static Type? GetNullableTypeArgument(this Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -8906,41 +10082,41 @@ namespace SqlNado.Utilities
             return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
 
-        public static object ChangeType(object input, Type conversionType) => ChangeType(input, conversionType, null, null);
-        public static object ChangeType(object input, Type conversionType, object defaultValue) => ChangeType(input, conversionType, defaultValue, null);
-        public static object ChangeType(object input, Type conversionType, object defaultValue, IFormatProvider provider)
+        public static object? ChangeType(object? input, Type conversionType) => ChangeType(input, conversionType, null, null);
+        public static object? ChangeType(object? input, Type conversionType, object? defaultValue) => ChangeType(input, conversionType, defaultValue, null);
+        public static object? ChangeType(object? input, Type conversionType, object? defaultValue, IFormatProvider? provider)
         {
-            if (!TryChangeType(input, conversionType, provider, out object value))
+            if (!TryChangeType(input, conversionType, provider, out object? value))
                 return defaultValue;
 
             return value;
         }
 
-        public static T ChangeType<T>(object input) => ChangeType(input, default(T));
-        public static T ChangeType<T>(object input, T defaultValue) => ChangeType(input, defaultValue, null);
-        public static T ChangeType<T>(object input, T defaultValue, IFormatProvider provider)
+        public static T? ChangeType<T>(object? input) => ChangeType(input, default(T));
+        public static T? ChangeType<T>(object? input, T? defaultValue) => ChangeType(input, defaultValue, null);
+        public static T? ChangeType<T>(object? input, T? defaultValue, IFormatProvider? provider)
         {
-            if (!TryChangeType(input, provider, out T value))
+            if (!TryChangeType(input, provider, out T? value))
                 return defaultValue;
 
             return value;
         }
 
-        public static bool TryChangeType<T>(object input, out T value) => TryChangeType(input, null, out value);
-        public static bool TryChangeType<T>(object input, IFormatProvider provider, out T value)
+        public static bool TryChangeType<T>(object? input, out T? value) => TryChangeType(input, null, out value);
+        public static bool TryChangeType<T>(object? input, IFormatProvider? provider, out T? value)
         {
-            if (!TryChangeType(input, typeof(T), provider, out object tvalue))
+            if (!TryChangeType(input, typeof(T), provider, out object? tvalue))
             {
                 value = default;
                 return false;
             }
 
-            value = (T)tvalue;
+            value = (T?)tvalue;
             return true;
         }
 
-        public static bool TryChangeType(object input, Type conversionType, out object value) => TryChangeType(input, conversionType, null, out value);
-        public static bool TryChangeType(object input, Type conversionType, IFormatProvider provider, out object value)
+        public static bool TryChangeType(object? input, Type conversionType, out object? value) => TryChangeType(input, conversionType, null, out value);
+        public static bool TryChangeType(object? input, Type conversionType, IFormatProvider? provider, out object? value)
         {
             if (conversionType == null)
                 throw new ArgumentNullException(nameof(conversionType));
@@ -8995,7 +10171,7 @@ namespace SqlNado.Utilities
                     return true;
                 }
 
-                string svalue = string.Format(provider, "{0}", input).Nullify();
+                var svalue = string.Format(provider, "{0}", input).Nullify();
                 if (svalue != null && Guid.TryParse(svalue, out Guid guid))
                 {
                     value = guid;
@@ -9410,7 +10586,7 @@ namespace SqlNado.Utilities
                 var bytes = (byte[])input;
                 if (bytes.Length != 2)
                     return false;
-                
+
                 value = BitConverter.ToChar(bytes, 0);
                 return true;
             }
@@ -9430,7 +10606,7 @@ namespace SqlNado.Utilities
                 var bytes = (byte[])input;
                 if (bytes.Length != 8)
                     return false;
-                
+
                 value = BitConverter.ToDouble(bytes, 0);
                 return true;
             }
@@ -9532,7 +10708,7 @@ namespace SqlNado.Utilities
 
                 if (inputType == typeof(decimal))
                 {
-                    value = ((decimal)value).ToBytes();
+                    value = ((decimal)value!).ToBytes();
                     return true;
                 }
 
@@ -9593,12 +10769,12 @@ namespace SqlNado.Utilities
             return false;
         }
 
-        public static ulong EnumToUInt64(string text, Type enumType)
+        public static ulong EnumToUInt64(string? text, Type enumType)
         {
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
 
-            return EnumToUInt64(ChangeType(text, enumType));
+            return EnumToUInt64(ChangeType(text, enumType)!);
         }
 
         public static ulong EnumToUInt64(object value)
@@ -9629,18 +10805,18 @@ namespace SqlNado.Utilities
 
         private static bool StringToEnum(Type type, string[] names, Array values, string input, out object value)
         {
-            for (int i = 0; i < names.Length; i++)
+            for (var i = 0; i < names.Length; i++)
             {
                 if (names[i].EqualsIgnoreCase(input))
                 {
-                    value = values.GetValue(i);
+                    value = values.GetValue(i)!;
                     return true;
                 }
             }
 
-            for (int i = 0; i < values.GetLength(0); i++)
+            for (var i = 0; i < values.GetLength(0); i++)
             {
-                object valuei = values.GetValue(i);
+                var valuei = values.GetValue(i)!;
                 if (input.Length > 0 && input[0] == '-')
                 {
                     var ul = (long)EnumToUInt64(valuei);
@@ -9666,14 +10842,14 @@ namespace SqlNado.Utilities
                 var obj = EnumToObject(type, input);
                 if (obj == null)
                 {
-                    value = Activator.CreateInstance(type);
+                    value = Activator.CreateInstance(type)!;
                     return false;
                 }
                 value = obj;
                 return true;
             }
 
-            value = Activator.CreateInstance(type);
+            value = Activator.CreateInstance(type)!;
             return false;
         }
 
@@ -9733,7 +10909,7 @@ namespace SqlNado.Utilities
             return defaultValue;
         }
 
-        public static object ToEnum(string text, Type enumType)
+        public static object ToEnum(string? text, Type enumType)
         {
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
@@ -9742,7 +10918,7 @@ namespace SqlNado.Utilities
             return value;
         }
 
-        public static Enum ToEnum(string text, Enum defaultValue)
+        public static Enum ToEnum(string? text, Enum defaultValue)
         {
             if (defaultValue == null)
                 throw new ArgumentNullException(nameof(defaultValue));
@@ -9753,7 +10929,7 @@ namespace SqlNado.Utilities
             return defaultValue;
         }
 
-        public static bool EnumTryParse(Type type, object input, out object value)
+        public static bool EnumTryParse(Type type, object? input, out object value)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -9763,7 +10939,7 @@ namespace SqlNado.Utilities
 
             if (input == null)
             {
-                value = Activator.CreateInstance(type);
+                value = Activator.CreateInstance(type)!;
                 return false;
             }
 
@@ -9771,7 +10947,7 @@ namespace SqlNado.Utilities
             stringInput = stringInput.Nullify();
             if (stringInput == null)
             {
-                value = Activator.CreateInstance(type);
+                value = Activator.CreateInstance(type)!;
                 return false;
             }
 
@@ -9784,7 +10960,7 @@ namespace SqlNado.Utilities
             var names = Enum.GetNames(type);
             if (names.Length == 0)
             {
-                value = Activator.CreateInstance(type);
+                value = Activator.CreateInstance(type)!;
                 return false;
             }
 
@@ -9797,20 +10973,20 @@ namespace SqlNado.Utilities
             var tokens = stringInput.Split(_enumSeparators, StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length == 0)
             {
-                value = Activator.CreateInstance(type);
+                value = Activator.CreateInstance(type)!;
                 return false;
             }
 
             ulong ul = 0;
-            foreach (string tok in tokens)
+            foreach (var tok in tokens)
             {
-                string token = tok.Nullify(); // NOTE: we don't consider empty tokens as errors
+                var token = tok.Nullify(); // NOTE: we don't consider empty tokens as errors
                 if (token == null)
                     continue;
 
                 if (!StringToEnum(type, names, values, token, out object tokenValue))
                 {
-                    value = Activator.CreateInstance(type);
+                    value = Activator.CreateInstance(type)!;
                     return false;
                 }
 
@@ -9835,8 +11011,7 @@ namespace SqlNado.Utilities
             return true;
         }
 
-        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key) => GetNullifiedValue(dictionary, key, null);
-        public static string GetNullifiedValue(this IDictionary<string, string> dictionary, string key, string defaultValue)
+        public static string? GetNullifiedValue(this IDictionary<string, string> dictionary, string key, string? defaultValue = null)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -9844,13 +11019,13 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out string str))
+            if (!dictionary.TryGetValue(key, out var str))
                 return defaultValue;
 
             return str.Nullify();
         }
 
-        public static T GetValue<T>(this IDictionary<string, object> dictionary, string key, T defaultValue)
+        public static T? GetValue<T>(this IDictionary<string, object> dictionary, string key, T? defaultValue)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -9858,13 +11033,13 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out object o))
+            if (!dictionary.TryGetValue(key, out var o))
                 return defaultValue;
 
             return ChangeType(o, defaultValue);
         }
 
-        public static T GetValue<T>(this IDictionary<string, object> dictionary, string key, T defaultValue, IFormatProvider provider)
+        public static T? GetValue<T>(this IDictionary<string, object> dictionary, string key, T? defaultValue, IFormatProvider? provider)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -9872,13 +11047,13 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out object o))
+            if (!dictionary.TryGetValue(key, out var o))
                 return defaultValue;
 
             return ChangeType(o, defaultValue, provider);
         }
 
-        public static T GetValue<T>(this IDictionary<string, string> dictionary, string key, T defaultValue)
+        public static T? GetValue<T>(this IDictionary<string, string> dictionary, string key, T? defaultValue)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -9886,13 +11061,13 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out string str))
+            if (!dictionary.TryGetValue(key, out var str))
                 return defaultValue;
 
             return ChangeType(str, defaultValue);
         }
 
-        public static T GetValue<T>(this IDictionary<string, string> dictionary, string key, T defaultValue, IFormatProvider provider)
+        public static T? GetValue<T>(this IDictionary<string, string> dictionary, string key, T? defaultValue, IFormatProvider? provider)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -9900,14 +11075,13 @@ namespace SqlNado.Utilities
             if (dictionary == null)
                 return defaultValue;
 
-            if (!dictionary.TryGetValue(key, out string str))
+            if (!dictionary.TryGetValue(key, out var str))
                 return defaultValue;
 
             return ChangeType(str, defaultValue, provider);
         }
 
-        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2) => Compare(dic1, dic2, null);
-        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2, IEqualityComparer<TValue> comparer)
+        public static bool Compare<TKey, TValue>(this IDictionary<TKey, TValue> dic1, IDictionary<TKey, TValue> dic2, IEqualityComparer<TValue>? comparer = null)
         {
             if (dic1 == null)
                 return dic2 == null;
@@ -9925,13 +11099,13 @@ namespace SqlNado.Utilities
 
             foreach (var kv1 in dic1)
             {
-                if (!dic2.TryGetValue(kv1.Key, out TValue s2) || !comparer.Equals(s2, kv1.Value))
+                if (!dic2.TryGetValue(kv1.Key, out var s2) || !comparer.Equals(s2, kv1.Value))
                     return false;
             }
 
             foreach (var kv2 in dic2)
             {
-                if (!dic1.TryGetValue(kv2.Key, out TValue s1) || !comparer.Equals(s1, kv2.Value))
+                if (!dic1.TryGetValue(kv2.Key, out var s1) || !comparer.Equals(s1, kv2.Value))
                     return false;
             }
             return true;
@@ -9944,7 +11118,7 @@ namespace SqlNado.Utilities
     // all properties and methods start with DictionaryObject and are protected so they won't interfere with super type
     public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChanged, INotifyPropertyChanging, IDataErrorInfo, INotifyDataErrorInfo
     {
-        private readonly ConcurrentDictionary<string, DictionaryObjectProperty> _properties = new ConcurrentDictionary<string, DictionaryObjectProperty>(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<string, DictionaryObjectProperty?> _properties = new ConcurrentDictionary<string, DictionaryObjectProperty?>(StringComparer.Ordinal);
 
         protected DictionaryObject()
         {
@@ -9953,13 +11127,13 @@ namespace SqlNado.Utilities
             DictionaryObjectRaiseOnErrorsChanged = true;
         }
 
-        protected virtual ConcurrentDictionary<string, DictionaryObjectProperty> DictionaryObjectProperties => _properties;
+        protected virtual ConcurrentDictionary<string, DictionaryObjectProperty?> DictionaryObjectProperties => _properties;
 
         // these PropertyChangxxx are public and don't start with BaseObject because used by everyone
-        public event PropertyChangingEventHandler PropertyChanging;
-        public event PropertyChangedEventHandler PropertyChanged;
-        public event EventHandler<DataErrorsChangedEventArgs> ErrorsChanged;
-        public event EventHandler<DictionaryObjectPropertyRollbackEventArgs> PropertyRollback;
+        public event PropertyChangingEventHandler? PropertyChanging;
+        public event PropertyChangedEventHandler? PropertyChanged;
+        public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
+        public event EventHandler<DictionaryObjectPropertyRollbackEventArgs>? PropertyRollback;
 
         protected virtual bool DictionaryObjectRaiseOnPropertyChanging { get; set; }
         protected virtual bool DictionaryObjectRaiseOnPropertyChanged { get; set; }
@@ -9968,17 +11142,17 @@ namespace SqlNado.Utilities
         protected string DictionaryObjectError => DictionaryObjectGetError(null);
         protected bool DictionaryObjectHasErrors => (DictionaryObjectGetErrors(null)?.Cast<object>().Any()).GetValueOrDefault();
 
-        protected virtual string DictionaryObjectGetError(string propertyName)
+        protected virtual string DictionaryObjectGetError(string? propertyName)
         {
             var errors = DictionaryObjectGetErrors(propertyName);
             if (errors == null)
-                return null;
+                return string.Empty;
 
-            string error = string.Join(Environment.NewLine, errors.Cast<object>().Select(e => string.Format("{0}", e)));
-            return !string.IsNullOrEmpty(error) ? error : null;
+            var error = string.Join(Environment.NewLine, errors.Cast<object>().Select(e => string.Format("{0}", e)));
+            return !string.IsNullOrEmpty(error) ? error : string.Empty;
         }
 
-        protected virtual IEnumerable DictionaryObjectGetErrors(string propertyName) => null;
+        protected virtual IEnumerable DictionaryObjectGetErrors(string? propertyName) => Enumerable.Empty<object>();
 
         protected void OnErrorsChanged(string name)
         {
@@ -9993,23 +11167,23 @@ namespace SqlNado.Utilities
         protected virtual void OnPropertyChanging(object sender, PropertyChangingEventArgs e) => PropertyChanging?.Invoke(sender, e);
         protected virtual void OnPropertyChanged(object sender, PropertyChangedEventArgs e) => PropertyChanged?.Invoke(sender, e);
 
-        protected T DictionaryObjectGetPropertyValue<T>([CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue(default(T), name);
-        protected virtual T DictionaryObjectGetPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null)
+        protected T? DictionaryObjectGetPropertyValue<T>([CallerMemberName] string? name = null) => DictionaryObjectGetPropertyValue(default(T), name);
+        protected virtual T? DictionaryObjectGetPropertyValue<T>(T? defaultValue, [CallerMemberName] string? name = null)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            DictionaryObjectProperties.TryGetValue(name, out DictionaryObjectProperty property);
+            DictionaryObjectProperties.TryGetValue(name, out var property);
             if (property == null)
                 return defaultValue;
 
-            if (!Conversions.TryChangeType(property.Value, out T value))
+            if (!Conversions.TryChangeType(property.Value, out T? value))
                 return defaultValue;
 
             return value;
         }
 
-        protected virtual bool DictionaryObjectAreValuesEqual(object value1, object value2)
+        protected virtual bool DictionaryObjectAreValuesEqual(object? value1, object? value2)
         {
             if (value1 == null)
                 return value2 == null;
@@ -10029,17 +11203,17 @@ namespace SqlNado.Utilities
                 _dob = dob;
             }
 
-            public new bool Equals(object x, object y) => _dob.DictionaryObjectAreValuesEqual(x, y);
+            public new bool Equals(object? x, object? y) => _dob.DictionaryObjectAreValuesEqual(x, y);
             public int GetHashCode(object obj) => (obj?.GetHashCode()).GetValueOrDefault();
         }
 
-        protected virtual bool DictionaryObjectAreErrorsEqual(IEnumerable errors1, IEnumerable errors2)
+        protected virtual bool DictionaryObjectAreErrorsEqual(IEnumerable? errors1, IEnumerable? errors2)
         {
             if (errors1 == null && errors2 == null)
                 return true;
 
             var dic = new Dictionary<object, int>(new ObjectComparer(this));
-            IEnumerable<object> left = errors1 != null ? errors1.Cast<object>() : Enumerable.Empty<object>();
+            var left = errors1 != null ? errors1.Cast<object>() : Enumerable.Empty<object>();
             foreach (var obj in left)
             {
                 if (dic.ContainsKey(obj))
@@ -10068,20 +11242,20 @@ namespace SqlNado.Utilities
         }
 
         // note: these are not defined in IDictionaryObject because they're kinda really internal to the object
-        protected virtual DictionaryObjectProperty DictionaryObjectUpdatingProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty oldProperty, DictionaryObjectProperty newProperty) => null;
-        protected virtual DictionaryObjectProperty DictionaryObjectUpdatedProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty oldProperty, DictionaryObjectProperty newProperty) => null;
-        protected virtual DictionaryObjectProperty DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty oldProperty, DictionaryObjectProperty newProperty) => null;
-        protected virtual DictionaryObjectProperty DictionaryObjectCreateProperty() => new DictionaryObjectProperty();
+        protected virtual DictionaryObjectProperty? DictionaryObjectUpdatingProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty) => null;
+        protected virtual DictionaryObjectProperty? DictionaryObjectUpdatedProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty) => null;
+        protected virtual DictionaryObjectProperty? DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty) => null;
+        protected virtual DictionaryObjectProperty? DictionaryObjectCreateProperty() => new DictionaryObjectProperty();
 
-        protected bool DictionaryObjectSetPropertyValue(object value, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, DictionaryObjectPropertySetOptions.None, name);
-        protected virtual bool DictionaryObjectSetPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null)
+        protected bool DictionaryObjectSetPropertyValue(object? value, [CallerMemberName] string? name = null) => DictionaryObjectSetPropertyValue(value, DictionaryObjectPropertySetOptions.None, name);
+        protected virtual bool DictionaryObjectSetPropertyValue(object? value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string? name = null)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
 
-            IEnumerable oldErrors = null;
-            bool rollbackOnError = (options & DictionaryObjectPropertySetOptions.RollbackChangeOnError) == DictionaryObjectPropertySetOptions.RollbackChangeOnError;
-            bool onErrorsChanged = (options & DictionaryObjectPropertySetOptions.DontRaiseOnErrorsChanged) != DictionaryObjectPropertySetOptions.DontRaiseOnErrorsChanged;
+            IEnumerable? oldErrors = null;
+            var rollbackOnError = (options & DictionaryObjectPropertySetOptions.RollbackChangeOnError) == DictionaryObjectPropertySetOptions.RollbackChangeOnError;
+            var onErrorsChanged = (options & DictionaryObjectPropertySetOptions.DontRaiseOnErrorsChanged) != DictionaryObjectPropertySetOptions.DontRaiseOnErrorsChanged;
             if (!DictionaryObjectRaiseOnErrorsChanged)
             {
                 onErrorsChanged = false;
@@ -10092,8 +11266,8 @@ namespace SqlNado.Utilities
                 oldErrors = DictionaryObjectGetErrors(name);
             }
 
-            bool forceChanged = (options & DictionaryObjectPropertySetOptions.ForceRaiseOnPropertyChanged) == DictionaryObjectPropertySetOptions.ForceRaiseOnPropertyChanged;
-            bool onChanged = (options & DictionaryObjectPropertySetOptions.DontRaiseOnPropertyChanged) != DictionaryObjectPropertySetOptions.DontRaiseOnPropertyChanged;
+            var forceChanged = (options & DictionaryObjectPropertySetOptions.ForceRaiseOnPropertyChanged) == DictionaryObjectPropertySetOptions.ForceRaiseOnPropertyChanged;
+            var onChanged = (options & DictionaryObjectPropertySetOptions.DontRaiseOnPropertyChanged) != DictionaryObjectPropertySetOptions.DontRaiseOnPropertyChanged;
             if (!DictionaryObjectRaiseOnPropertyChanged)
             {
                 onChanged = false;
@@ -10105,7 +11279,7 @@ namespace SqlNado.Utilities
                 throw new InvalidOperationException();
 
             newProp.Value = value;
-            DictionaryObjectProperty oldProp = null;
+            DictionaryObjectProperty? oldProp = null;
             var finalProp = DictionaryObjectProperties.AddOrUpdate(name, newProp, (k, o) =>
             {
                 oldProp = o;
@@ -10113,11 +11287,11 @@ namespace SqlNado.Utilities
                 if (updating != null)
                     return updating;
 
-                bool testEquality = (options & DictionaryObjectPropertySetOptions.DontTestValuesForEquality) != DictionaryObjectPropertySetOptions.DontTestValuesForEquality;
+                var testEquality = (options & DictionaryObjectPropertySetOptions.DontTestValuesForEquality) != DictionaryObjectPropertySetOptions.DontTestValuesForEquality;
                 if (testEquality && o != null && DictionaryObjectAreValuesEqual(value, o.Value))
                     return o;
 
-                bool onChanging = (options & DictionaryObjectPropertySetOptions.DontRaiseOnPropertyChanging) != DictionaryObjectPropertySetOptions.DontRaiseOnPropertyChanging;
+                var onChanging = (options & DictionaryObjectPropertySetOptions.DontRaiseOnPropertyChanging) != DictionaryObjectPropertySetOptions.DontRaiseOnPropertyChanging;
                 if (!DictionaryObjectRaiseOnPropertyChanging)
                 {
                     onChanging = false;
@@ -10140,7 +11314,7 @@ namespace SqlNado.Utilities
 
             if (forceChanged || (onChanged && ReferenceEquals(finalProp, newProp)))
             {
-                bool rollbacked = false;
+                var rollbacked = false;
                 if (rollbackOnError && (DictionaryObjectGetErrors(name)?.Cast<object>().Any()).GetValueOrDefault())
                 {
                     var rolled = DictionaryObjectRollbackProperty(options, name, oldProp, newProp);
@@ -10151,7 +11325,7 @@ namespace SqlNado.Utilities
 
                     if (rolled == null)
                     {
-                        DictionaryObjectProperties.TryRemove(name, out DictionaryObjectProperty dop);
+                        DictionaryObjectProperties.TryRemove(name, out var dop);
                     }
                     else
                     {
@@ -10184,17 +11358,17 @@ namespace SqlNado.Utilities
         }
 
         string IDataErrorInfo.Error => DictionaryObjectError;
-        string IDataErrorInfo.this[string columnName] => DictionaryObjectGetError(columnName);
+        string IDataErrorInfo.this[string? columnName] => DictionaryObjectGetError(columnName);
         bool INotifyDataErrorInfo.HasErrors => DictionaryObjectHasErrors;
-        IEnumerable INotifyDataErrorInfo.GetErrors(string propertyName) => DictionaryObjectGetErrors(propertyName);
+        IEnumerable INotifyDataErrorInfo.GetErrors(string? propertyName) => DictionaryObjectGetErrors(propertyName);
 
-        ConcurrentDictionary<string, DictionaryObjectProperty> IDictionaryObject.Properties => DictionaryObjectProperties;
+        ConcurrentDictionary<string, DictionaryObjectProperty?> IDictionaryObject.Properties => DictionaryObjectProperties;
         bool ISQLiteObjectChangeEvents.RaiseOnPropertyChanging { get => DictionaryObjectRaiseOnPropertyChanging; set => DictionaryObjectRaiseOnPropertyChanging = value; }
         bool ISQLiteObjectChangeEvents.RaiseOnPropertyChanged { get => DictionaryObjectRaiseOnPropertyChanged; set => DictionaryObjectRaiseOnPropertyChanged = value; }
         bool ISQLiteObjectChangeEvents.RaiseOnErrorsChanged { get => DictionaryObjectRaiseOnErrorsChanged; set => DictionaryObjectRaiseOnErrorsChanged = value; }
 
-        T IDictionaryObject.GetPropertyValue<T>(T defaultValue, string name) => DictionaryObjectGetPropertyValue(defaultValue, name);
-        void IDictionaryObject.SetPropertyValue(object value, DictionaryObjectPropertySetOptions options, string name) => DictionaryObjectSetPropertyValue(value, options, name);
+        T? IDictionaryObject.GetPropertyValue<T>(T? defaultValue, string? name) where T : default => DictionaryObjectGetPropertyValue(defaultValue, name);
+        void IDictionaryObject.SetPropertyValue(object? value, DictionaryObjectPropertySetOptions options, string? name) => DictionaryObjectSetPropertyValue(value, options, name);
     }
 }
 
@@ -10202,7 +11376,7 @@ namespace SqlNado.Utilities
 {
     public class DictionaryObjectProperty
     {
-        public object Value { get; set; }
+        public object? Value { get; set; }
 
         public override string ToString()
         {
@@ -10222,7 +11396,7 @@ namespace SqlNado.Utilities
 {
     public class DictionaryObjectPropertyChangedEventArgs : PropertyChangedEventArgs
     {
-        public DictionaryObjectPropertyChangedEventArgs(string propertyName, DictionaryObjectProperty existingProperty, DictionaryObjectProperty newProperty)
+        public DictionaryObjectPropertyChangedEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, DictionaryObjectProperty newProperty)
             : base(propertyName)
         {
             if (propertyName == null)
@@ -10237,7 +11411,7 @@ namespace SqlNado.Utilities
             NewProperty = newProperty;
         }
 
-        public DictionaryObjectProperty ExistingProperty { get; }
+        public DictionaryObjectProperty? ExistingProperty { get; }
         public DictionaryObjectProperty NewProperty { get; }
     }
 }
@@ -10246,7 +11420,7 @@ namespace SqlNado.Utilities
 {
     public class DictionaryObjectPropertyChangingEventArgs : PropertyChangingEventArgs
     {
-        public DictionaryObjectPropertyChangingEventArgs(string propertyName, DictionaryObjectProperty existingProperty, DictionaryObjectProperty newProperty)
+        public DictionaryObjectPropertyChangingEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, DictionaryObjectProperty newProperty)
             : base(propertyName)
         {
             if (propertyName == null)
@@ -10261,7 +11435,7 @@ namespace SqlNado.Utilities
             NewProperty = newProperty;
         }
 
-        public DictionaryObjectProperty ExistingProperty { get; }
+        public DictionaryObjectProperty? ExistingProperty { get; }
         public DictionaryObjectProperty NewProperty { get; }
         public bool Cancel { get; set; }
     }
@@ -10271,7 +11445,7 @@ namespace SqlNado.Utilities
 {
     public class DictionaryObjectPropertyRollbackEventArgs : EventArgs
     {
-        public DictionaryObjectPropertyRollbackEventArgs(string propertyName, DictionaryObjectProperty existingProperty, object invalidValue)
+        public DictionaryObjectPropertyRollbackEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, object? invalidValue)
         {
             if (propertyName == null)
                 throw new ArgumentNullException(nameof(propertyName));
@@ -10284,8 +11458,8 @@ namespace SqlNado.Utilities
         }
 
         public string PropertyName { get; }
-        public DictionaryObjectProperty ExistingProperty { get; }
-        public object InvalidValue { get; }
+        public DictionaryObjectProperty? ExistingProperty { get; }
+        public object? InvalidValue { get; }
     }
 }
 
@@ -10307,156 +11481,6 @@ namespace SqlNado.Utilities
 
 namespace SqlNado.Utilities
 {
-    public static class Extensions
-    {
-        public const int DefaultWrapSharingViolationsRetryCount = 10;
-        public const int DefaultWrapSharingViolationsWaitTime = 100;
-
-        public static SQLiteObjectTable GetTable(this ISQLiteObject so)
-        {
-            if (so == null)
-                throw new ArgumentNullException(nameof(so));
-
-            var db = so.Database;
-            if (db == null)
-                throw new ArgumentException(null, nameof(so));
-
-            return db.GetObjectTable(so.GetType());
-        }
-
-        public static object[] GetPrimaryKey(this ISQLiteObject so) => GetTable(so).GetPrimaryKey(so);
-        public static object[] GetPrimaryKeyForBind(this ISQLiteObject so) => GetTable(so).GetPrimaryKeyForBind(so);
-
-        // this already exists as an extension in System.Globalization.GlobalizationExtensions
-        // but only in external nuget System.Globalization for .net framework, or in netstandard 2, so I prefer to redefine it here to avoid dependencies
-        public static StringComparer GetStringComparer(CompareInfo compareInfo, CompareOptions options)
-        {
-            if (compareInfo == null)
-                throw new ArgumentNullException(nameof(compareInfo));
-
-            if (options == CompareOptions.Ordinal)
-                return StringComparer.Ordinal;
-
-            if (options == CompareOptions.OrdinalIgnoreCase)
-                return StringComparer.OrdinalIgnoreCase;
-
-            if ((options & ~(CompareOptions.StringSort | CompareOptions.IgnoreWidth | CompareOptions.IgnoreKanaType | CompareOptions.IgnoreSymbols | CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreCase)) != CompareOptions.None)
-                throw new ArgumentException(null, nameof(options));
-
-            return new CultureStringComparer(compareInfo, options);
-        }
-
-        public delegate bool WrapSharingViolationsExceptionsCallback(IOException exception, int retryCount, int maxRetryCount, int waitTime);
-
-        public static void WrapSharingViolations(Action action) => WrapSharingViolations(action, DefaultWrapSharingViolationsRetryCount, DefaultWrapSharingViolationsWaitTime);
-        public static void WrapSharingViolations(Action action, int maxRetryCount, int waitTime) => WrapSharingViolations(action, null, maxRetryCount, waitTime);
-        public static void WrapSharingViolations(Action action, WrapSharingViolationsExceptionsCallback exceptionsCallback, int maxRetryCount, int waitTime)
-        {
-            if (action == null)
-                throw new ArgumentNullException(nameof(action));
-
-            for (int i = 0; i < maxRetryCount; i++)
-            {
-                try
-                {
-                    action();
-                    return;
-                }
-                catch (IOException ioe)
-                {
-                    if (IsSharingViolation(ioe) && i < (maxRetryCount - 1))
-                    {
-                        bool wait = true;
-                        if (exceptionsCallback != null)
-                        {
-                            wait = exceptionsCallback(ioe, i, maxRetryCount, waitTime);
-                        }
-
-                        if (wait)
-                        {
-                            Thread.Sleep(waitTime);
-                        }
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-            }
-        }
-
-        public static bool IsSharingViolation(IOException exception)
-        {
-            if (exception == null)
-                throw new ArgumentNullException(nameof(exception));
-
-            const int ERROR_SHARING_VIOLATION = unchecked((int)0x80070020);
-            return exception.HResult == ERROR_SHARING_VIOLATION;
-        }
-
-        private sealed class CultureStringComparer : StringComparer
-        {
-            private readonly CompareInfo _compareInfo;
-            private readonly CompareOptions _options;
-            private readonly bool _ignoreCase;
-
-            public CultureStringComparer(CompareInfo compareInfo, CompareOptions options)
-            {
-                _compareInfo = compareInfo;
-                _options = options;
-                _ignoreCase = (options & CompareOptions.IgnoreCase) == CompareOptions.IgnoreCase ||
-                    (options & CompareOptions.OrdinalIgnoreCase) == CompareOptions.OrdinalIgnoreCase;
-            }
-
-            public override bool Equals(string x, string y) => string.Equals(x, y, StringComparison.Ordinal) || (x != null && y != null) && _compareInfo.Compare(x, y, _options) == 0;
-            public override bool Equals(object obj)
-            {
-                if (!(obj is CultureStringComparer comparer))
-                    return false;
-
-                if (_ignoreCase != comparer._ignoreCase)
-                    return false;
-
-                return _compareInfo.Equals(comparer._compareInfo) && _options == comparer._options;
-            }
-
-            public override int Compare(string x, string y)
-            {
-                if (string.Equals(x, y, StringComparison.Ordinal))
-                    return 0;
-
-                if (x == null)
-                    return -1;
-
-                if (y == null)
-                    return 1;
-
-                return _compareInfo.Compare(x, y, _options);
-            }
-
-
-            public override int GetHashCode()
-            {
-                var code = _compareInfo.GetHashCode();
-                if (!_ignoreCase)
-                    return code;
-
-                return ~code;
-            }
-
-            public override int GetHashCode(string obj)
-            {
-                if (obj == null)
-                    throw new ArgumentNullException(nameof(obj));
-
-                return _compareInfo.GetHashCode(obj, _options);
-            }
-        }
-    }
-}
-
-namespace SqlNado.Utilities
-{
     public interface IChangeTrackingDictionaryObject : IDictionaryObject
     {
         ConcurrentDictionary<string, DictionaryObjectProperty> ChangedProperties { get; }
@@ -10470,10 +11494,10 @@ namespace SqlNado.Utilities
 {
     public interface IDictionaryObject : ISQLiteObjectChangeEvents
     {
-        ConcurrentDictionary<string, DictionaryObjectProperty> Properties { get; }
+        ConcurrentDictionary<string, DictionaryObjectProperty?> Properties { get; }
 
-        T GetPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null);
-        void SetPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null);
+        T? GetPropertyValue<T>(T? defaultValue, [CallerMemberName] string? name = null);
+        void SetPropertyValue(object? value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string? name = null);
     }
 }
 
@@ -10485,10 +11509,10 @@ namespace SqlNado.Utilities
 
     public class InteractiveShell<T> where T : SQLiteDatabase
     {
-        public ISQLiteLogger Logger { get; set; }
+        public ISQLiteLogger? Logger { get; set; }
 
         protected virtual bool HandleLine(T database, string line) => false;
-        protected virtual T CreateDatabase(string filePath, SQLiteOpenOptions options) => (T)Activator.CreateInstance(typeof(T), new object[] { filePath, options });
+        protected virtual T CreateDatabase(string filePath, SQLiteOpenOptions options) => (T)Activator.CreateInstance(typeof(T), new object[] { filePath, options })!;
 
         protected virtual void Write(TraceLevel level, string message)
         {
@@ -10632,7 +11656,7 @@ namespace SqlNado.Utilities
                     var split = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                     if (split.Length >= 2 && split[0].EqualsIgnoreCase("table"))
                     {
-                        int starPos = split[1].IndexOf('*');
+                        var starPos = split[1].IndexOf('*');
                         if (starPos < 0)
                         {
                             TableStringExtensions.ToTableString(db.GetTable(split[1]), Console.Out);
@@ -10640,7 +11664,7 @@ namespace SqlNado.Utilities
                             continue;
                         }
 
-                        string query = split[1].Substring(0, starPos).Nullify();
+                        var query = split[1].Substring(0, starPos).Nullify();
                         if (query == null)
                         {
                             foreach (var table in db.Tables)
@@ -10669,7 +11693,7 @@ namespace SqlNado.Utilities
                             maxRows = i;
                         }
 
-                        int starPos = split[1].IndexOf('*');
+                        var starPos = split[1].IndexOf('*');
                         if (starPos < 0)
                         {
                             TableStringExtensions.ToTableString(db.GetTable(split[1])?.GetRows(maxRows), Console.Out);
@@ -10677,7 +11701,7 @@ namespace SqlNado.Utilities
                             continue;
                         }
 
-                        string query = split[1].Substring(0, starPos).Nullify();
+                        var query = split[1].Substring(0, starPos).Nullify();
                         if (query == null)
                         {
                             foreach (var table in db.Tables)
@@ -10722,13 +11746,13 @@ namespace SqlNado.Utilities
     // note: all conversions here are using invariant culture by design
     public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
     {
-        private SQLiteDatabase _database;
+        private SQLiteDatabase? _database;
         private bool _disposedValue;
         private readonly SQLiteLoadOptions _loadKeysOptions;
         private readonly SQLiteLoadOptions _loadTypedValuesOptions;
         private readonly SQLiteLoadOptions _loadValuesOptions;
 
-        public PersistentDictionary(string filePath = null, SQLiteOpenOptions options = SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
+        public PersistentDictionary(string? filePath = null, SQLiteOpenOptions options = SQLiteOpenOptions.SQLITE_OPEN_READWRITE | SQLiteOpenOptions.SQLITE_OPEN_CREATE)
         {
             IsTypedValue = typeof(Tv) == typeof(object);
             DeleteOnDispose = filePath == null;
@@ -10745,17 +11769,17 @@ namespace SqlNado.Utilities
 
             _loadKeysOptions = new SQLiteLoadOptions(_database)
             {
-                GetInstanceFunc = (t, s, o) => s.GetColumnString(0)
+                GetInstanceFunc = (t, s, o) => s!.GetColumnString(0)
             };
 
             _loadTypedValuesOptions = new SQLiteLoadOptions(_database)
             {
-                GetInstanceFunc = (t, s, o) => new Tuple<string, string>(s.GetColumnString(0), s.GetColumnString(1))
+                GetInstanceFunc = (t, s, o) => new Tuple<string?, string?>(s!.GetColumnString(0), s.GetColumnString(1))
             };
 
             _loadValuesOptions = new SQLiteLoadOptions(_database)
             {
-                GetInstanceFunc = (t, s, o) => s.GetColumnValue(0)
+                GetInstanceFunc = (t, s, o) => s!.GetColumnValue(0)
             };
 
             if (IsTypedValue)
@@ -10768,7 +11792,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public SQLiteDatabase Database => _database;
+        public SQLiteDatabase? Database => _database;
         public bool DeleteOnDispose { get; set; }
         private bool IsTypedValue { get; }
 
@@ -10803,8 +11827,11 @@ namespace SqlNado.Utilities
                     var list = new List<Tv>();
                     foreach (var tuple in CheckDisposed().Load<Tuple<string, string>>("SELECT " + nameof(TypedEntry.Value) + ", " + nameof(TypedEntry.TypeName) + " FROM " + nameof(TypedEntry), _loadTypedValuesOptions))
                     {
-                        var value = ConvertToValue(tuple.Item1, tuple.Item2);
-                        list.Add((Tv)value);
+                        var value = (Tv?)ConvertToValue(tuple.Item1, tuple.Item2);
+                        if (value != null)
+                        {
+                            list.Add(value);
+                        }
                     }
                     return list;
                 }
@@ -10814,8 +11841,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public override string ToString() => _database?.FilePath;
-
+        public override string? ToString() => _database?.FilePath;
 
         public virtual void Clear()
         {
@@ -10871,7 +11897,7 @@ namespace SqlNado.Utilities
                 var typed = CheckDisposed().LoadByPrimaryKey<TypedEntry>(key);
                 if (typed != null)
                 {
-                    value = (Tv)ConvertToValue(typed.Value, typed.TypeName);
+                    value = (Tv)ConvertToValue(typed.Value, typed.TypeName)!;
                     return true;
                 }
             }
@@ -10880,12 +11906,12 @@ namespace SqlNado.Utilities
                 var entry = CheckDisposed().LoadByPrimaryKey<Entry>(key);
                 if (entry != null)
                 {
-                    value = entry.Value;
+                    value = entry.Value!;
                     return true;
                 }
             }
 
-            value = default;
+            value = default!;
             return false;
         }
 
@@ -10934,8 +11960,8 @@ namespace SqlNado.Utilities
                     if ((arrayIndex + i) >= array.Length)
                         return;
 
-                    var value = (Tv)ConvertToValue(entry.Value, entry.TypeName);
-                    array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key, value);
+                    var value = (Tv)ConvertToValue(entry.Value, entry.TypeName)!;
+                    array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key!, value);
                     i++;
                 }
                 return;
@@ -10946,12 +11972,12 @@ namespace SqlNado.Utilities
                 if ((arrayIndex + i) >= array.Length)
                     return;
 
-                array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key, entry.Value);
+                array[arrayIndex + i] = new KeyValuePair<Tk, Tv>(entry.Key!, entry.Value!);
                 i++;
             }
         }
 
-        public virtual string ConvertToString(object input, out string typeName)
+        public virtual string? ConvertToString(object? input, out string? typeName)
         {
             if (input == null || Convert.IsDBNull(input))
             {
@@ -11013,75 +12039,76 @@ namespace SqlNado.Utilities
             }
         }
 
-        public virtual object ConvertToValue(string input, string typeName)
+        public virtual object? ConvertToValue(string? input, string? typeName)
         {
             if (typeName == null)
                 return input;
 
             if (!int.TryParse(typeName, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i))
             {
-                var type = Type.GetType(typeName, true);
+                var type = Type.GetType(typeName, true)!;
                 if (type.IsEnum)
                     return Conversions.ToEnum(input, type);
 
                 return Conversions.ChangeType(input, type, null, CultureInfo.InvariantCulture);
             }
 
+
             switch (i)
             {
                 case (int)TypeCode.Boolean:
-                    return bool.Parse(input);
+                    return input != null ? bool.Parse(input) : false;
 
                 case (int)TypeCode.Byte:
-                    return byte.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? byte.Parse(input, CultureInfo.InvariantCulture) : (byte)0;
 
                 case (int)TypeCode.Char:
-                    return char.Parse(input);
+                    return input != null ? char.Parse(input) : (char)0;
 
                 case (int)TypeCode.DateTime:
-                    return DateTime.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? DateTime.Parse(input, CultureInfo.InvariantCulture) : DateTime.MinValue;
 
                 case (int)TypeCode.Decimal:
-                    return decimal.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? decimal.Parse(input, CultureInfo.InvariantCulture) : 0m;
 
                 case (int)TypeCode.Double:
-                    return double.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? double.Parse(input, CultureInfo.InvariantCulture) : 0d;
 
                 case (int)TypeCode.Int16:
-                    return short.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? short.Parse(input, CultureInfo.InvariantCulture) : (short)0;
 
                 case (int)TypeCode.Int32:
-                    return int.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? int.Parse(input, CultureInfo.InvariantCulture) : 0;
 
                 case (int)TypeCode.Int64:
-                    return long.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? long.Parse(input, CultureInfo.InvariantCulture) : 0L;
 
                 case (int)TypeCode.SByte:
-                    return sbyte.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? sbyte.Parse(input, CultureInfo.InvariantCulture) : (sbyte)0;
 
                 case (int)TypeCode.Single:
-                    return float.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? float.Parse(input, CultureInfo.InvariantCulture) : 0f;
 
                 case (int)TypeCode.UInt16:
-                    return ushort.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? ushort.Parse(input, CultureInfo.InvariantCulture) : (ushort)0;
 
                 case (int)TypeCode.UInt32:
-                    return uint.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? uint.Parse(input, CultureInfo.InvariantCulture) : 0u;
 
                 case (int)TypeCode.UInt64:
-                    return ulong.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? ulong.Parse(input, CultureInfo.InvariantCulture) : 0ul;
 
                 case (int)TypeCodeEx.ByteArray:
-                    return Conversions.ToBytes(input);
+                    return input != null ? Conversions.ToBytes(input) : null;
 
                 case (int)TypeCodeEx.DateTimeOffset:
-                    return DateTimeOffset.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? DateTimeOffset.Parse(input, CultureInfo.InvariantCulture) : DateTimeOffset.MinValue;
 
                 case (int)TypeCodeEx.Guid:
-                    return Guid.Parse(input);
+                    return input != null ? Guid.Parse(input) : Guid.Empty;
 
                 case (int)TypeCodeEx.TimeSpan:
-                    return TimeSpan.Parse(input, CultureInfo.InvariantCulture);
+                    return input != null ? TimeSpan.Parse(input, CultureInfo.InvariantCulture) : TimeSpan.Zero;
 
                 default:
                     throw new NotSupportedException();
@@ -11092,7 +12119,7 @@ namespace SqlNado.Utilities
 
         private sealed class TypedEntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
-            private IEnumerator<TypedEntry> _enumerator;
+            private IEnumerator<TypedEntry>? _enumerator;
             private readonly PersistentDictionary<Tk, Tv> _dic;
 
             public TypedEntryEnumerator(PersistentDictionary<Tk, Tv> dic)
@@ -11105,40 +12132,43 @@ namespace SqlNado.Utilities
             {
                 get
                 {
-                    var value = _dic.ConvertToValue(_enumerator.Current.Value, _enumerator.Current.TypeName);
-                    return new KeyValuePair<Tk, Tv>(_enumerator.Current.Key, (Tv)value);
+                    if (_enumerator == null)
+                        return new KeyValuePair<Tk, Tv>();
+
+                    var value = _dic.ConvertToValue(_enumerator.Current.Value!, _enumerator.Current.TypeName);
+                    return new KeyValuePair<Tk, Tv>(_enumerator.Current.Key!, (Tv)value!);
                 }
             }
 
             object IEnumerator.Current => Current;
 
             public void Dispose() => Interlocked.Exchange(ref _enumerator, null)?.Dispose();
-            public bool MoveNext() => _enumerator.MoveNext();
-            public void Reset() => _enumerator.Reset();
+            public bool MoveNext() => (_enumerator?.MoveNext()).GetValueOrDefault();
+            public void Reset() => _enumerator?.Reset();
         }
 
         private sealed class EntryEnumerator : IEnumerator<KeyValuePair<Tk, Tv>>
         {
-            private IEnumerator<Entry> _enumerator;
+            private IEnumerator<Entry>? _enumerator;
 
             public EntryEnumerator(PersistentDictionary<Tk, Tv> dic)
             {
                 _enumerator = dic.CheckDisposed().LoadAll<Entry>().GetEnumerator();
             }
 
-            public KeyValuePair<Tk, Tv> Current => new KeyValuePair<Tk, Tv>(_enumerator.Current.Key, _enumerator.Current.Value);
+            public KeyValuePair<Tk, Tv> Current => _enumerator != null ? new KeyValuePair<Tk, Tv>(_enumerator.Current.Key!, _enumerator.Current.Value!) : new KeyValuePair<Tk, Tv>();
             object IEnumerator.Current => Current;
 
             public void Dispose() => Interlocked.Exchange(ref _enumerator, null)?.Dispose();
-            public bool MoveNext() => _enumerator.MoveNext();
-            public void Reset() => _enumerator.Reset();
+            public bool MoveNext() => (_enumerator?.MoveNext()).GetValueOrDefault();
+            public void Reset() => _enumerator?.Reset();
         }
 
         private class Entry
         {
             [SQLiteColumn(IsPrimaryKey = true)]
-            public Tk Key { get; set; }
-            public Tv Value { get; set; }
+            public Tk? Key { get; set; }
+            public Tv? Value { get; set; }
         }
 
         private enum TypeCodeEx
@@ -11152,14 +12182,10 @@ namespace SqlNado.Utilities
 
         private sealed class TypedEntry : Entry
         {
-            public new string Value { get; set; }
-            public string TypeName { get; set; }
+            public new string? Value { get; set; }
+            public string? TypeName { get; set; }
 
-            public TypedEntry()
-            {
-            }
-
-            public TypedEntry(Tk key, string value, string typeName)
+            public TypedEntry(Tk key, string? value, string? typeName)
             {
                 Key = key;
                 Value = value;
@@ -11180,7 +12206,7 @@ namespace SqlNado.Utilities
                         db.Dispose();
                         if (DeleteOnDispose)
                         {
-                            Extensions.WrapSharingViolations(() => File.Delete(db.FilePath));
+                            SQLiteExtensions.WrapSharingViolations(() => File.Delete(db.FilePath));
                         }
                     }
                 }
@@ -11221,12 +12247,12 @@ namespace SqlNado.Utilities
             ((ISQLiteObject)this).Database = database;
         }
 
-        SQLiteDatabase ISQLiteObject.Database { get; set; }
-        protected SQLiteDatabase Database => ((ISQLiteObject)this).Database;
+        SQLiteDatabase? ISQLiteObject.Database { get; set; }
+        protected SQLiteDatabase? Database => ((ISQLiteObject)this).Database;
 
-        public virtual bool Save(SQLiteSaveOptions options = null) => Database.Save(this, options);
-        public virtual bool Delete(SQLiteDeleteOptions options = null) => Database.Delete(this, options);
-        protected virtual IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options = null) => Database.LoadByForeignKey<T>(this, options);
+        public virtual bool Save(SQLiteSaveOptions? options = null) => Database!.Save(this, options);
+        public virtual bool Delete(SQLiteDeleteOptions? options = null) => Database!.Delete(this, options);
+        protected virtual IEnumerable<T?> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions? options = null) => Database!.LoadByForeignKey<T>(this, options);
     }
 }
 
@@ -11243,7 +12269,7 @@ namespace SqlNado.Utilities
         public ConcurrentDictionary<string, DictionaryObjectProperty> ChangedProperties => DictionaryObjectChangedProperties;
 
         [SQLiteColumn(Ignore = true)]
-        public ConcurrentDictionary<string, DictionaryObjectProperty> Properties => DictionaryObjectProperties;
+        public ConcurrentDictionary<string, DictionaryObjectProperty?> Properties => DictionaryObjectProperties;
 
         [SQLiteColumn(Ignore = true)]
         public bool HasChanged => !ChangedProperties.IsEmpty;
@@ -11252,17 +12278,17 @@ namespace SqlNado.Utilities
         public bool HasErrors => DictionaryObjectHasErrors;
 
         [SQLiteColumn(Ignore = true)]
-        public new SQLiteDatabase Database => base.Database;
+        public new SQLiteDatabase? Database => base.Database;
 
-        public virtual new IEnumerable<T> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions options = null) => base.LoadByForeignKey<T>(options);
+        public virtual new IEnumerable<T?> LoadByForeignKey<T>(SQLiteLoadForeignKeyOptions? options = null) => base.LoadByForeignKey<T>(options);
         public virtual void CommitChanges() => DictionaryObjectCommitChanges();
         public virtual void RollbackChanges(DictionaryObjectPropertySetOptions options = DictionaryObjectPropertySetOptions.None) => DictionaryObjectRollbackChanges(options);
 
-        public T GetPropertyValue<T>([CallerMemberName] string name = null) => GetPropertyValue(default(T), name);
-        public virtual T GetPropertyValue<T>(T defaultValue, [CallerMemberName] string name = null) => DictionaryObjectGetPropertyValue(defaultValue, name);
+        public T? GetPropertyValue<T>([CallerMemberName] string? name = null) => GetPropertyValue(default(T), name);
+        public virtual T? GetPropertyValue<T>(T? defaultValue, [CallerMemberName] string? name = null) => DictionaryObjectGetPropertyValue(defaultValue, name);
 
-        public bool SetPropertyValue(object value, [CallerMemberName] string name = null) => SetPropertyValue(value, DictionaryObjectPropertySetOptions.None, name);
-        public virtual bool SetPropertyValue(object value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string name = null) => DictionaryObjectSetPropertyValue(value, options, name);
+        public bool SetPropertyValue(object? value, [CallerMemberName] string? name = null) => SetPropertyValue(value, DictionaryObjectPropertySetOptions.None, name);
+        public virtual bool SetPropertyValue(object? value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string? name = null) => DictionaryObjectSetPropertyValue(value, options, name);
     }
 }
 
@@ -11285,7 +12311,7 @@ namespace SqlNado.Utilities
         public SQLiteBaseObject Owner { get; }
         public string ColumnName { get; }
 
-        bool ISQLiteBlobObject.TryGetData(out byte[] data)
+        bool ISQLiteBlobObject.TryGetData(out byte[]? data)
         {
             data = null;
             return false;
@@ -11335,7 +12361,7 @@ namespace SqlNado.Utilities
                 throw new ArgumentNullException(nameof(inputStream));
 
             var db = ((ISQLiteObject)Owner).Database;
-            var table = db.GetObjectTable(Owner.GetType());
+            var table = db!.GetObjectTable(Owner.GetType());
             var col = table.GetColumn(ColumnName);
             if (col == null)
                 throw new SqlNadoException("0018: Cannot find column name '" + ColumnName + "' on table '" + table.Name + "'.'");
@@ -11391,7 +12417,7 @@ namespace SqlNado.Utilities
                 throw new ArgumentNullException(nameof(outputStream));
 
             var db = ((ISQLiteObject)Owner).Database;
-            var table = db.GetObjectTable(Owner.GetType());
+            var table = db!.GetObjectTable(Owner.GetType());
             var col = table.GetColumn(ColumnName);
             if (col == null)
                 throw new SqlNadoException("0021: Cannot find column name '" + ColumnName + "' on table '" + table.Name + "'.'");
@@ -11412,6 +12438,156 @@ namespace SqlNado.Utilities
 
 namespace SqlNado.Utilities
 {
+    public static class SQLiteExtensions
+    {
+        public const int DefaultWrapSharingViolationsRetryCount = 10;
+        public const int DefaultWrapSharingViolationsWaitTime = 100;
+
+        public static SQLiteObjectTable GetTable(this ISQLiteObject so)
+        {
+            if (so == null)
+                throw new ArgumentNullException(nameof(so));
+
+            var db = so.Database;
+            if (db == null)
+                throw new ArgumentException(null, nameof(so));
+
+            return db.GetObjectTable(so.GetType());
+        }
+
+        public static object[] GetPrimaryKey(this ISQLiteObject so) => GetTable(so).GetPrimaryKey(so);
+        public static object[] GetPrimaryKeyForBind(this ISQLiteObject so) => GetTable(so).GetPrimaryKeyForBind(so);
+
+        // this already exists as an extension in System.Globalization.GlobalizationExtensions
+        // but only in external nuget System.Globalization for .net framework, or in netstandard 2, so I prefer to redefine it here to avoid dependencies
+        public static StringComparer GetStringComparer(CompareInfo compareInfo, CompareOptions options)
+        {
+            if (compareInfo == null)
+                throw new ArgumentNullException(nameof(compareInfo));
+
+            if (options == CompareOptions.Ordinal)
+                return StringComparer.Ordinal;
+
+            if (options == CompareOptions.OrdinalIgnoreCase)
+                return StringComparer.OrdinalIgnoreCase;
+
+            if ((options & ~(CompareOptions.StringSort | CompareOptions.IgnoreWidth | CompareOptions.IgnoreKanaType | CompareOptions.IgnoreSymbols | CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreCase)) != CompareOptions.None)
+                throw new ArgumentException(null, nameof(options));
+
+            return new CultureStringComparer(compareInfo, options);
+        }
+
+        public delegate bool WrapSharingViolationsExceptionsCallback(IOException exception, int retryCount, int maxRetryCount, int waitTime);
+
+        public static void WrapSharingViolations(Action action) => WrapSharingViolations(action, DefaultWrapSharingViolationsRetryCount, DefaultWrapSharingViolationsWaitTime);
+        public static void WrapSharingViolations(Action action, int maxRetryCount, int waitTime) => WrapSharingViolations(action, null, maxRetryCount, waitTime);
+        public static void WrapSharingViolations(Action action, WrapSharingViolationsExceptionsCallback? exceptionsCallback, int maxRetryCount, int waitTime)
+        {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
+
+            for (var i = 0; i < maxRetryCount; i++)
+            {
+                try
+                {
+                    action();
+                    return;
+                }
+                catch (IOException ioe)
+                {
+                    if (IsSharingViolation(ioe) && i < (maxRetryCount - 1))
+                    {
+                        var wait = true;
+                        if (exceptionsCallback != null)
+                        {
+                            wait = exceptionsCallback(ioe, i, maxRetryCount, waitTime);
+                        }
+
+                        if (wait)
+                        {
+                            Thread.Sleep(waitTime);
+                        }
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
+
+        public static bool IsSharingViolation(IOException exception)
+        {
+            if (exception == null)
+                throw new ArgumentNullException(nameof(exception));
+
+            const int ERROR_SHARING_VIOLATION = unchecked((int)0x80070020);
+            return exception.HResult == ERROR_SHARING_VIOLATION;
+        }
+
+        private sealed class CultureStringComparer : StringComparer
+        {
+            private readonly CompareInfo _compareInfo;
+            private readonly CompareOptions _options;
+            private readonly bool _ignoreCase;
+
+            public CultureStringComparer(CompareInfo compareInfo, CompareOptions options)
+            {
+                _compareInfo = compareInfo;
+                _options = options;
+                _ignoreCase = (options & CompareOptions.IgnoreCase) == CompareOptions.IgnoreCase ||
+                    (options & CompareOptions.OrdinalIgnoreCase) == CompareOptions.OrdinalIgnoreCase;
+            }
+
+            public override bool Equals(string? x, string? y) => string.Equals(x, y, StringComparison.Ordinal) || x != null && y != null && _compareInfo.Compare(x, y, _options) == 0;
+            public override bool Equals(object? obj)
+            {
+                if (!(obj is CultureStringComparer comparer))
+                    return false;
+
+                if (_ignoreCase != comparer._ignoreCase)
+                    return false;
+
+                return _compareInfo.Equals(comparer._compareInfo) && _options == comparer._options;
+            }
+
+            public override int Compare(string? x, string? y)
+            {
+                if (string.Equals(x, y, StringComparison.Ordinal))
+                    return 0;
+
+                if (x == null)
+                    return -1;
+
+                if (y == null)
+                    return 1;
+
+                return _compareInfo.Compare(x, y, _options);
+            }
+
+
+            public override int GetHashCode()
+            {
+                var code = _compareInfo.GetHashCode();
+                if (!_ignoreCase)
+                    return code;
+
+                return ~code;
+            }
+
+            public override int GetHashCode(string obj)
+            {
+                if (obj == null)
+                    throw new ArgumentNullException(nameof(obj));
+
+                return _compareInfo.GetHashCode(obj, _options);
+            }
+        }
+    }
+}
+
+namespace SqlNado.Utilities
+{
     public abstract class SQLiteTrackObject : SQLiteBaseObject
     {
         protected SQLiteTrackObject(SQLiteDatabase database)
@@ -11424,13 +12600,13 @@ namespace SqlNado.Utilities
         public DateTime CreationDateUtc { get => DictionaryObjectGetPropertyValue<DateTime>(); set => DictionaryObjectSetPropertyValue(value); }
 
         [SQLiteColumn(InsertOnly = true, AutomaticType = SQLiteAutomaticColumnType.EnvironmentDomainMachineUserNameIfNull)]
-        public string CreationUserName { get => DictionaryObjectGetPropertyValue<string>(); set => DictionaryObjectSetPropertyValue(value); }
+        public string? CreationUserName { get => DictionaryObjectGetPropertyValue<string>(); set => DictionaryObjectSetPropertyValue(value); }
 
         [SQLiteColumn(AutomaticType = SQLiteAutomaticColumnType.DateTimeNowUtc)]
         public DateTime LastWriteDateUtc { get => DictionaryObjectGetPropertyValue<DateTime>(); set => DictionaryObjectSetPropertyValue(value); }
 
         [SQLiteColumn(AutomaticType = SQLiteAutomaticColumnType.EnvironmentDomainMachineUserName)]
-        public string LastWriteUserName { get => DictionaryObjectGetPropertyValue<string>(); set => DictionaryObjectSetPropertyValue(value); }
+        public string? LastWriteUserName { get => DictionaryObjectGetPropertyValue<string>(); set => DictionaryObjectSetPropertyValue(value); }
     }
 }
 
@@ -11454,7 +12630,7 @@ namespace SqlNado.Utilities
         private int _defaultCellMaxLength;
         private char _defaultNewLineReplacement;
         private char _defaultNonPrintableReplacement;
-        private string _defaultHyphens;
+        private string? _defaultHyphens;
         private ConsoleColor? _defaultHeaderForegroundColor;
         private ConsoleColor? _defaultHeaderBackgroundColor;
         private ConsoleColor? _defaultForegroundColor;
@@ -11513,19 +12689,19 @@ namespace SqlNado.Utilities
         public virtual char MiddleRightCharacter { get; set; }
         public virtual char VerticalCharacter { get; set; }
         public virtual char HorizontalCharacter { get; set; }
-        public virtual TableStringPadding CellPadding { get; set; }
+        public virtual TableStringPadding? CellPadding { get; set; }
         public virtual bool CanReduceCellPadding { get; set; }
         public virtual bool CellWrap { get; set; }
-        public virtual Func<char, char> PrintCharFunc { get; set; }
+        public virtual Func<char, char>? PrintCharFunc { get; set; }
 
         // default column settings
         public TableStringAlignment DefaultCellAlignment { get; set; }
         public TableStringAlignment DefaultHeaderCellAlignment { get; set; }
         public virtual char DefaultNewLineReplacement { get => _defaultNewLineReplacement; set => _defaultNewLineReplacement = value; }
         public virtual char DefaultNonPrintableReplacement { get => _defaultNonPrintableReplacement; set => _defaultNonPrintableReplacement = ToPrintable(value); }
-        public virtual string DefaultHyphens { get => _defaultHyphens; set => _defaultHyphens = value ?? string.Empty; }
+        public virtual string? DefaultHyphens { get => _defaultHyphens; set => _defaultHyphens = value ?? string.Empty; }
         public virtual int DefaultCellMaxLength { get => _defaultCellMaxLength; set => _defaultCellMaxLength = Math.Max(value, 1); }
-        public virtual IFormatProvider DefaultFormatProvider { get; set; }
+        public virtual IFormatProvider? DefaultFormatProvider { get; set; }
         public virtual ConsoleColor? DefaultHeaderForegroundColor { get => _defaultHeaderForegroundColor ?? GlobalHeaderForegroundColor; set => _defaultHeaderForegroundColor = value; }
         public virtual ConsoleColor? DefaultHeaderBackgroundColor { get => _defaultHeaderBackgroundColor ?? GlobalHeaderBackgroundColor; set => _defaultHeaderBackgroundColor = value; }
         public virtual ConsoleColor? DefaultForegroundColor { get => _defaultForegroundColor ?? GlobalForegroundColor; set => _defaultForegroundColor = value; }
@@ -11671,7 +12847,7 @@ namespace SqlNado.Utilities
                 Line++;
             }
 
-            public override void WriteLine(string value)
+            public override void WriteLine(string? value)
             {
                 Write(value);
                 WriteLine();
@@ -11693,7 +12869,7 @@ namespace SqlNado.Utilities
                 }
             }
 
-            public override void Write(string value)
+            public override void Write(string? value)
             {
                 if (value == null)
                     return;
@@ -11720,7 +12896,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public virtual string Write(IEnumerable enumerable)
+        public virtual string Write(IEnumerable? enumerable)
         {
             using (var sw = new StringWriter())
             {
@@ -11729,7 +12905,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public virtual void Write(TextWriter writer, IEnumerable enumerable)
+        public virtual void Write(TextWriter writer, IEnumerable? enumerable)
         {
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
@@ -11740,8 +12916,8 @@ namespace SqlNado.Utilities
             if (enumerable == null)
                 return;
 
-            bool consoleMode = IsInConsoleMode(writer);
-            bool useConsoleWriter = MaximumWidth > 0 && consoleMode && ConsoleWindowWidth == MaximumWidth;
+            var consoleMode = IsInConsoleMode(writer);
+            var useConsoleWriter = MaximumWidth > 0 && consoleMode && ConsoleWindowWidth == MaximumWidth;
             var cw = useConsoleWriter ? new ConsoleModeTextWriter(writer, MaximumWidth) : writer;
 
             // switch to indented writer if needed
@@ -11813,8 +12989,8 @@ namespace SqlNado.Utilities
                 }
             }
 
-            string leftPadding = CellPadding != null ? new string(' ', CellPadding.Left) : null;
-            string rightPadding = CellPadding != null ? new string(' ', CellPadding.Right) : null;
+            var leftPadding = CellPadding != null ? new string(' ', CellPadding.Left) : null;
+            var rightPadding = CellPadding != null ? new string(' ', CellPadding.Right) : null;
 
             wr.Write(VerticalCharacter);
             for (var i = 0; i < columnsCount; i++)
@@ -11870,13 +13046,13 @@ namespace SqlNado.Utilities
                         if (height == 0)
                         {
                             cell.ComputeTextLines();
-                            if (cell.TextLines.Length > cellsMaxHeight)
+                            if (cell.TextLines != null && cell.TextLines.Length > cellsMaxHeight)
                             {
                                 cellsMaxHeight = Math.Min(MaximumRowHeight, cell.TextLines.Length);
                             }
                         }
 
-                        if (height < cell.TextLines.Length)
+                        if (cell.TextLines != null && height < cell.TextLines.Length)
                         {
                             cell.WriteTextLine(wr, height);
                         }
@@ -11925,7 +13101,7 @@ namespace SqlNado.Utilities
 
             header.Clear();
             rows.Clear();
-            int[] desiredPaddedColumnWidths = null; // with h padding
+            int[]? desiredPaddedColumnWidths = null; // with h padding
             var hp = CellPadding != null ? CellPadding.Horizontal : 0;
             foreach (var row in enumerable)
             {
@@ -12014,7 +13190,7 @@ namespace SqlNado.Utilities
                 {
                     maxWidth--;
                 }
-                
+
                 var desiredWidth = desiredPaddedColumnWidths.Sum();
                 if (desiredWidth > maxWidth)
                 {
@@ -12107,11 +13283,11 @@ namespace SqlNado.Utilities
             return desiredPaddedColumnWidths.Length;
         }
 
-        protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object> getValueFunc) => new TableStringColumn(this, name, getValueFunc);
+        protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object?> getValueFunc) => new TableStringColumn(this, name, getValueFunc);
         public virtual bool IsInConsoleMode(TextWriter writer) => IsConsoleValid && (writer == Console.Out || writer is ConsoleModeTextWriter);
 
-        public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, string text) => WriteWithColor(writer, foreground, Console.BackgroundColor, text);
-        public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, ConsoleColor background, string text)
+        public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, string? text) => WriteWithColor(writer, foreground, Console.BackgroundColor, text);
+        public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, ConsoleColor background, string? text)
         {
             var fcolor = Console.ForegroundColor;
             var bcolor = Console.BackgroundColor;
@@ -12149,7 +13325,7 @@ namespace SqlNado.Utilities
             if (first == null)
                 throw new ArgumentNullException(nameof(first));
 
-            bool scanObject = ScanProperties(first);
+            var scanObject = ScanProperties(first);
             if (scanObject)
             {
                 if (first is Array array)
@@ -12161,9 +13337,9 @@ namespace SqlNado.Utilities
                     return;
                 }
 
-                if (first is DataRow row)
+                if (first is System.Data.DataRow row)
                 {
-                    foreach (DataColumn column in row.Table.Columns)
+                    foreach (System.Data.DataColumn column in row.Table.Columns)
                     {
                         AddColumn(new DataColumnTableStringColumn(this, column));
                     }
@@ -12182,14 +13358,20 @@ namespace SqlNado.Utilities
                     return;
                 }
 
-                if (IsKeyValuePairEnumerable(first.GetType(), out Type keyType, out Type valueType, out Type enumerableType))
+                if (IsKeyValuePairEnumerable(first.GetType(), out var keyType, out var valueType, out var enumerableType))
                 {
-                    var enumerable = (IEnumerable)Cast(enumerableType, first);
-                    foreach (var kvp in enumerable)
+                    var enumerable = (IEnumerable?)Cast(enumerableType, first);
+                    if (enumerable != null && keyType != null && valueType != null)
                     {
-                        var pi = kvp.GetType().GetProperty("Key");
-                        string key = pi.GetValue(kvp).ToString();
-                        AddColumn(new KeyValuePairTableStringColumn(this, keyType, valueType, key));
+                        foreach (var kvp in enumerable)
+                        {
+                            var pi = kvp.GetType().GetProperty("Key");
+                            var key = pi?.GetValue(kvp)?.ToString();
+                            if (key == null)
+                                continue;
+
+                            AddColumn(new KeyValuePairTableStringColumn(this, keyType, valueType, key));
+                        }
                     }
                     return;
                 }
@@ -12220,30 +13402,33 @@ namespace SqlNado.Utilities
             }
         }
 
-        internal static object Cast(Type type, object value)
+        internal static object? Cast(Type? type, object? value)
         {
+            if (type == null || value == null)
+                return null;
+
             var parameter = Expression.Parameter(typeof(object));
             var block = Expression.Block(Expression.Convert(Expression.Convert(parameter, value.GetType()), type));
             var func = Expression.Lambda(block, parameter).Compile();
             return func.DynamicInvoke(value);
         }
 
-        private static bool IsKeyValuePairEnumerable(Type inputType, out Type keyType, out Type valueType, out Type enumerableType)
+        private static bool IsKeyValuePairEnumerable(Type inputType, out Type? keyType, out Type? valueType, out Type? enumerableType)
         {
             keyType = null;
             valueType = null;
             enumerableType = null;
-            foreach (Type type in inputType.GetInterfaces().Where(i => i.IsGenericType && typeof(IEnumerable<>).IsAssignableFrom(i.GetGenericTypeDefinition())))
+            foreach (var type in inputType.GetInterfaces().Where(i => i.IsGenericType && typeof(IEnumerable<>).IsAssignableFrom(i.GetGenericTypeDefinition())))
             {
-                Type[] args = type.GetGenericArguments();
+                var args = type.GetGenericArguments();
                 if (args.Length != 1)
                     continue;
 
-                Type kvp = args[0];
+                var kvp = args[0];
                 if (!kvp.IsGenericType || !typeof(KeyValuePair<,>).IsAssignableFrom(kvp.GetGenericTypeDefinition()))
                     continue;
 
-                Type[] kvpArgs = kvp.GetGenericArguments();
+                var kvpArgs = kvp.GetGenericArguments();
                 if (kvpArgs.Length == 2)
                 {
                     keyType = kvpArgs[0];
@@ -12255,7 +13440,7 @@ namespace SqlNado.Utilities
             return false;
         }
 
-        protected virtual TableStringCell CreateCell(TableStringColumn column, object value)
+        protected virtual TableStringCell CreateCell(TableStringColumn column, object? value)
         {
             if (value != null && value.Equals(column))
                 return new HeaderTableStringCell(column);
@@ -12338,10 +13523,10 @@ namespace SqlNado.Utilities
     public class TableStringColumn
     {
         private int? _maxLength;
-        private IFormatProvider _formatProvider;
+        private IFormatProvider? _formatProvider;
         private TableStringAlignment? _aligment;
         private TableStringAlignment? _headerAligment;
-        private string _hyphens;
+        private string? _hyphens;
         private int _width = -1;
         private int _widthWithoutPadding = -1;
         private bool? _padded;
@@ -12352,7 +13537,7 @@ namespace SqlNado.Utilities
         private ConsoleColor? _foregroundColor;
         private ConsoleColor? _backgroundColor;
 
-        public TableStringColumn(TableString table, string name, Func<TableStringColumn, object, object> getValueFunc)
+        public TableStringColumn(TableString table, string name, Func<TableStringColumn, object, object?> getValueFunc)
         {
             if (table == null)
                 throw new ArgumentNullException(nameof(table));
@@ -12371,7 +13556,7 @@ namespace SqlNado.Utilities
 
         public TableString Table { get; }
         public string Name { get; }
-        public Func<TableStringColumn, object, object> GetValueFunc { get; }
+        public Func<TableStringColumn, object, object?> GetValueFunc { get; }
         public int Index { get; internal set; }
         public int DesiredPaddedWidth { get; internal set; }
         public int WidthWithPadding { get => _width; internal set => _width = Math.Min(MaxLength, value); }
@@ -12379,10 +13564,10 @@ namespace SqlNado.Utilities
         public bool IsHorizontallyPadded { get => _padded ?? true; internal set => _padded = value; }
 
         public virtual int MaxLength { get => _maxLength ?? Table.DefaultCellMaxLength; set => _maxLength = value; }
-        public virtual string Hyphens { get => _hyphens ?? Table.DefaultHyphens; set => _hyphens = value; }
+        public virtual string? Hyphens { get => _hyphens ?? Table.DefaultHyphens; set => _hyphens = value; }
         public virtual char NewLineReplacement { get => _newLineReplacement ?? Table.DefaultNewLineReplacement; set => _newLineReplacement = value; }
         public virtual char NonPrintableReplacement { get => _nonPrintableReplacement ?? Table.DefaultNonPrintableReplacement; set => _nonPrintableReplacement = Table.ToPrintable(value); }
-        public virtual IFormatProvider FormatProvider { get => _formatProvider ?? Table.DefaultFormatProvider; set => _formatProvider = value; }
+        public virtual IFormatProvider? FormatProvider { get => _formatProvider ?? Table.DefaultFormatProvider; set => _formatProvider = value; }
         public virtual TableStringAlignment Alignment { get => _aligment ?? Table.DefaultCellAlignment; set => _aligment = value; }
         public virtual TableStringAlignment HeaderAlignment { get => _headerAligment ?? Table.DefaultHeaderCellAlignment; set => _headerAligment = value; }
         public virtual ConsoleColor? HeaderForegroundColor { get => _headerForegroundColor ?? Table.DefaultHeaderForegroundColor; set => _headerForegroundColor = value; }
@@ -12395,9 +13580,9 @@ namespace SqlNado.Utilities
 
     public class TableStringCell
     {
-        private string[] _split;
+        private string[]? _split;
 
-        public TableStringCell(TableStringColumn column, object value)
+        public TableStringCell(TableStringColumn column, object? value)
         {
             if (column == null)
                 throw new ArgumentNullException(nameof(column));
@@ -12407,10 +13592,10 @@ namespace SqlNado.Utilities
         }
 
         public TableStringColumn Column { get; }
-        public object Value { get; }
+        public object? Value { get; }
         public virtual TableStringAlignment Alignment => Column.Alignment;
-        public virtual string Text { get; protected set; }
-        public virtual string[] TextLines { get; protected set; }
+        public virtual string? Text { get; protected set; }
+        public virtual string?[]? TextLines { get; protected set; }
 
         public virtual int DesiredColumnWith
         {
@@ -12422,7 +13607,7 @@ namespace SqlNado.Utilities
                 var pos = Text.IndexOfAny(new[] { '\r', '\n' });
                 if (pos >= 0)
                 {
-                    _split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    _split ??= Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                     return _split.Max(s => s.Length);
                 }
 
@@ -12433,7 +13618,7 @@ namespace SqlNado.Utilities
             }
         }
 
-        public override string ToString() => Text;
+        public override string? ToString() => Text;
 
         public virtual void ComputeText()
         {
@@ -12445,7 +13630,7 @@ namespace SqlNado.Utilities
         }
 
         // this early escaping can change text length
-        public virtual string EscapeText(string text)
+        public virtual string? EscapeText(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return text;
@@ -12464,7 +13649,7 @@ namespace SqlNado.Utilities
         }
 
         // this *must not* change text length, it's too late
-        public virtual string EscapeTextLine(string text)
+        public virtual string? EscapeTextLine(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return text;
@@ -12482,6 +13667,9 @@ namespace SqlNado.Utilities
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
 
+            if (TextLines == null)
+                throw new InvalidOperationException();
+
             if (Column.Table.IsInConsoleMode(writer) && (Column.ForegroundColor.HasValue || Column.BackgroundColor.HasValue))
             {
                 Column.Table.WriteWithColor(writer, Column.ForegroundColor ?? Console.ForegroundColor, Column.BackgroundColor ?? Console.BackgroundColor, TextLines[index]);
@@ -12498,16 +13686,16 @@ namespace SqlNado.Utilities
 
             if (Text == null)
             {
-                TextLines = new string[] { null };
+                TextLines = new string?[] { null };
             }
             else if (_split == null && Text.Length <= Column.WidthWithoutPadding)
             {
-                TextLines = new string[] { Align(EscapeTextLine(Text)) };
+                TextLines = new string?[] { Align(EscapeTextLine(Text)) };
             }
             else
             {
                 var split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                var lines = new List<string>();
+                var lines = new List<string?>();
                 var segmentWidth = Column.WidthWithoutPadding - 1; // keep 1 char to display NewLineReplacement
                 for (var i = 0; i < split.Length; i++)
                 {
@@ -12581,9 +13769,9 @@ namespace SqlNado.Utilities
             }
         }
 
-        protected virtual string Align(string text)
+        protected virtual string? Align(string? text)
         {
-            string str;
+            string? str;
             switch (Alignment)
             {
                 case TableStringAlignment.Left:
@@ -12627,6 +13815,9 @@ namespace SqlNado.Utilities
             if (writer == null)
                 throw new ArgumentNullException(nameof(writer));
 
+            if (TextLines == null)
+                throw new InvalidOperationException();
+
             if (Column.Table.IsInConsoleMode(writer) && (Column.HeaderForegroundColor.HasValue || Column.HeaderBackgroundColor.HasValue))
             {
                 Column.Table.WriteWithColor(writer, Column.HeaderForegroundColor ?? Console.ForegroundColor, Column.HeaderBackgroundColor ?? Console.BackgroundColor, TextLines[index]);
@@ -12644,12 +13835,18 @@ namespace SqlNado.Utilities
         {
         }
 
-        public new byte[] Value => (byte[])base.Value;
+        public new byte[]? Value => (byte[]?)base.Value;
 
         public override void ComputeText()
         {
             var bytes = Value;
             var max = Column.Table.MaximumByteArrayDisplayCount;
+
+            if (bytes == null)
+            {
+                Text = string.Empty;
+                return;
+            }
 
             if (bytes.Length == 0)
             {
@@ -12669,7 +13866,7 @@ namespace SqlNado.Utilities
 
     public class ObjectTableString : TableString
     {
-        public ObjectTableString(object obj)
+        public ObjectTableString(object? obj)
         {
             // we support obj = null
             Object = obj;
@@ -12680,11 +13877,11 @@ namespace SqlNado.Utilities
         public bool AddValueTypeColumn { get; set; }
         public bool AddArrayRow { get; set; }
         public bool ExpandEnumerable { get; set; }
-        public object Object { get; }
+        public object? Object { get; }
 
-        internal static object GetValue(PropertyInfo property, object obj, bool throwOnError)
+        internal static object? GetValue(PropertyInfo property, object obj, bool throwOnError)
         {
-            object value;
+            object? value;
             if (throwOnError)
             {
                 value = property.GetValue(obj);
@@ -12716,11 +13913,11 @@ namespace SqlNado.Utilities
             return string.Join(Environment.NewLine, enumerable.Cast<object>());
         }
 
-        protected virtual IEnumerable<Tuple<object, object>> Values
+        protected virtual IEnumerable<Tuple<object?, object?>> Values
         {
             get
             {
-                var list = new List<Tuple<object, object>>();
+                var list = new List<Tuple<object?, object?>>();
                 var i = 0;
                 var array = Object as Array;
                 if (Object != null && !(Object is string))
@@ -12744,8 +13941,8 @@ namespace SqlNado.Utilities
                         if (array != null && string.Equals(property.Name, nameof(Array.SyncRoot), StringComparison.Ordinal))
                             continue;
 
-                        object value = GetValue(property, Object, ThrowOnPropertyGetError);
-                        list.Add(new Tuple<object, object>(property.Name, value));
+                        var value = GetValue(property, Object, ThrowOnPropertyGetError);
+                        list.Add(new Tuple<object?, object?>(property.Name, value));
                         i++;
                     }
 
@@ -12756,31 +13953,31 @@ namespace SqlNado.Utilities
                 // no columns? let's return the object itself (we support null)
                 if (i == 0)
                 {
-                    list.Add(new Tuple<object, object>(Object?.GetType(), Object));
+                    list.Add(new Tuple<object?, object?>(Object?.GetType(), Object));
                 }
                 else if (AddArrayRow && array != null)
                 {
-                    list.Add(new Tuple<object, object>("<values>", string.Join(Environment.NewLine, array.Cast<object>())));
+                    list.Add(new Tuple<object?, object?>("<values>", string.Join(Environment.NewLine, array.Cast<object>())));
                 }
                 return list;
             }
         }
 
-        protected class ComparableComparer : IComparer<Tuple<object, object>>
+        protected class ComparableComparer : IComparer<Tuple<object?, object?>>
         {
-            public int Compare(Tuple<object, object> x, Tuple<object, object> y) => ((IComparable)x.Item1).CompareTo((IComparable)y.Item1);
+            public int Compare(Tuple<object?, object?>? x, Tuple<object?, object?>? y) => (((IComparable?)x?.Item1)?.CompareTo((IComparable?)y?.Item1)).GetValueOrDefault();
         }
 
         protected override void AddColumns(object first)
         {
-            string firstColumnName = "Name";
-            object item1 = ((Tuple<object, object>)first).Item1;
+            var firstColumnName = "Name";
+            var item1 = ((Tuple<object?, object?>)first).Item1;
             if (item1 == null || item1 is Type)
             {
                 firstColumnName = "Type";
             }
 
-            var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object, object>)r).Item1 ?? "<null>");
+            var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object?, object?>)r).Item1 ?? "<null>");
             if (nameColumn == null)
                 throw new InvalidOperationException();
 
@@ -12788,7 +13985,7 @@ namespace SqlNado.Utilities
             nameColumn.Alignment = nameColumn.HeaderAlignment;
             AddColumn(nameColumn);
 
-            var valueColumn = CreateColumn("Value", (c, r) => ((Tuple<object, object>)r).Item2);
+            var valueColumn = CreateColumn("Value", (c, r) => ((Tuple<object?, object?>)r).Item2);
             if (valueColumn == null)
                 throw new InvalidOperationException();
 
@@ -12798,7 +13995,7 @@ namespace SqlNado.Utilities
             {
                 var typeColumn = CreateColumn("Type", (c, r) =>
                 {
-                    object value = ((Tuple<object, object>)r).Item2;
+                    var value = ((Tuple<object?, object?>)r).Item2;
                     if (value == null)
                         return null;
 
@@ -12830,11 +14027,11 @@ namespace SqlNado.Utilities
         {
         }
 
-        protected override IEnumerable<Tuple<object, object>> Values
+        protected override IEnumerable<Tuple<object?, object?>> Values
         {
             get
             {
-                var list = new List<Tuple<object, object>>();
+                var list = new List<Tuple<object?, object?>>();
                 var i = 0;
                 if (Object != null && !(Object is string))
                 {
@@ -12845,7 +14042,7 @@ namespace SqlNado.Utilities
                             continue;
 
                         var value = GetValue(field, Object, ThrowOnPropertyGetError);
-                        list.Add(new Tuple<object, object>(field.Name, value));
+                        list.Add(new Tuple<object?, object?>(field.Name, value));
                         i++;
                     }
 
@@ -12854,15 +14051,15 @@ namespace SqlNado.Utilities
 
                 if (i == 0)
                 {
-                    list.Add(new Tuple<object, object>(Object?.GetType(), Object));
+                    list.Add(new Tuple<object?, object?>(Object?.GetType(), Object));
                 }
                 return list;
             }
         }
 
-        internal static object GetValue(FieldInfo field, object obj, bool throwOnError)
+        internal static object? GetValue(FieldInfo field, object obj, bool throwOnError)
         {
-            object value;
+            object? value;
             if (throwOnError)
             {
                 value = field.GetValue(obj);
@@ -12906,8 +14103,8 @@ namespace SqlNado.Utilities
         public KeyValuePairTableStringColumn(TableString table, Type keyType, Type valueType, string name)
             : base(table, name, (c, r) =>
             {
-                var objs = new object[] { name, null };
-                bool b = (bool)((KeyValuePairTableStringColumn)c).Method.Invoke(r, objs);
+                var objs = new object?[] { name, null };
+                var b = (bool)((KeyValuePairTableStringColumn)c).Method.Invoke(r, objs)!;
                 return b ? objs[1] : null;
             })
         {
@@ -12918,7 +14115,7 @@ namespace SqlNado.Utilities
                 throw new ArgumentNullException(nameof(valueType));
 
             var type = typeof(IDictionary<,>).MakeGenericType(keyType, valueType);
-            Method = type.GetMethod("TryGetValue");
+            Method = type.GetMethod("TryGetValue")!;
             if (Method == null)
                 throw new NotSupportedException();
         }
@@ -12928,26 +14125,26 @@ namespace SqlNado.Utilities
 
     public class DataColumnTableStringColumn : TableStringColumn
     {
-        public DataColumnTableStringColumn(TableString table, DataColumn dataColumn)
-            : base(table, dataColumn?.ColumnName, (c, r) => ((DataRow)r)[((DataColumnTableStringColumn)c).DataColumn])
+        public DataColumnTableStringColumn(TableString table, System.Data.DataColumn dataColumn)
+            : base(table, dataColumn?.ColumnName!, (c, r) => ((System.Data.DataRow)r)[((DataColumnTableStringColumn)c).DataColumn])
         {
-            DataColumn = dataColumn;
+            DataColumn = dataColumn!;
         }
 
-        public DataColumn DataColumn { get; }
+        public System.Data.DataColumn DataColumn { get; }
     }
 
     public class PropertyDescriptorTableStringColumn : TableStringColumn
     {
         public PropertyDescriptorTableStringColumn(TableString table, PropertyDescriptor property)
-            : base(table, property?.Name, (c, r) => ((PropertyDescriptorTableStringColumn)c).GetValue(r))
+            : base(table, property?.Name!, (c, r) => ((PropertyDescriptorTableStringColumn)c).GetValue(r))
         {
-            Property = property;
+            Property = property!;
         }
 
         public PropertyDescriptor Property { get; }
 
-        private object GetValue(object component)
+        private object? GetValue(object component)
         {
             try
             {
@@ -12964,9 +14161,9 @@ namespace SqlNado.Utilities
     {
         // yes, performance could be inproved (delegates, etc.)
         public PropertyInfoTableStringColumn(TableString table, PropertyInfo property)
-            : base(table, property?.Name, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableStringColumn)c).Property, r, table.ThrowOnPropertyGetError))
+            : base(table, property?.Name!, (c, r) => ObjectTableString.GetValue(((PropertyInfoTableStringColumn)c).Property, r, table.ThrowOnPropertyGetError))
         {
-            Property = property;
+            Property = property!;
         }
 
         public PropertyInfo Property { get; }
@@ -12974,10 +14171,10 @@ namespace SqlNado.Utilities
 
     public static class TableStringExtensions
     {
-        public static string ToTableString<T>(this IEnumerable<T> enumerable) => new TableString().Write(enumerable);
-        public static string ToTableString(this IEnumerable enumerable) => new TableString().Write(enumerable);
+        public static string ToTableString<T>(this IEnumerable<T>? enumerable) => new TableString().Write(enumerable);
+        public static string ToTableString(this IEnumerable? enumerable) => new TableString().Write(enumerable);
 
-        public static string ToTableString<T>(this IEnumerable<T> enumerable, int indent)
+        public static string ToTableString<T>(this IEnumerable<T>? enumerable, int indent)
         {
             var ts = new TableString
             {
@@ -12986,7 +14183,7 @@ namespace SqlNado.Utilities
             return ts.Write(enumerable);
         }
 
-        public static string ToTableString(this IEnumerable enumerable, int indent)
+        public static string ToTableString(this IEnumerable? enumerable, int indent)
         {
             var ts = new TableString
             {
@@ -12995,10 +14192,9 @@ namespace SqlNado.Utilities
             return ts.Write(enumerable);
         }
 
-        public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
-        public static void ToTableString(this IEnumerable enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
-
-        public static void ToTableString<T>(this IEnumerable<T> enumerable, TextWriter writer, int indent)
+        public static void ToTableString<T>(this IEnumerable<T>? enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
+        public static void ToTableString(this IEnumerable? enumerable, TextWriter writer) => new TableString().Write(writer, enumerable);
+        public static void ToTableString<T>(this IEnumerable<T>? enumerable, TextWriter writer, int indent)
         {
             var ts = new TableString
             {
@@ -13016,10 +14212,69 @@ namespace SqlNado.Utilities
             ts.Write(writer, enumerable);
         }
 
-        public static string ToTableString(object obj, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject();
-        public static string ToTableString(object obj) => new ObjectTableString(obj).WriteObject();
-        public static void ToTableString(object obj, TextWriter writer, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject(writer);
-        public static void ToTableString(object obj, TextWriter writer) => new ObjectTableString(obj).WriteObject(writer);
+        public static string ToTableString(object? obj, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject();
+        public static string ToTableString(object? obj) => new ObjectTableString(obj).WriteObject();
+        public static void ToTableString(object? obj, TextWriter writer, int indent) => new ObjectTableString(obj) { Indent = indent }.WriteObject(writer);
+        public static void ToTableString(object? obj, TextWriter writer) => new ObjectTableString(obj).WriteObject(writer);
+    }
+}
+
+namespace SqlNado.Utilities
+{
+    public class Utf8Marshaler : ICustomMarshaler
+    {
+        public static readonly Utf8Marshaler Instance = new Utf8Marshaler();
+
+        // *must* exist for a custom marshaler
+#pragma warning disable IDE0060 // Remove unused parameter
+        public static ICustomMarshaler GetInstance(string cookie) => Instance;
+#pragma warning restore IDE0060 // Remove unused parameter
+
+        public void CleanUpManagedData(object ManagedObj)
+        {
+            // nothing to do
+        }
+
+        public void CleanUpNativeData(IntPtr pNativeData)
+        {
+            if (pNativeData != IntPtr.Zero)
+            {
+                Marshal.FreeCoTaskMem(pNativeData);
+            }
+        }
+
+        public int GetNativeDataSize() => -1;
+
+        public IntPtr MarshalManagedToNative(object ManagedObj)
+        {
+            if (ManagedObj == null)
+                return IntPtr.Zero;
+
+            // add a terminating zero
+            var bytes = Encoding.UTF8.GetBytes((string)ManagedObj + '\0');
+            var ptr = Marshal.AllocCoTaskMem(bytes.Length);
+            Marshal.Copy(bytes, 0, ptr, bytes.Length);
+            return ptr;
+        }
+
+        public object MarshalNativeToManaged(IntPtr pNativeData)
+        {
+            if (pNativeData == IntPtr.Zero)
+#pragma warning disable CS8603 // Possible null reference return.
+                return null;
+#pragma warning restore CS8603 // Possible null reference return.
+
+            // look for the terminating zero
+            var i = 0;
+            while (Marshal.ReadByte(pNativeData, i) != 0)
+            {
+                i++;
+            }
+
+            var bytes = new byte[i];
+            Marshal.Copy(pNativeData, bytes, 0, bytes.Length);
+            return Encoding.UTF8.GetString(bytes);
+        }
     }
 }
 
