@@ -17,7 +17,9 @@
     <Compile Include="..\SqlNado\ISQLiteObjectEvents.cs" Link="SqlNado\ISQLiteObjectEvents.cs" />
     <Compile Include="..\SqlNado\Platforms\ISQLiteWindows.cs" Link="SqlNado\Platforms\ISQLiteWindows.cs" />
     <Compile Include="..\SqlNado\Platforms\SQLiteCdeclNativeTokenizer.cs" Link="SqlNado\Platforms\SQLiteCdeclNativeTokenizer.cs" />
+    <Compile Include="..\SqlNado\Platforms\SQLiteESqlite3.cs" Link="SqlNado\Platforms\SQLiteESqlite3.cs" />
     <Compile Include="..\SqlNado\Platforms\SQLiteSqlite3.cs" Link="SqlNado\Platforms\SQLiteSqlite3.cs" />
+    <Compile Include="..\SqlNado\Platforms\SQLiteSqliteX.cs" Link="SqlNado\Platforms\SQLiteSqliteX.cs" />
     <Compile Include="..\SqlNado\Platforms\SQLiteStdCallNativeTokenizer.cs" Link="SqlNado\Platforms\SQLiteStdCallNativeTokenizer.cs" />
     <Compile Include="..\SqlNado\Platforms\SQLiteWindowsDynamic.cs" Link="SqlNado\Platforms\SQLiteWindowsDynamic.cs" />
     <Compile Include="..\SqlNado\Platforms\SQLiteWinsqlite3.cs" Link="SqlNado\Platforms\SQLiteWinsqlite3.cs" />

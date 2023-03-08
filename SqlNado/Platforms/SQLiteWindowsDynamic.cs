@@ -48,10 +48,10 @@ namespace SqlNado.Platforms
             return dll?.FileName;
         }
 
-        public virtual void Load()
+        public virtual bool Load()
         {
             if (_module != IntPtr.Zero)
-                return;
+                return true;
 
             IsUsingWindowsRuntime = Path.GetFileName(_initialLibraryPath).EqualsIgnoreCase(SQLiteWinsqlite3.DllName + ".dll");
             if (IsUsingWindowsRuntime)
@@ -209,6 +209,7 @@ namespace SqlNado.Platforms
                 _cdecl_sqlite3_result_text16 = LoadProc<cdecl_sqlite3_result_text16>();
                 _cdecl_sqlite3_result_zeroblob = LoadProc<cdecl_sqlite3_result_zeroblob>();
             }
+            return true;
         }
 
         private T LoadProc<T>() => LoadProc<T>(null);

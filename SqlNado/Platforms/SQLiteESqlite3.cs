@@ -6,23 +6,23 @@ using SqlNado.Utilities;
 
 namespace SqlNado.Platforms
 {
-    // works on Azure web apps too
-    public class SQLiteWinsqlite3 : ISQLiteNative, ISQLiteWindows
+    // this binding is for shared library built from https://github.com/ericsink/SQLitePCL.raw
+    public class SQLiteESqlite3 : ISQLiteNative, ISQLiteWindows
     {
-        // note: always compiled in stdcall
-        public const string DllName = "winsqlite3";
+        // note: always compiled in cdecl
+        public const string DllName = "e_sqlite3";
         private readonly Lazy<string?> _libraryPath;
 
-        public SQLiteWinsqlite3()
+        public SQLiteESqlite3()
         {
             _libraryPath = new Lazy<string?>(GetLibraryPath);
         }
 
         public string? LibraryPath => _libraryPath.Value;
-        public bool IsUsingWindowsRuntime => true;
-        public CallingConvention CallingConvention => CallingConvention.StdCall;
+        public bool IsUsingWindowsRuntime => false;
+        public CallingConvention CallingConvention => CallingConvention.Cdecl;
 
-        public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr) => new SQLiteStdCallNativeTokenizer(ptr);
+        public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr) => new SQLiteCdeclNativeTokenizer(ptr);
 
         public bool Load()
         {
@@ -43,96 +43,96 @@ namespace SqlNado.Platforms
         private string? GetLibraryPath()
         {
             Load();
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.EqualsIgnoreCase(DllName + ".dll"));
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
             return dll?.FileName;
         }
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_bind_double(IntPtr statement, int index, double value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_bind_int(IntPtr statement, int index, int value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_bind_int64(IntPtr statement, int index, long value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_bind_null(IntPtr statement, int index);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_bind_parameter_count(IntPtr statement);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_bind_parameter_index(IntPtr statement, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string name);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_bind_text16(IntPtr statement, int index, [MarshalAs(UnmanagedType.LPWStr)] string text, int count, IntPtr xDel);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_bind_zeroblob(IntPtr statement, int index, int size);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_blob_bytes(IntPtr blob);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_blob_close(IntPtr blob);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_blob_open(IntPtr db,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string database,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string table,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string column,
             long rowId, int flags, out IntPtr blob);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_blob_read(IntPtr blob, byte[] buffer, int count, int offset);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_blob_reopen(IntPtr blob, long rowId);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_blob_write(IntPtr blob, byte[] buffer, int count, int offset);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_changes(IntPtr db);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_clear_bindings(IntPtr statement);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_close(IntPtr db);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_collation_needed16(IntPtr db, IntPtr arg, Native.collationNeeded? callback);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static IntPtr sqlite3_column_blob(IntPtr statement, int index);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_column_bytes(IntPtr statement, int index);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_column_count(IntPtr statement);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static double sqlite3_column_double(IntPtr statement, int index);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_column_int(IntPtr statement, int index);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static long sqlite3_column_int64(IntPtr statement, int index);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static IntPtr sqlite3_column_name16(IntPtr statement, int index);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static IntPtr sqlite3_column_text16(IntPtr statement, int index);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
 
         [DllImport(DllName, EntryPoint = "sqlite3_config")]
@@ -150,13 +150,13 @@ namespace SqlNado.Platforms
         [DllImport(DllName, EntryPoint = "sqlite3_config")]
         private extern static SQLiteErrorCode sqlite3_config_4(SQLiteConfiguration op, int i1, int i2);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_create_collation16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, SQLiteTextEncoding encoding, IntPtr arg, Native.xCompare? comparer);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_create_function16(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string name, int argsCount, SQLiteTextEncoding encoding, IntPtr app, Native.xFunc? func, Native.xFunc? step, Native.xFinal? final);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_db_cacheflush(IntPtr db);
 
         [DllImport(DllName, EntryPoint = "sqlite3_db_config")]
@@ -168,97 +168,97 @@ namespace SqlNado.Platforms
         [DllImport(DllName, EntryPoint = "sqlite3_db_config")]
         private extern static SQLiteErrorCode sqlite3_db_config_2(IntPtr db, SQLiteDatabaseConfiguration op, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? s);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_enable_load_extension(IntPtr db, int onoff);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_enable_shared_cache(int i);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static IntPtr sqlite3_errmsg16(IntPtr db);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_finalize(IntPtr statement);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static long sqlite3_last_insert_rowid(IntPtr db);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_limit(IntPtr db, int id, int newVal);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_load_extension(IntPtr db, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string zFile, [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string? zProc, out IntPtr pzErrMsg);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_open_v2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(Utf8Marshaler))] string filename, out IntPtr ppDb, SQLiteOpenOptions flags, IntPtr zvfs);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_prepare16_v2(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string sql, int numBytes, out IntPtr statement, IntPtr tail);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_reset(IntPtr statement);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_blob(IntPtr ctx, byte[] buffer, int size, IntPtr xDel);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_double(IntPtr ctx, double value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_error_code(IntPtr ctx, SQLiteErrorCode value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_error16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_int(IntPtr ctx, int value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_int64(IntPtr ctx, long value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_null(IntPtr ctx);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_text16(IntPtr ctx, [MarshalAs(UnmanagedType.LPWStr)] string value, int len, IntPtr xDel);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static void sqlite3_result_zeroblob(IntPtr ctx, int size);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_step(IntPtr statement);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteErrorCode sqlite3_table_column_metadata(IntPtr db, string? dbname, string tablename, string columnname, out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_total_changes(IntPtr db);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_threadsafe();
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static IntPtr sqlite3_value_blob(IntPtr value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_value_bytes(IntPtr value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_value_bytes16(IntPtr value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static double sqlite3_value_double(IntPtr value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static int sqlite3_value_int(IntPtr value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static long sqlite3_value_int64(IntPtr value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static IntPtr sqlite3_value_text16(IntPtr value);
 
-        [DllImport(DllName)]
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private extern static SQLiteColumnType sqlite3_value_type(IntPtr value);
 
         SQLiteErrorCode ISQLiteNative.sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel) => sqlite3_bind_blob(statement, index, data, size, xDel);

@@ -16,7 +16,7 @@ namespace SqlNado
     {
         string? LibraryPath { get; }
         CallingConvention CallingConvention { get; }
-        void Load();
+        bool Load();
         ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr);
 
         SQLiteErrorCode sqlite3_bind_blob(IntPtr statement, int index, byte[] data, int size, IntPtr xDel);

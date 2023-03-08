@@ -85,7 +85,7 @@ namespace SqlNado
             }
         }
 
-        public static void LoadNative(ISQLiteNative native)
+        public static bool LoadNative(ISQLiteNative native)
         {
             if (native == null)
                 throw new ArgumentNullException(nameof(native));
@@ -94,7 +94,7 @@ namespace SqlNado
                 throw new SqlNadoException("0031: Native library is already loaded.");
 
             _native = native;
-            _native.Load();
+            return _native.Load();
         }
 
         private static void EnsureNativeLoaded()
@@ -102,32 +102,43 @@ namespace SqlNado
             if (_native != null)
                 return;
 
-            LoadNative(GetDefaultNative());
+            foreach (var def in GetNativeDefaults())
+            {
+                if (LoadNative(def))
+                    return;
+            }
+            throw new SqlNadoException("0002: Cannot determine native sqlite shared library path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
         }
 
-        public static ISQLiteNative GetDefaultNative()
+        // this loads SQLite shared library in a default order
+        // you can change that to be faster or give your own version of this share library
+        public static IEnumerable<ISQLiteNative> GetNativeDefaults()
         {
+#if __ANDROID__
+            yield return new SQLiteSqliteX();
+            yield return new SQLiteESqlite3();
+#else
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var path = SQLiteWindowsDynamic.GetPossibleNativePaths(true).FirstOrDefault(p => File.Exists(p));
-                if (path != null)
+                foreach (var path in SQLiteWindowsDynamic.GetPossibleNativePaths(true).Where(p => File.Exists(p)))
                 {
                     var name = Path.GetFileNameWithoutExtension(path);
                     if (name.EqualsIgnoreCase(SQLiteSqlite3.DllName))
-                        return new SQLiteSqlite3();
+                        yield return new SQLiteSqlite3();
 
                     if (name.Contains("sqlite", StringComparison.OrdinalIgnoreCase))
-                        return new SQLiteWindowsDynamic(path, CallingConvention.Cdecl);
+                        yield return new SQLiteWindowsDynamic(path, CallingConvention.Cdecl);
 
                     if (name.EqualsIgnoreCase(SQLiteWinsqlite3.DllName))
-                        return new SQLiteWinsqlite3();
+                        yield return new SQLiteWinsqlite3();
                 }
+                yield break;
             }
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return new SQLiteSqlite3();
-
-            throw new SqlNadoException("0002: Cannot determine native sqlite shared library path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
+            // the common defaults
+            yield return new SQLiteESqlite3();
+            yield return new SQLiteSqlite3();
+#endif
         }
 
         [Browsable(false)]

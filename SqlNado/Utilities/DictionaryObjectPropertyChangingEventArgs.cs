@@ -1,9 +1,8 @@
 ﻿using System;
-using System.ComponentModel;
 
 namespace SqlNado.Utilities
 {
-    public class DictionaryObjectPropertyChangingEventArgs : PropertyChangingEventArgs
+    public class DictionaryObjectPropertyChangingEventArgs : System.ComponentModel.PropertyChangingEventArgs
     {
         public DictionaryObjectPropertyChangingEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, DictionaryObjectProperty newProperty)
             : base(propertyName)

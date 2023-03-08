@@ -15,27 +15,45 @@ SQLNado supports all of SQLite features when using SQL commands, and also suppor
 * Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file.
 
 ## Cross-Platform
-The whole of SQLNado is now cross-platform enabled. It currently supports Linux and Windows, but more will follow (Android, MacOS, etc.). Obviously, you need a platform with C# support.
+Since version 2, the whole of SQLNado is now cross-platform enabled. It currently supports Linux, Windows and Android, but more will follow (iOS, MacOS, etc.). Obviously, you need a platform with C# support.
+
+*Note: the Nuget is still currently on the old version as the version 2 is still being tested*.
 
 ## Requirements
-On Windows, the only requirement is netstandard 2.0 or .NET Framework 4.6, so it works fine with .NET Core to .NET 7+ too. It's 100% dependency free! Well, of course it requires an SQLite native dlls corresponding to the bitness (x86 vs x64) of the executing app.
+On **Windows**, the only requirement is netstandard 2.0 or .NET Framework 4.6, so it works fine with .NET Core to .NET 7+ too. It's 100% dependency free! Well, of course it requires an SQLite native dlls corresponding to the bitness (x86 vs x64) of the executing app.
 
-On Linux, the only requirement, beside .NET Core, is to have libsqlite3.so (or similar) available to the project you're working on.
+On **Linux**, the only requirement, beside .NET Core, is to have libsqlite3.so (or similar) available to the project you're working on.
+
+On **Android** (Xamarin/MAUI), the only requirement is to have some version of the sqlite shared library available to the project you're working on.
+
+You can use the library proposed by sqlite.org itself, ie:
+
+    * download library from https://www.sqlite.org/download.html ("Precompiled Binaries for Android")
+    * unzip it and copy "sqlite-android-[some version like 3410000]\jni" directory into your "Platform\Android" directory or somewhere suitable
+    * set "Build Action" of all .so to "AndroidNativeLibrary"
+
+But you can also used other libraries (like the one from built by https://github.com/ericsink/SQLitePCL.raw).
 
 ## Installation on Windows
-If you're running on a recent Windows 10 or Windows Server 2016+, there is a good chance that there's already a winsqlite3.dll present in \Windows\System32. If this is the case, you won't need to install any native dll, whatever the bitness (x86 vs x64) of your app is!
-Note this is true on Azure Web Apps, you don't need to add anything to be able to work with SQLite if you use SQLNado.
+If you're running on a recent Windows 10 or Windows Server 2016+, there is a good chance that there's already a `winsqlite3.dll` file present in `\Windows\System32`. If this is the case, you won't need to install any native dll, whatever the bitness (x86 vs x64) of your app is!
 
-Otherwise, you can use the sqlite dll files from https://www.sqlite.org/download.html. We recommend to rename the original sqlite.dll for 32 *and* 64-bit to sqlite.x86.dll and sqlite.x64.dll respectively.
+Note this is also true on Azure Web Apps, you don't need to add anything to be able to work with SQLite if you use SQLNado.
+
+Otherwise, you can use the sqlite dll files from https://www.sqlite.org/download.html. We usually recommend to rename the original sqlite.dll for 32 *and* 64-bit to `sqlite.x86.dll` and `sqlite.x64.dll` respectively so you can distribute both in the same directory.
+
 Or you can get them from here already renamed: https://github.com/smourier/SQLNado/tree/master/SqlNado.
+
 Once you have these files, you can copy them aside your running executable (or *bin* directory for a web site).
+SQLNado source code expects that and this way your program will be able to run as 32-bit or as 64-bit without having to change the native sqlite .dll. You won't have to build two setups either. 
 
-SQLNado source code expects that and this way your program will be able to run as 32-bit or as 64-bit without having to change the native sqlite.dll. You won't have to build two setups either. 
-
-If you don't like all this and want to keep the original SQLite dll untouched, you can just copy the corresponding standard sqlite.dll aside your running executable also, but make sure you use the proper 32 or 64-bit version.
+If you don't like all this and want to keep the original SQLite dll untouched, or even bring your own SQLite dll, you can just copy the corresponding .dll aside your running executable also, but make sure you use the proper 32 or 64-bit version.
 
 ## Installation on Linux
-We recommend to use SQLNado amalgamation (one unique .cs file). In this mode you just need to to make sure *libsqlite3-0* or *libsqlite3-dev* is installed and accessible to the .NET project you're working on, there's nothing specific to do beside include sqlnado.cs.
+We recommend to use SQLNado amalgamation (one unique .cs file). In this mode you just need to to make sure *libsqlite3-0* or *libsqlite3-dev* is installed and accessible to the .NET project you're working on, there's nothing specific to do beside include `sqlnado.cs`.
+
+## Installation on Android
+We recommend to use SQLNado amalgamation (one unique .cs file). In this mode you just need to to make sure the SQLite Android shared library is packaged with the .NET project you're working on, there's nothing specific to do beside include `sqlnado.cs`.
+See here for more on this subject: https://learn.microsoft.com/en-us/xamarin/android/platform/native-libraries
 
 ## Amalgamation
 Although SQLNado can be used as a Nuget, we also provide it as a single, 100% independent, C# file located here https://github.com/smourier/SQLNado/tree/master/Amalgamation
@@ -44,6 +62,7 @@ The amalgamation contains everything an application needs to embed SQLNado. Comb
 
 ## Nuget
 Due to popular request, SQLNado is now also provided as a Nuget. You can download here from https://www.nuget.org/packages/SqlNado/
+*Note: the Nuget is still currently on the old version as the version 2 is being tested*
 
 ## Get Started
 Here is a simple Console App that should get you started:

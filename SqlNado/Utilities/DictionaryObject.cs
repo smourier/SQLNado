@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 namespace SqlNado.Utilities
 {
     // all properties and methods start with DictionaryObject and are protected so they won't interfere with super type
-    public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChanged, INotifyPropertyChanging, IDataErrorInfo, INotifyDataErrorInfo
+    public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChanged, System.ComponentModel.INotifyPropertyChanging, IDataErrorInfo, INotifyDataErrorInfo
     {
         private readonly ConcurrentDictionary<string, DictionaryObjectProperty?> _properties = new ConcurrentDictionary<string, DictionaryObjectProperty?>(StringComparer.Ordinal);
 
@@ -23,7 +23,7 @@ namespace SqlNado.Utilities
         protected virtual ConcurrentDictionary<string, DictionaryObjectProperty?> DictionaryObjectProperties => _properties;
 
         // these PropertyChangxxx are public and don't start with BaseObject because used by everyone
-        public event PropertyChangingEventHandler? PropertyChanging;
+        public event System.ComponentModel.PropertyChangingEventHandler? PropertyChanging;
         public event PropertyChangedEventHandler? PropertyChanged;
         public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
         public event EventHandler<DictionaryObjectPropertyRollbackEventArgs>? PropertyRollback;
@@ -57,7 +57,7 @@ namespace SqlNado.Utilities
 
         protected virtual void OnErrorsChanged(object sender, DataErrorsChangedEventArgs e) => ErrorsChanged?.Invoke(sender, e);
         protected virtual void OnPropertyRollback(object sender, DictionaryObjectPropertyRollbackEventArgs e) => PropertyRollback?.Invoke(sender, e);
-        protected virtual void OnPropertyChanging(object sender, PropertyChangingEventArgs e) => PropertyChanging?.Invoke(sender, e);
+        protected virtual void OnPropertyChanging(object sender, System.ComponentModel.PropertyChangingEventArgs e) => PropertyChanging?.Invoke(sender, e);
         protected virtual void OnPropertyChanged(object sender, PropertyChangedEventArgs e) => PropertyChanged?.Invoke(sender, e);
 
         protected T? DictionaryObjectGetPropertyValue<T>([CallerMemberName] string? name = null) => DictionaryObjectGetPropertyValue(default(T), name);

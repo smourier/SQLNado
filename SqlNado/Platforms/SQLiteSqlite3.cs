@@ -24,10 +24,18 @@ namespace SqlNado.Platforms
 
         public ISQLiteNativeTokenizer GetTokenizer(IntPtr ptr) => new SQLiteCdeclNativeTokenizer(ptr);
 
-        public void Load()
+        public bool Load()
         {
-            // just force one load to check everything is ok
-            _ = sqlite3_threadsafe();
+            try
+            {
+                // just force one load to check everything is ok
+                _ = sqlite3_threadsafe();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public override string? ToString() => LibraryPath;
