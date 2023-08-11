@@ -252,7 +252,11 @@ namespace SqlNado
         public string? GetColumnString(int index)
         {
             var ptr = SQLiteDatabase.Native.sqlite3_column_text16(CheckDisposed(), index);
-            return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUni(ptr);
+            if (ptr == IntPtr.Zero)
+                return null;
+
+            var size = SQLiteDatabase.Native.sqlite3_column_bytes16(CheckDisposed(), index);
+            return Marshal.PtrToStringUni(ptr, size / 2);
         }
 
         public long GetColumnInt64(int index) => SQLiteDatabase.Native.sqlite3_column_int64(CheckDisposed(), index);
@@ -266,7 +270,7 @@ namespace SqlNado
             if (ptr == IntPtr.Zero)
                 return null;
 
-            int count = SQLiteDatabase.Native.sqlite3_column_bytes(handle, index);
+            var count = SQLiteDatabase.Native.sqlite3_column_bytes(handle, index);
             var bytes = new byte[count];
             Marshal.Copy(ptr, bytes, 0, count);
             return bytes;

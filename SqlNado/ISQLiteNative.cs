@@ -46,6 +46,7 @@ namespace SqlNado
         long sqlite3_column_int64(IntPtr statement, int index);
         IntPtr sqlite3_column_name16(IntPtr statement, int index);
         IntPtr sqlite3_column_text16(IntPtr statement, int index);
+        int sqlite3_column_bytes16(IntPtr statement, int index);
         SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
         SQLiteErrorCode sqlite3_config_0(SQLiteConfiguration op);
         SQLiteErrorCode sqlite3_config_1(SQLiteConfiguration op, long i);

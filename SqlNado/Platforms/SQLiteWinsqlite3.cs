@@ -133,6 +133,9 @@ namespace SqlNado.Platforms
         private extern static IntPtr sqlite3_column_text16(IntPtr statement, int index);
 
         [DllImport(DllName)]
+        private extern static int sqlite3_column_bytes16(IntPtr statement, int index);
+
+        [DllImport(DllName)]
         private extern static SQLiteColumnType sqlite3_column_type(IntPtr statement, int index);
 
         [DllImport(DllName, EntryPoint = "sqlite3_config")]
@@ -288,6 +291,7 @@ namespace SqlNado.Platforms
         long ISQLiteNative.sqlite3_column_int64(IntPtr statement, int index) => sqlite3_column_int64(statement, index);
         IntPtr ISQLiteNative.sqlite3_column_name16(IntPtr statement, int index) => sqlite3_column_name16(statement, index);
         IntPtr ISQLiteNative.sqlite3_column_text16(IntPtr statement, int index) => sqlite3_column_text16(statement, index);
+        int ISQLiteNative.sqlite3_column_bytes16(IntPtr statement, int index) => sqlite3_column_bytes16(statement, index);
         SQLiteColumnType ISQLiteNative.sqlite3_column_type(IntPtr statement, int index) => sqlite3_column_type(statement, index);
         SQLiteErrorCode ISQLiteNative.sqlite3_config_0(SQLiteConfiguration op) => sqlite3_config_0(op);
         SQLiteErrorCode ISQLiteNative.sqlite3_config_1(SQLiteConfiguration op, long i) => sqlite3_config_1(op, i);

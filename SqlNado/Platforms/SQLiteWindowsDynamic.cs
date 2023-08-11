@@ -84,6 +84,7 @@ namespace SqlNado.Platforms
                 _sqlite3_column_int = LoadProc<sqlite3_column_int>();
                 _sqlite3_column_int64 = LoadProc<sqlite3_column_int64>();
                 _sqlite3_column_text16 = LoadProc<sqlite3_column_text16>();
+                _sqlite3_column_bytes16 = LoadProc<sqlite3_column_bytes16>();
                 _sqlite3_prepare16_v2 = LoadProc<sqlite3_prepare16_v2>();
                 _sqlite3_total_changes = LoadProc<sqlite3_total_changes>();
                 _sqlite3_changes = LoadProc<sqlite3_changes>();
@@ -157,6 +158,7 @@ namespace SqlNado.Platforms
                 _cdecl_sqlite3_column_int = LoadProc<cdecl_sqlite3_column_int>();
                 _cdecl_sqlite3_column_int64 = LoadProc<cdecl_sqlite3_column_int64>();
                 _cdecl_sqlite3_column_text16 = LoadProc<cdecl_sqlite3_column_text16>();
+                _cdecl_sqlite3_column_bytes16 = LoadProc<cdecl_sqlite3_column_bytes16>();
                 _cdecl_sqlite3_prepare16_v2 = LoadProc<cdecl_sqlite3_prepare16_v2>();
                 _cdecl_sqlite3_total_changes = LoadProc<cdecl_sqlite3_total_changes>();
                 _cdecl_sqlite3_changes = LoadProc<cdecl_sqlite3_changes>();
@@ -445,6 +447,13 @@ namespace SqlNado.Platforms
 
         private delegate IntPtr sqlite3_column_text16(IntPtr statement, int index);
         private static sqlite3_column_text16? _sqlite3_column_text16;
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate int cdecl_sqlite3_column_bytes16(IntPtr statement, int index);
+        private static cdecl_sqlite3_column_bytes16? _cdecl_sqlite3_column_bytes16;
+
+        private delegate int sqlite3_column_bytes16(IntPtr statement, int index);
+        private static sqlite3_column_bytes16? _sqlite3_column_bytes16;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate SQLiteErrorCode cdecl_sqlite3_prepare16_v2(IntPtr db, [MarshalAs(UnmanagedType.LPWStr)] string sql, int numBytes, out IntPtr statement, IntPtr tail);
@@ -844,6 +853,7 @@ namespace SqlNado.Platforms
         long ISQLiteNative.sqlite3_column_int64(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_int64!(statement, index) : _cdecl_sqlite3_column_int64!(statement, index);
         IntPtr ISQLiteNative.sqlite3_column_name16(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_name16!(statement, index) : _cdecl_sqlite3_column_name16!(statement, index);
         IntPtr ISQLiteNative.sqlite3_column_text16(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_text16!(statement, index) : _cdecl_sqlite3_column_text16!(statement, index);
+        int ISQLiteNative.sqlite3_column_bytes16(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_bytes16!(statement, index) : _cdecl_sqlite3_column_bytes16!(statement, index);
         SQLiteColumnType ISQLiteNative.sqlite3_column_type(IntPtr statement, int index) => IsStdCall ? _sqlite3_column_type!(statement, index) : _cdecl_sqlite3_column_type!(statement, index);
         SQLiteErrorCode ISQLiteNative.sqlite3_config_0(SQLiteConfiguration op) => IsStdCall ? _sqlite3_config_0!(op) : _cdecl_sqlite3_config_0!(op);
         SQLiteErrorCode ISQLiteNative.sqlite3_config_1(SQLiteConfiguration op, long i) => IsStdCall ? _sqlite3_config_1!(op, i) : _cdecl_sqlite3_config_1!(op, i);
