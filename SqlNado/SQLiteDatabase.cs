@@ -1652,7 +1652,7 @@ namespace SqlNado
                 sql += "DISTINCT ";
             }
 
-            sql += "* FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
+            sql += table.BuildColumnsStatement() + " FROM " + table.EscapedName + " WHERE " + table.BuildWherePrimaryKeyStatement() + " LIMIT 1";
             var obj = Load(objectType, sql, options, keys).FirstOrDefault();
             if (obj == null && (options?.CreateIfNotLoaded).GetValueOrDefault())
             {
