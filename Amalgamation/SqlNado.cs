@@ -4698,7 +4698,7 @@ namespace SqlNado
         }
 
         public virtual string BuildWherePrimaryKeyStatement() => string.Join(" AND ", PrimaryKeyColumns.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
-        public virtual string BuildColumnsStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name)));
+        public virtual string BuildColumnsStatement() => string.Join(",", Columns.Where(c => !c.IsComputed).Select(c => SQLiteStatement.EscapeName(c.Name)));
 
         public virtual string BuildColumnsUpdateSetStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.IsPrimaryKey && !c.InsertOnly && !c.ComputedValue && !c.IsComputed).Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
         public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.IsPrimaryKey && !c.InsertOnly && !c.ComputedValue && !c.IsComputed).Select(c => SQLiteStatement.EscapeName(c.Name)));
