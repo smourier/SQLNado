@@ -54,6 +54,7 @@ namespace SqlNado
         public virtual bool IsUnique { get; set; }
         public virtual string? CheckExpression { get; set; }
         public virtual bool AutoIncrements { get; set; }
+        public virtual bool IsComputed { get; set; }
         public bool AutomaticValue => AutoIncrements && IsRowId;
         public bool ComputedValue => HasDefaultValue && IsDefaultValueIntrinsic && SQLiteObjectTableBuilder.IsComputedDefaultValue(DefaultValue as string);
         public virtual bool HasDefaultValue { get; set; }
@@ -384,6 +385,7 @@ namespace SqlNado
 
             IsReadOnly = attribute.IsReadOnly;
             IsNullable = attribute.IsNullable;
+            IsComputed = attribute.IsComputed;
             IsPrimaryKey = attribute.IsPrimaryKey;
             InsertOnly = attribute.InsertOnly;
             UpdateOnly = attribute.UpdateOnly;

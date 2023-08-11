@@ -34,6 +34,7 @@ namespace SqlNado
         public bool IsUnique { get; set; }
         public string? CheckExpression { get; set; }
         public bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
+        public bool IsComputed { get; set; }
         public bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
         public bool InsertOnly { get; set; }
         public bool UpdateOnly { get; set; }

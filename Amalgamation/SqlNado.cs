@@ -860,6 +860,7 @@ namespace SqlNado
         public bool IsUnique { get; set; }
         public string? CheckExpression { get; set; }
         public bool IsNullable { get => _isNullable ?? false; set => _isNullable = value; }
+        public bool IsComputed { get; set; }
         public bool IsReadOnly { get => _isReadOnly ?? false; set => _isReadOnly = value; }
         public bool InsertOnly { get; set; }
         public bool UpdateOnly { get; set; }
@@ -4155,6 +4156,7 @@ namespace SqlNado
         public virtual bool IsUnique { get; set; }
         public virtual string? CheckExpression { get; set; }
         public virtual bool AutoIncrements { get; set; }
+        public virtual bool IsComputed { get; set; }
         public bool AutomaticValue => AutoIncrements && IsRowId;
         public bool ComputedValue => HasDefaultValue && IsDefaultValueIntrinsic && SQLiteObjectTableBuilder.IsComputedDefaultValue(DefaultValue as string);
         public virtual bool HasDefaultValue { get; set; }
@@ -4485,6 +4487,7 @@ namespace SqlNado
 
             IsReadOnly = attribute.IsReadOnly;
             IsNullable = attribute.IsNullable;
+            IsComputed = attribute.IsComputed;
             IsPrimaryKey = attribute.IsPrimaryKey;
             InsertOnly = attribute.InsertOnly;
             UpdateOnly = attribute.UpdateOnly;
@@ -4663,7 +4666,7 @@ namespace SqlNado
             if (!IsVirtual)
             {
                 sql += " (";
-                sql += string.Join(",", Columns.Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
+                sql += string.Join(",", Columns.Where(c => !c.IsComputed).Select(c => c.GetCreateSql(SQLiteCreateSqlOptions.ForCreateColumn)));
 
                 if (PrimaryKeyColumns.Skip(1).Any())
                 {
@@ -4697,11 +4700,11 @@ namespace SqlNado
         public virtual string BuildWherePrimaryKeyStatement() => string.Join(" AND ", PrimaryKeyColumns.Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
         public virtual string BuildColumnsStatement() => string.Join(",", Columns.Select(c => SQLiteStatement.EscapeName(c.Name)));
 
-        public virtual string BuildColumnsUpdateSetStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.IsPrimaryKey && !c.InsertOnly && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
-        public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.IsPrimaryKey && !c.InsertOnly && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
+        public virtual string BuildColumnsUpdateSetStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.IsPrimaryKey && !c.InsertOnly && !c.ComputedValue && !c.IsComputed).Select(c => SQLiteStatement.EscapeName(c.Name) + "=?"));
+        public virtual string BuildColumnsUpdateStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.IsPrimaryKey && !c.InsertOnly && !c.ComputedValue && !c.IsComputed).Select(c => SQLiteStatement.EscapeName(c.Name)));
 
-        public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.UpdateOnly && !c.ComputedValue).Select(c => SQLiteStatement.EscapeName(c.Name)));
-        public virtual string BuildColumnsInsertParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.UpdateOnly && !c.ComputedValue).Select(c => "?"));
+        public virtual string BuildColumnsInsertStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.UpdateOnly && !c.ComputedValue && !c.IsComputed).Select(c => SQLiteStatement.EscapeName(c.Name)));
+        public virtual string BuildColumnsInsertParametersStatement() => string.Join(",", Columns.Where(c => !c.AutomaticValue && !c.UpdateOnly && !c.ComputedValue && !c.IsComputed).Select(c => "?"));
 
         public virtual long GetRowId(object obj)
         {
@@ -5037,7 +5040,7 @@ namespace SqlNado
             var pk = new List<object>();
             foreach (var col in Columns)
             {
-                if ((col.AutomaticValue || col.ComputedValue) && !col.IsPrimaryKey)
+                if ((col.AutomaticValue || col.ComputedValue || col.IsComputed) && !col.IsPrimaryKey)
                     continue;
 
                 object? value;
@@ -5154,8 +5157,8 @@ namespace SqlNado
 
         public virtual int SynchronizeSchema(SQLiteSaveOptions? options = null)
         {
-            if (Columns.Count == 0)
-                throw new SqlNadoException("0006: Object table '" + Name + "' has no columns.");
+            if (!Columns.Where(c => !c.IsComputed).Any())
+                throw new SqlNadoException("0006: Object table '" + Name + "' has no database columns.");
 
             options = options ?? Database.CreateSaveOptions();
             if (options == null)
@@ -5203,7 +5206,7 @@ namespace SqlNado
             var added = new List<SQLiteObjectColumn>();
             var changed = new List<SQLiteObjectColumn>();
 
-            foreach (var column in Columns)
+            foreach (var column in Columns.Where(c => !c.IsComputed))
             {
                 var existingColumn = deleted.Find(c => c.Name.EqualsIgnoreCase(column.Name));
                 if (existingColumn == null)
@@ -5240,7 +5243,7 @@ namespace SqlNado
                     }
 
                     // https://www.sqlite.org/lang_insert.html
-                    sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Select(c => c.EscapedName)) + " FROM " + EscapedName + " WHERE true";
+                    sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Where(c => !c.IsComputed).Select(c => c.EscapedName)) + " FROM " + EscapedName + " WHERE true";
                     count += Database.ExecuteNonQuery(sql);
 
                     if (options.UseTransactionForSchemaSynchronization)
