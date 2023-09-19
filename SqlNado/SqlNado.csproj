@@ -5,8 +5,8 @@
 		<Nullable>enable</Nullable>
 		<Version>2.0.2</Version>
 		<LangVersion>9</LangVersion>
-		<AssemblyVersion>2.0.2.0</AssemblyVersion>
-		<FileVersion>2.0.2.0</FileVersion>
+		<AssemblyVersion>2.0.2.1</AssemblyVersion>
+		<FileVersion>2.0.2.1</FileVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<Authors>Simon Mourier</Authors>
 		<Copyright>Copyright (c) 2017-2023 Simon Mourier. All rights reserved.</Copyright>

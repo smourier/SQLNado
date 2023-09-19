@@ -104,8 +104,11 @@ namespace SqlNado
 
             foreach (var def in GetNativeDefaults())
             {
-                if (LoadNative(def))
+                if (def.Load())
+                {
+                    _native = def;
                     return;
+                }
             }
             throw new SqlNadoException("0002: Cannot determine native sqlite shared library path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
         }

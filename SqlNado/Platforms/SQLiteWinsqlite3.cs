@@ -43,7 +43,7 @@ namespace SqlNado.Platforms
         private string? GetLibraryPath()
         {
             Load();
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.EqualsIgnoreCase(DllName + ".dll"));
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().FirstOrDefault(m => m.ModuleName.EqualsIgnoreCase(DllName + ".dll"));
             return dll?.FileName;
         }
 

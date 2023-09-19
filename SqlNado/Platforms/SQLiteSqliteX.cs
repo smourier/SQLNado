@@ -42,7 +42,7 @@
         private string? GetLibraryPath()
         {
             Load();
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().FirstOrDefault(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
             return dll?.FileName;
         }
 

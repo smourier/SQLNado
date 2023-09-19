@@ -1058,8 +1058,11 @@ namespace SqlNado
 
             foreach (var def in GetNativeDefaults())
             {
-                if (LoadNative(def))
+                if (def.Load())
+                {
+                    _native = def;
                     return;
+                }
             }
             throw new SqlNadoException("0002: Cannot determine native sqlite shared library path. Process is running " + (IntPtr.Size == 8 ? "64" : "32") + "-bit.");
         }
@@ -8110,7 +8113,7 @@ namespace SqlNado.Platforms
         private string? GetLibraryPath()
         {
             Load();
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().FirstOrDefault(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
             return dll?.FileName;
         }
 
@@ -8444,7 +8447,7 @@ namespace SqlNado.Platforms
         private string? GetLibraryPath()
         {
             Load();
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().FirstOrDefault(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
             return dll?.FileName;
         }
 
@@ -8783,7 +8786,7 @@ namespace SqlNado.Platforms
         private string? GetLibraryPath()
         {
             Load();
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().FirstOrDefault(m => m.ModuleName?.Contains(DllName, StringComparison.OrdinalIgnoreCase) == true);
             return dll?.FileName;
         }
 
@@ -9164,7 +9167,7 @@ namespace SqlNado.Platforms
         {
             Load();
             var name = Path.GetFileName(_initialLibraryPath);
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.EqualsIgnoreCase(name));
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().FirstOrDefault(m => m.ModuleName.EqualsIgnoreCase(name));
             return dll?.FileName;
         }
 
@@ -10087,7 +10090,7 @@ namespace SqlNado.Platforms
         private string? GetLibraryPath()
         {
             Load();
-            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().First(m => m.ModuleName.EqualsIgnoreCase(DllName + ".dll"));
+            var dll = Process.GetCurrentProcess().Modules.OfType<ProcessModule>().FirstOrDefault(m => m.ModuleName.EqualsIgnoreCase(DllName + ".dll"));
             return dll?.FileName;
         }
 
