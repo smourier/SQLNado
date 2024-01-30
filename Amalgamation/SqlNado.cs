@@ -1,7 +1,7 @@
 ﻿/*
 MIT License
 
-Copyright (c) 2017-2023 Simon Mourier
+Copyright (c) 2017-2024 Simon Mourier
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,6 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -3513,11 +3512,6 @@ namespace SqlNado
 
         public SQLiteException(string message, Exception innerException)
             : base(message, innerException)
-        {
-        }
-
-        protected SQLiteException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
         {
         }
 
@@ -7967,7 +7961,7 @@ namespace SqlNado
         }
 
         public SqlNadoException(string message)
-            : base(Prefix + ":"+ message)
+            : base(Prefix + ":" + message)
         {
         }
 
@@ -7978,11 +7972,6 @@ namespace SqlNado
 
         public SqlNadoException(string message, Exception innerException)
             : base(Prefix + ":" + message, innerException)
-        {
-        }
-
-        protected SqlNadoException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
         {
         }
 
