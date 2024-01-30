@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.Serialization;
 
 namespace SqlNado
 {
@@ -35,11 +34,6 @@ namespace SqlNado
 
         public SQLiteException(string message, Exception innerException)
             : base(message, innerException)
-        {
-        }
-
-        protected SQLiteException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
         {
         }
 

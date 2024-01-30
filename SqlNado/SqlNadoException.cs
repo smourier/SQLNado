@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Globalization;
-using System.Runtime.Serialization;
 
 namespace SqlNado
 {
@@ -15,7 +14,7 @@ namespace SqlNado
         }
 
         public SqlNadoException(string message)
-            : base(Prefix + ":"+ message)
+            : base(Prefix + ":" + message)
         {
         }
 
@@ -26,11 +25,6 @@ namespace SqlNado
 
         public SqlNadoException(string message, Exception innerException)
             : base(Prefix + ":" + message, innerException)
-        {
-        }
-
-        protected SqlNadoException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
         {
         }
 
