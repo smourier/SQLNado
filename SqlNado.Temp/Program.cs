@@ -369,8 +369,6 @@ yourselves";
         {
             using (var dic = new PersistentDictionary<string, object>())
             {
-                dic.Database.CacheFlush();
-                return;
                 var max = 10;
                 for (int i = 0; i < max; i++)
                 {
@@ -489,7 +487,7 @@ yourselves";
                 //db.SynchronizeSchema<TestQuery>();
 
                 //TestQuery.Ensure(db);
-                db.LoadAll<TestQuery>().ToTableString(Console.Out);
+                //db.LoadAll<TestQuery>().ToTableString(Console.Out);
 
                 //db.BeginTransaction();
                 //for (int i = 0; i < 10; i++)
