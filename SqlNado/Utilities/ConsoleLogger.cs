@@ -1,5 +1,7 @@
 ﻿namespace SqlNado.Utilities;
 
+#if (ANDROID && !ANDROID23_OR_GREATER)
+#else
 public class ConsoleLogger(bool addThreadId) : ISQLiteLogger
 {
     public ConsoleLogger()
@@ -42,3 +44,4 @@ public class ConsoleLogger(bool addThreadId) : ISQLiteLogger
         Console.ResetColor();
     }
 }
+#endif

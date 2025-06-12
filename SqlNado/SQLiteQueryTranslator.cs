@@ -116,11 +116,11 @@ public class SQLiteQueryTranslator(SQLiteDatabase database, TextWriter writer) :
             }
         }
 
-        if (node.Method.DeclaringType == typeof(Conversions))
+        if (node.Method.DeclaringType == typeof(ConversionUtilities))
         {
             switch (node.Method.Name)
             {
-                case nameof(Conversions.EqualsIgnoreCase):
+                case nameof(ConversionUtilities.EqualsIgnoreCase):
                     Visit(node.Arguments[0]);
                     Writer.Write(" = ");
                     Visit(node.Arguments[1]);
@@ -483,7 +483,7 @@ public class SQLiteQueryTranslator(SQLiteDatabase database, TextWriter writer) :
                     default:
                         if (value is byte[] bytes)
                         {
-                            var hex = "X'" + Conversions.ToHexa(bytes) + "'";
+                            var hex = "X'" + ConversionUtilities.ToHexa(bytes) + "'";
                             Writer.Write(hex);
                             break;
                         }

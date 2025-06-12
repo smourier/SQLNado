@@ -275,7 +275,7 @@ public class SQLiteStatement : IDisposable
             return null;
 
         if (value is byte[] bytes)
-            return Conversions.ToHexa(bytes).Nullify();
+            return ConversionUtilities.ToHexa(bytes).Nullify();
 
         return string.Format(CultureInfo.InvariantCulture, "{0}", value).Nullify();
     }
@@ -346,7 +346,7 @@ public class SQLiteStatement : IDisposable
     public virtual T? GetColumnValue<T>(int index, T? defaultValue)
     {
         var rawValue = GetColumnValue(index);
-        if (!Conversions.TryChangeType(rawValue, CultureInfo.InvariantCulture, out T? value))
+        if (!ConversionUtilities.TryChangeType(rawValue, CultureInfo.InvariantCulture, out T? value))
             return defaultValue;
 
         return value;

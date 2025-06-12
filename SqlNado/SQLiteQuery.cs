@@ -67,7 +67,7 @@ public class SQLiteQuery<T> : IOrderedQueryable<T>
 
             var sql = _query.GetQueryText(expression);
             sql = NormalizeSelect(sql);
-            var elementType = Conversions.GetEnumeratedType(typeof(TResult));
+            var elementType = ConversionUtilities.GetEnumeratedType(typeof(TResult));
             if (elementType == null)
             {
                 if (typeof(TResult) != typeof(string) && typeof(IEnumerable).IsAssignableFrom(typeof(TResult)))

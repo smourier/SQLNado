@@ -56,7 +56,7 @@ public sealed class SQLiteValue
 
     public override string? ToString() => Type switch
     {
-        SQLiteColumnType.BLOB => "0x" + Conversions.ToHexa(BlobValue),
+        SQLiteColumnType.BLOB => "0x" + ConversionUtilities.ToHexa(BlobValue),
         SQLiteColumnType.REAL => DoubleValue.ToString(CultureInfo.CurrentCulture),
         SQLiteColumnType.INTEGER => Int64Value.ToString(CultureInfo.CurrentCulture),
         SQLiteColumnType.NULL => "<NULL>",

@@ -21,7 +21,7 @@ public class SQLiteCollationNeededEventArgs : EventArgs
             else
             {
                 sid = CollationName.Substring(CultureInfoCollationPrefix.Length, pos - CultureInfoCollationPrefix.Length);
-                if (Conversions.TryChangeType(CollationName.Substring(pos + 1), out CompareOptions options))
+                if (ConversionUtilities.TryChangeType(CollationName.Substring(pos + 1), out CompareOptions options))
                 {
                     CollationOptions = options;
                 }

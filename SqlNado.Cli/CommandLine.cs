@@ -105,7 +105,7 @@ namespace SqlNado.Cli
 
                             return defaultValue;
                         }
-                        return Conversions.ChangeType(value, defaultValue);
+                        return ConversionUtilities.ChangeType(value, defaultValue);
                     }
                 }
             }
@@ -130,7 +130,7 @@ namespace SqlNado.Cli
             if (!_positionArguments.TryGetValue(index, out string s))
                 return defaultValue;
 
-            return Conversions.ChangeType(s, defaultValue, provider);
+            return ConversionUtilities.ChangeType(s, defaultValue, provider);
         }
 
         public static object GetArgument(int index, object defaultValue, Type conversionType) => GetArgument(index, defaultValue, conversionType, null);
@@ -139,7 +139,7 @@ namespace SqlNado.Cli
             if (!_positionArguments.TryGetValue(index, out string s))
                 return defaultValue;
 
-            return Conversions.ChangeType(s, conversionType, defaultValue, provider);
+            return ConversionUtilities.ChangeType(s, conversionType, defaultValue, provider);
         }
 
         public static T GetArgument<T>(string name, T defaultValue) => GetArgument(name, defaultValue, null);
@@ -154,7 +154,7 @@ namespace SqlNado.Cli
             if (typeof(T) == typeof(bool) && string.IsNullOrEmpty(s))
                 return (T)(object)true;
 
-            return Conversions.ChangeType(s, defaultValue, provider);
+            return ConversionUtilities.ChangeType(s, defaultValue, provider);
         }
 
         public static bool HasArgument(string name)
@@ -179,7 +179,7 @@ namespace SqlNado.Cli
             if (conversionType == typeof(bool) && string.IsNullOrEmpty(s))
                 return true;
 
-            return Conversions.ChangeType(s, conversionType, defaultValue, provider);
+            return ConversionUtilities.ChangeType(s, conversionType, defaultValue, provider);
         }
     }
 }

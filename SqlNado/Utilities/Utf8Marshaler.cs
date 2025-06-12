@@ -34,10 +34,10 @@ public class Utf8Marshaler : ICustomMarshaler
         return ptr;
     }
 
-    public object? MarshalNativeToManaged(IntPtr pNativeData)
+    public object MarshalNativeToManaged(IntPtr pNativeData)
     {
         if (pNativeData == IntPtr.Zero)
-            return null;
+            return null!;
 
         // look for the terminating zero
         var i = 0;

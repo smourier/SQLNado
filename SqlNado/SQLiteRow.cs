@@ -96,7 +96,7 @@ public class SQLiteRow : IDictionary<string, object?>
             return false;
         }
 
-        return Conversions.TryChangeType(obj, out value);
+        return ConversionUtilities.TryChangeType(obj, out value);
     }
 
     public bool TryGetValue(string name, out object? value)

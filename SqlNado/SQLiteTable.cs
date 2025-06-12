@@ -73,7 +73,7 @@ public sealed class SQLiteTable
                             {
                                 args = usng.Substring(pos + 1, end - pos - 1);
                             }
-                            ModuleArguments = [.. Conversions.SplitToList<string?>(args, ',')];
+                            ModuleArguments = [.. ConversionUtilities.SplitToList<string?>(args, ',')];
                         }
                     }
                 }

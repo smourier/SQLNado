@@ -62,7 +62,7 @@ public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChang
         if (property == null)
             return defaultValue;
 
-        if (!Conversions.TryChangeType(property.Value, out T? value))
+        if (!ConversionUtilities.TryChangeType(property.Value, out T? value))
             return defaultValue;
 
         return value;

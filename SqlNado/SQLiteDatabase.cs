@@ -734,7 +734,7 @@ public class SQLiteDatabase : IDisposable
                     throw new ArgumentNullException(nameof(arguments));
 
                 Check1(arguments);
-                StaticCheckError(Native.sqlite3_config_2(configuration, Conversions.ChangeType<int>(arguments[0])), throwOnError);
+                StaticCheckError(Native.sqlite3_config_2(configuration, ConversionUtilities.ChangeType<int>(arguments[0])), throwOnError);
                 break;
 
             case SQLiteConfiguration.SQLITE_CONFIG_LOOKASIDE:
@@ -742,7 +742,7 @@ public class SQLiteDatabase : IDisposable
                     throw new ArgumentNullException(nameof(arguments));
 
                 Check2(arguments);
-                StaticCheckError(Native.sqlite3_config_4(configuration, Conversions.ChangeType<int>(arguments[0]), Conversions.ChangeType<int>(arguments[1])), throwOnError);
+                StaticCheckError(Native.sqlite3_config_4(configuration, ConversionUtilities.ChangeType<int>(arguments[0]), ConversionUtilities.ChangeType<int>(arguments[1])), throwOnError);
                 break;
 
             case SQLiteConfiguration.SQLITE_CONFIG_MMAP_SIZE:
@@ -750,7 +750,7 @@ public class SQLiteDatabase : IDisposable
                     throw new ArgumentNullException(nameof(arguments));
 
                 Check2(arguments);
-                StaticCheckError(Native.sqlite3_config_3(configuration, Conversions.ChangeType<long>(arguments[0]), Conversions.ChangeType<long>(arguments[1])), throwOnError);
+                StaticCheckError(Native.sqlite3_config_3(configuration, ConversionUtilities.ChangeType<long>(arguments[0]), ConversionUtilities.ChangeType<long>(arguments[1])), throwOnError);
                 break;
 
             case SQLiteConfiguration.SQLITE_CONFIG_MEMDB_MAXSIZE:
@@ -758,7 +758,7 @@ public class SQLiteDatabase : IDisposable
                     throw new ArgumentNullException(nameof(arguments));
 
                 Check1(arguments);
-                StaticCheckError(Native.sqlite3_config_1(configuration, Conversions.ChangeType<long>(arguments[0])), throwOnError);
+                StaticCheckError(Native.sqlite3_config_1(configuration, ConversionUtilities.ChangeType<long>(arguments[0])), throwOnError);
                 break;
 
             default:
@@ -784,17 +784,17 @@ public class SQLiteDatabase : IDisposable
             case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_RESET_DATABASE:
             case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_DEFENSIVE:
                 Check1(arguments);
-                CheckError(Native.sqlite3_db_config_0(CheckDisposed(), configuration, Conversions.ChangeType<int>(arguments[0]), out result), throwOnError);
+                CheckError(Native.sqlite3_db_config_0(CheckDisposed(), configuration, ConversionUtilities.ChangeType<int>(arguments[0]), out result), throwOnError);
                 return result;
 
             case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_LOOKASIDE:
                 Check3(arguments);
-                CheckError(Native.sqlite3_db_config_1(CheckDisposed(), configuration, Conversions.ChangeType<IntPtr>(arguments[0]), Conversions.ChangeType<int>(arguments[1]), Conversions.ChangeType<int>(arguments[2])), throwOnError);
+                CheckError(Native.sqlite3_db_config_1(CheckDisposed(), configuration, ConversionUtilities.ChangeType<IntPtr>(arguments[0]), ConversionUtilities.ChangeType<int>(arguments[1]), ConversionUtilities.ChangeType<int>(arguments[2])), throwOnError);
                 return null;
 
             case SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_MAINDBNAME:
                 Check1(arguments);
-                CheckError(Native.sqlite3_db_config_2(CheckDisposed(), configuration, Conversions.ChangeType<string>(arguments[0])), throwOnError);
+                CheckError(Native.sqlite3_db_config_2(CheckDisposed(), configuration, ConversionUtilities.ChangeType<string>(arguments[0])), throwOnError);
                 return null;
 
             default:
@@ -2063,7 +2063,7 @@ public class SQLiteDatabase : IDisposable
             value = instance;
             return instance != null;
         }
-        return Conversions.TryChangeType(input, conversionType, CultureInfo.InvariantCulture, out value);
+        return ConversionUtilities.TryChangeType(input, conversionType, CultureInfo.InvariantCulture, out value);
     }
 
     public virtual bool TryChangeType<T>(object? input, out T? value)

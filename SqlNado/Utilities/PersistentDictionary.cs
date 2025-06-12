@@ -240,7 +240,7 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
         if (type.IsEnum)
         {
             typeName = type.AssemblyQualifiedName;
-            return Conversions.EnumToUInt64(input).ToString(CultureInfo.InvariantCulture);
+            return ConversionUtilities.EnumToUInt64(input).ToString(CultureInfo.InvariantCulture);
         }
 
         var tc = Type.GetTypeCode(type);
@@ -258,7 +258,7 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
                 if (type == typeof(byte[]))
                 {
                     typeName = ((int)TypeCodeEx.ByteArray).ToString(CultureInfo.InvariantCulture);
-                    return Conversions.ToHexa((byte[])input);
+                    return ConversionUtilities.ToHexa((byte[])input);
                 }
 
                 if (type == typeof(Guid))
@@ -282,11 +282,11 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
                 // hardcode some others?
 
                 typeName = type.AssemblyQualifiedName;
-                return Conversions.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
+                return ConversionUtilities.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
 
             default:
                 typeName = ((int)tc).ToString(CultureInfo.InvariantCulture);
-                return Conversions.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
+                return ConversionUtilities.ChangeType<string>(input, null, CultureInfo.InvariantCulture);
         }
     }
 
@@ -299,9 +299,9 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
         {
             var type = Type.GetType(typeName, true)!;
             if (type.IsEnum)
-                return Conversions.ToEnum(input, type);
+                return ConversionUtilities.ToEnum(input, type);
 
-            return Conversions.ChangeType(input, type, null, CultureInfo.InvariantCulture);
+            return ConversionUtilities.ChangeType(input, type, null, CultureInfo.InvariantCulture);
         }
 
 
@@ -321,7 +321,7 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
             (int)TypeCode.UInt16 => input != null ? ushort.Parse(input, CultureInfo.InvariantCulture) : (ushort)0,
             (int)TypeCode.UInt32 => input != null ? uint.Parse(input, CultureInfo.InvariantCulture) : 0u,
             (int)TypeCode.UInt64 => input != null ? ulong.Parse(input, CultureInfo.InvariantCulture) : 0ul,
-            (int)TypeCodeEx.ByteArray => input != null ? Conversions.ToBytes(input) : null,
+            (int)TypeCodeEx.ByteArray => input != null ? ConversionUtilities.ToBytes(input) : null,
             (int)TypeCodeEx.DateTimeOffset => input != null ? DateTimeOffset.Parse(input, CultureInfo.InvariantCulture) : DateTimeOffset.MinValue,
             (int)TypeCodeEx.Guid => input != null ? Guid.Parse(input) : Guid.Empty,
             (int)TypeCodeEx.TimeSpan => input != null ? TimeSpan.Parse(input, CultureInfo.InvariantCulture) : TimeSpan.Zero,

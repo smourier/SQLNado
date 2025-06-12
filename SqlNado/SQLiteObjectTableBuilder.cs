@@ -36,7 +36,7 @@ public class SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLite
             table.Module = typeAtt.Module.Nullify();
             if (typeAtt.Module != null)
             {
-                var args = Conversions.SplitToList<string>(typeAtt.ModuleArguments, ',');
+                var args = ConversionUtilities.SplitToList<string>(typeAtt.ModuleArguments, ',');
                 if (args != null && args.Count > 0)
                 {
                     table.ModuleArguments = [.. args];
@@ -294,7 +294,7 @@ public class SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLite
         att = AddAnnotationAttributes(property, att);
         if (property.PropertyType != typeof(string))
         {
-            var et = Conversions.GetEnumeratedType(property.PropertyType);
+            var et = ConversionUtilities.GetEnumeratedType(property.PropertyType);
             if (et != null && et != typeof(byte) && (att == null || !att._ignore.HasValue || att._ignore.Value))
                 return null;
         }

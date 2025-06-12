@@ -275,7 +275,7 @@ public class SQLiteObjectColumn(SQLiteObjectTable table, string name, string dat
                 svalue[svalue.Length - 1] == '\'')
             {
                 string sb = svalue.Substring(2, svalue.Length - 3);
-                return Conversions.ToBytes(sb);
+                return ConversionUtilities.ToBytes(sb);
             }
         }
 
@@ -291,7 +291,7 @@ public class SQLiteObjectColumn(SQLiteObjectTable table, string name, string dat
             return "'" + svalue.Replace("'", "''") + "'";
 
         if (value is byte[] bytes)
-            return "X'" + Conversions.ToHexa(bytes) + "'";
+            return "X'" + ConversionUtilities.ToHexa(bytes) + "'";
 
         if (value is bool b)
             return b ? "1" : "0";
