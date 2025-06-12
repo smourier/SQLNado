@@ -1,9 +1,8 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public interface ISQLiteObjectChangeEvents
 {
-    public interface ISQLiteObjectChangeEvents
-    {
-        bool RaiseOnPropertyChanging { get; set; }
-        bool RaiseOnPropertyChanged { get; set; }
-        bool RaiseOnErrorsChanged { get; set; }
-    }
+    bool RaiseOnPropertyChanging { get; set; }
+    bool RaiseOnPropertyChanged { get; set; }
+    bool RaiseOnErrorsChanged { get; set; }
 }

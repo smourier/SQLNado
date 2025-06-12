@@ -1,19 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
 
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
-    <PackageReference Include="MSTest.TestAdapter" Version="3.5.2" />
-    <PackageReference Include="MSTest.TestFramework" Version="3.5.2" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+		<PackageReference Include="MSTest.TestAdapter" Version="3.9.2" />
+		<PackageReference Include="MSTest.TestFramework" Version="3.9.2" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\SqlNado\SqlNado.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\SqlNado\SqlNado.csproj" />
+	</ItemGroup>
 
 </Project>

@@ -3,10 +3,10 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<Nullable>enable</Nullable>
-		<Version>2.0.2</Version>
-		<LangVersion>9</LangVersion>
-		<AssemblyVersion>2.0.2.1</AssemblyVersion>
-		<FileVersion>2.0.2.1</FileVersion>
+		<Version>2.0.3</Version>
+		<LangVersion>default</LangVersion>
+		<AssemblyVersion>2.0.3.0</AssemblyVersion>
+		<FileVersion>2.0.3.0</FileVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<Authors>Simon Mourier</Authors>
 		<Copyright>Copyright (c) 2017-2025 Simon Mourier. All rights reserved.</Copyright>
@@ -30,11 +30,40 @@
 			* Automatic support for Windows 'winsqlite3.dll' to avoid shipping any binary file (supported on azure web apps).
 		</Description>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<DefineConstants>DEBUG;TRACE</DefineConstants>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="SqlNado" />
+		<Using Include="SqlNado.Platforms" />
+		<Using Include="SqlNado.Utilities" />
+		<Using Include="System" />
+		<Using Include="System.CodeDom.Compiler" />
+		<Using Include="System.Collections" />
+		<Using Include="System.Collections.Concurrent" />
+		<Using Include="System.Collections.Generic" />
+		<Using Include="System.ComponentModel" />
+		<Using Include="System.Diagnostics" />
+		<Using Include="System.Globalization" />
+		<Using Include="System.IO" />
+		<Using Include="System.Linq" />
+		<Using Include="System.Linq.Expressions" />
+		<Using Include="System.Reflection" />
+		<Using Include="System.Runtime.CompilerServices" />
+		<Using Include="System.Runtime.InteropServices" />
+		<Using Include="System.Security.Cryptography" />
+		<Using Include="System.Text" />
+		<Using Include="System.Threading" />
+		<Using Include="System.Threading.Tasks" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<None Update="sqlite3.x64.dll">

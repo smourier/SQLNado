@@ -1,60 +1,56 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿namespace SqlNado.Platforms;
 
-namespace SqlNado.Platforms
+public sealed class SQLiteCdeclNativeTokenizer : ISQLiteNativeTokenizer
 {
-    public sealed class SQLiteCdeclNativeTokenizer : ISQLiteNativeTokenizer
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate SQLiteErrorCode xCreate(int argc, [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] string[]? argv, out IntPtr ppTokenizer);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate SQLiteErrorCode xDestroy(IntPtr pTokenizer);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate SQLiteErrorCode xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate SQLiteErrorCode xClose(IntPtr pCursor);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate SQLiteErrorCode xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate SQLiteErrorCode xLanguageid(IntPtr pCursor, int iLangid);
+
+    private readonly xCreate _create;
+    private readonly xDestroy _destroy;
+    private readonly xOpen _open;
+    private readonly xClose _close;
+    private readonly xNext _next;
+    private readonly xLanguageid? _languageid;
+
+    public SQLiteCdeclNativeTokenizer(IntPtr ptr)
     {
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate SQLiteErrorCode xCreate(int argc, [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] string[]? argv, out IntPtr ppTokenizer);
+        if (ptr == IntPtr.Zero)
+            throw new ArgumentException(null, nameof(ptr));
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate SQLiteErrorCode xDestroy(IntPtr pTokenizer);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate SQLiteErrorCode xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate SQLiteErrorCode xClose(IntPtr pCursor);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate SQLiteErrorCode xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate SQLiteErrorCode xLanguageid(IntPtr pCursor, int iLangid);
-
-        private readonly xCreate _create;
-        private readonly xDestroy _destroy;
-        private readonly xOpen _open;
-        private readonly xClose _close;
-        private readonly xNext _next;
-        private readonly xLanguageid? _languageid;
-
-        public SQLiteCdeclNativeTokenizer(IntPtr ptr)
+        var module = Marshal.PtrToStructure<SQLiteNativeTokenizerModule>(ptr);
+        Version = module.iVersion;
+        _create = Marshal.GetDelegateForFunctionPointer<xCreate>(module.xCreate);
+        _destroy = Marshal.GetDelegateForFunctionPointer<xDestroy>(module.xDestroy);
+        _open = Marshal.GetDelegateForFunctionPointer<xOpen>(module.xOpen);
+        _close = Marshal.GetDelegateForFunctionPointer<xClose>(module.xClose);
+        _next = Marshal.GetDelegateForFunctionPointer<xNext>(module.xNext);
+        if (module.xLanguageid != IntPtr.Zero)
         {
-            if (ptr == IntPtr.Zero)
-                throw new ArgumentException(null, nameof(ptr));
-
-            var module = Marshal.PtrToStructure<SQLiteNativeTokenizerModule>(ptr);
-            Version = module.iVersion;
-            _create = Marshal.GetDelegateForFunctionPointer<xCreate>(module.xCreate);
-            _destroy = Marshal.GetDelegateForFunctionPointer<xDestroy>(module.xDestroy);
-            _open = Marshal.GetDelegateForFunctionPointer<xOpen>(module.xOpen);
-            _close = Marshal.GetDelegateForFunctionPointer<xClose>(module.xClose);
-            _next = Marshal.GetDelegateForFunctionPointer<xNext>(module.xNext);
-            if (module.xLanguageid != IntPtr.Zero)
-            {
-                _languageid = Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid);
-            }
+            _languageid = Marshal.GetDelegateForFunctionPointer<xLanguageid>(module.xLanguageid);
         }
-
-        public int Version { get; private set; }
-
-        SQLiteErrorCode ISQLiteNativeTokenizer.xClose(IntPtr pCursor) => _close(pCursor);
-        SQLiteErrorCode ISQLiteNativeTokenizer.xCreate(int argc, string[]? argv, out IntPtr ppTokenizer) => _create(argc, argv, out ppTokenizer);
-        SQLiteErrorCode ISQLiteNativeTokenizer.xDestroy(IntPtr pTokenizer) => _destroy(pTokenizer);
-        SQLiteErrorCode ISQLiteNativeTokenizer.xLanguageid(IntPtr pCursor, int iLangid) => _languageid != null ? _languageid(pCursor, iLangid) : SQLiteErrorCode.SQLITE_MISUSE;
-        SQLiteErrorCode ISQLiteNativeTokenizer.xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition) => _next(pCursor, out ppToken, out pnBytes, out piStartOffset, out piEndOffset, out piPosition);
-        SQLiteErrorCode ISQLiteNativeTokenizer.xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor) => _open(pTokenizer, pInput, nBytes, out ppCursor);
     }
+
+    public int Version { get; private set; }
+
+    SQLiteErrorCode ISQLiteNativeTokenizer.xClose(IntPtr pCursor) => _close(pCursor);
+    SQLiteErrorCode ISQLiteNativeTokenizer.xCreate(int argc, string[]? argv, out IntPtr ppTokenizer) => _create(argc, argv, out ppTokenizer);
+    SQLiteErrorCode ISQLiteNativeTokenizer.xDestroy(IntPtr pTokenizer) => _destroy(pTokenizer);
+    SQLiteErrorCode ISQLiteNativeTokenizer.xLanguageid(IntPtr pCursor, int iLangid) => _languageid != null ? _languageid(pCursor, iLangid) : SQLiteErrorCode.SQLITE_MISUSE;
+    SQLiteErrorCode ISQLiteNativeTokenizer.xNext(IntPtr pCursor, out IntPtr ppToken, out int pnBytes, out int piStartOffset, out int piEndOffset, out int piPosition) => _next(pCursor, out ppToken, out pnBytes, out piStartOffset, out piEndOffset, out piPosition);
+    SQLiteErrorCode ISQLiteNativeTokenizer.xOpen(IntPtr pTokenizer, IntPtr pInput, int nBytes, out IntPtr ppCursor) => _open(pTokenizer, pInput, nBytes, out ppCursor);
 }

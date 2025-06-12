@@ -1,9 +1,6 @@
-﻿using System.Diagnostics;
+﻿namespace SqlNado;
 
-namespace SqlNado
+public interface ISQLiteLogger
 {
-    public interface ISQLiteLogger
-    {
-        void Log(TraceLevel level, object value, string? methodName = null);
-    }
+    void Log(TraceLevel level, object value, string? methodName = null);
 }

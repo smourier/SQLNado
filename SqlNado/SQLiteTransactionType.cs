@@ -1,9 +1,8 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteTransactionType
 {
-    public enum SQLiteTransactionType
-    {
-        Deferred,
-        Immediate,
-        Exclusive,
-    }
+    Deferred,
+    Immediate,
+    Exclusive,
 }

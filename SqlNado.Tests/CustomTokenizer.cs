@@ -70,12 +70,12 @@ namespace SqlNado.Tests
         public override string ToString() => Subject + ":" + Body;
     }
 
-    public class StopWordTokenizer : SQLiteTokenizer
+    public class StopWordTokenizer(SQLiteDatabase database, params string[] arguments) : SQLiteTokenizer(database, TokenizerName)
     {
         public const string TokenizerName = "unicode_stopwords";
 
         private readonly static HashSet<string> _words;
-        private readonly SQLiteTokenizer _unicode;
+        private readonly SQLiteTokenizer _unicode = database.GetUnicodeTokenizer(arguments);
         private int _disposed;
 
         static StopWordTokenizer()
@@ -93,12 +93,6 @@ namespace SqlNado.Tests
                 }
                 while (true);
             }
-        }
-
-        public StopWordTokenizer(SQLiteDatabase database, params string[] arguments)
-            : base(database, TokenizerName)
-        {
-            _unicode = database.GetUnicodeTokenizer(arguments);
         }
 
         protected override void Dispose(bool disposing)

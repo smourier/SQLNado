@@ -246,21 +246,12 @@ namespace SqlNado.Tests
             public MyFlagsEnum MyFlagsEnum { get; set; }
         }
 
-        private sealed class AnnotatedDb : SQLiteDatabase
+        private sealed class AnnotatedDb(string filePath) : SQLiteDatabase(filePath)
         {
-            public AnnotatedDb(string filePath) : base(filePath)
-            {
-            }
-
             protected override SQLiteObjectTableBuilder CreateObjectTableBuilder(Type type, SQLiteBuildTableOptions options = null) => new AnnotatedBuilder(this, type, options);
 
-            private sealed class AnnotatedBuilder : SQLiteObjectTableBuilder
+            private sealed class AnnotatedBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions options = null) : SQLiteObjectTableBuilder(database, type, options)
             {
-                public AnnotatedBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions options = null)
-                    : base(database, type, options)
-                {
-                }
-
                 protected override SQLiteColumnAttribute AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute attribute)
                 {
                     if (property == null)

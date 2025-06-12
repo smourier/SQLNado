@@ -1,10 +1,9 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteSynchronousMode
 {
-    public enum SQLiteSynchronousMode
-    {
-        Off = 0,
-        Normal = 1,
-        Full = 2,
-        Extra = 3,
-    }
+    Off = 0,
+    Normal = 1,
+    Full = 2,
+    Extra = 3,
 }

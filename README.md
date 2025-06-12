@@ -20,7 +20,7 @@ Since version 2, the whole of SQLNado is now cross-platform enabled. It currentl
 *Note: the Nuget is still currently on the old version as the version 2 is still being tested*.
 
 ## Requirements
-On **Windows**, the only requirement is netstandard 2.0 or .NET Framework 4.6, so it works fine with .NET Core to .NET 7+ too. It's 100% dependency free! Well, of course it requires an SQLite native dlls corresponding to the bitness (x86 vs x64) of the executing app.
+On **Windows**, the only requirement is netstandard 2.0 or .NET Framework 4.6, so it works fine with .NET Core to .NET 9+ too. It's 100% dependency free! Well, of course it requires an SQLite native dlls corresponding to the bitness (x86 vs x64) of the executing app.
 
 On **Linux**, the only requirement, beside .NET Core, is to have libsqlite3.so (or similar) available to the project you're working on.
 

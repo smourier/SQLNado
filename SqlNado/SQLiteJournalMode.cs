@@ -1,12 +1,11 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteJournalMode
 {
-    public enum SQLiteJournalMode
-    {
-        Delete,
-        Truncate,
-        Persist,
-        Memory,
-        Wal,
-        Off,
-    }
+    Delete,
+    Truncate,
+    Persist,
+    Memory,
+    Wal,
+    Off,
 }

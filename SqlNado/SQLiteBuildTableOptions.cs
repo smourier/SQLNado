@@ -1,18 +1,15 @@
-﻿using System;
+﻿namespace SqlNado;
 
-namespace SqlNado
+public class SQLiteBuildTableOptions
 {
-    public class SQLiteBuildTableOptions
+    public SQLiteBuildTableOptions(SQLiteDatabase database)
     {
-        public SQLiteBuildTableOptions(SQLiteDatabase database)
-        {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
+        if (database == null)
+            throw new ArgumentNullException(nameof(database));
 
-            Database = database;
-        }
-
-        public SQLiteDatabase Database { get; }
-        public virtual string? CacheKey { get; set; }
+        Database = database;
     }
+
+    public SQLiteDatabase Database { get; }
+    public virtual string? CacheKey { get; set; }
 }

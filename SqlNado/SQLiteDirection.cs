@@ -1,8 +1,7 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteDirection
 {
-    public enum SQLiteDirection
-    {
-        Ascending,
-        Descending,
-    }
+    Ascending,
+    Descending,
 }

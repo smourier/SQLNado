@@ -79,12 +79,12 @@ namespace SqlNado.Temp
             public override string ToString() => Subject + ":" + Body;
         }
 
-        public class StopWordTokenizer : SQLiteTokenizer
+        public class StopWordTokenizer(SQLiteDatabase database, params string[] arguments) : SQLiteTokenizer(database, TokenizerName)
         {
             public const string TokenizerName = "unicode_stopwords";
 
             private readonly static HashSet<string> _words;
-            private readonly SQLiteTokenizer _unicode;
+            private readonly SQLiteTokenizer _unicode = database.GetUnicodeTokenizer(arguments);
             private int _disposed;
 
             static StopWordTokenizer()
@@ -102,12 +102,6 @@ namespace SqlNado.Temp
                     }
                     while (true);
                 }
-            }
-
-            public StopWordTokenizer(SQLiteDatabase database, params string[] arguments)
-                : base(database, TokenizerName)
-            {
-                _unicode = database.GetUnicodeTokenizer(arguments);
             }
 
             protected override void Dispose(bool disposing)
@@ -613,13 +607,8 @@ yourselves";
         public string Id3 { get; set; }
     }
 
-    public class User : SQLiteBaseObject
+    public class User(SQLiteDatabase db) : SQLiteBaseObject(db)
     {
-        public User(SQLiteDatabase db)
-            : base(db)
-        {
-        }
-
         [SQLiteColumn(IsPrimaryKey = true)]
         public string Email { get; set; }
         public string Name { get; set; }
@@ -658,12 +647,8 @@ yourselves";
         public int AccuracyRadius { get; set; }
     }
 
-    public class TestQuery : SQLiteBaseObject
+    public class TestQuery(SQLiteDatabase database) : SQLiteBaseObject(database)
     {
-        public TestQuery(SQLiteDatabase database) : base(database)
-        {
-        }
-
         [SQLiteColumn(IsPrimaryKey = true)]
         public string Name { get; set; }
         public int Age { get; set; }
@@ -878,9 +863,9 @@ yourselves";
         }
     }
 
-    public class StopWordTokenizer : SQLiteTokenizer
+    public class StopWordTokenizer(SQLiteDatabase database, params string[] arguments) : SQLiteTokenizer(database, "unicode_stopwords")
     {
-        private readonly SQLiteTokenizer _unicode;
+        private readonly SQLiteTokenizer _unicode = database.GetUnicodeTokenizer(arguments);
         private int _disposed;
         private readonly static HashSet<string> _words;
 
@@ -899,12 +884,6 @@ yourselves";
                 }
                 while (true);
             }
-        }
-
-        public StopWordTokenizer(SQLiteDatabase database, params string[] arguments)
-            : base(database, "unicode_stopwords")
-        {
-            _unicode = database.GetUnicodeTokenizer(arguments);
         }
 
         protected override void Dispose(bool disposing)

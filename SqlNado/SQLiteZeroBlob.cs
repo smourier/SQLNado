@@ -1,11 +1,8 @@
-﻿using System.Globalization;
+﻿namespace SqlNado;
 
-namespace SqlNado
+public sealed class SQLiteZeroBlob
 {
-    public sealed class SQLiteZeroBlob
-    {
-        public int Size { get; set; }
+    public int Size { get; set; }
 
-        public override string ToString() => Size.ToString(CultureInfo.CurrentCulture);
-    }
+    public override string ToString() => Size.ToString(CultureInfo.CurrentCulture);
 }

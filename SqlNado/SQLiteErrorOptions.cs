@@ -1,11 +1,8 @@
-﻿using System;
+﻿namespace SqlNado;
 
-namespace SqlNado
+[Flags]
+public enum SQLiteErrorOptions
 {
-    [Flags]
-    public enum SQLiteErrorOptions
-    {
-        None = 0x1,
-        AddSqlText = 0x2,
-    }
+    None = 0x1,
+    AddSqlText = 0x2,
 }

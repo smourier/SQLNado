@@ -11,10 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Cli", "SqlNado.Cli\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.Tests", "SqlNado.Tests\SqlNado.Tests.csproj", "{48CADD57-A74C-45CA-B727-801CD00A9C5C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlNado.Converter", "SqlNado.Converter\SqlNado.Converter.csproj", "{BC168850-7857-4E42-ACFE-789C6E3D373C}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado.TempCore", "SqlNado.TempCore\SqlNado.TempCore.csproj", "{CC472C2D-4201-4930-940C-2ED591C266F0}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,13 +31,6 @@ Global
 		{48CADD57-A74C-45CA-B727-801CD00A9C5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{48CADD57-A74C-45CA-B727-801CD00A9C5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{48CADD57-A74C-45CA-B727-801CD00A9C5C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BC168850-7857-4E42-ACFE-789C6E3D373C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BC168850-7857-4E42-ACFE-789C6E3D373C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BC168850-7857-4E42-ACFE-789C6E3D373C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BC168850-7857-4E42-ACFE-789C6E3D373C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CC472C2D-4201-4930-940C-2ED591C266F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CC472C2D-4201-4930-940C-2ED591C266F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CC472C2D-4201-4930-940C-2ED591C266F0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

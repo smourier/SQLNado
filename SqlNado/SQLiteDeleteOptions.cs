@@ -1,17 +1,14 @@
-﻿using System;
+﻿namespace SqlNado;
 
-namespace SqlNado
+public class SQLiteDeleteOptions
 {
-    public class SQLiteDeleteOptions
+    public SQLiteDeleteOptions(SQLiteDatabase database)
     {
-        public SQLiteDeleteOptions(SQLiteDatabase database)
-        {
-            if (database == null)
-                throw new ArgumentNullException(nameof(database));
+        if (database == null)
+            throw new ArgumentNullException(nameof(database));
 
-            Database = database;
-        }
-
-        public SQLiteDatabase Database { get; }
+        Database = database;
     }
+
+    public SQLiteDatabase Database { get; }
 }

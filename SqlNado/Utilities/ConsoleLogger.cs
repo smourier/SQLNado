@@ -1,54 +1,44 @@
-﻿using System;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿namespace SqlNado.Utilities;
 
-namespace SqlNado.Utilities
+public class ConsoleLogger(bool addThreadId) : ISQLiteLogger
 {
-    public class ConsoleLogger : ISQLiteLogger
+    public ConsoleLogger()
+        : this(true)
     {
-        public ConsoleLogger()
-            : this(true)
+    }
+
+    public bool AddThreadId { get; set; } = addThreadId;
+
+    public virtual void Log(TraceLevel level, object value, [CallerMemberName] string? methodName = null)
+    {
+        switch (level)
         {
+            case TraceLevel.Error:
+                Console.ForegroundColor = ConsoleColor.Red;
+                break;
+
+            case TraceLevel.Warning:
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                break;
+
+            case TraceLevel.Verbose:
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                break;
+
+            case TraceLevel.Off:
+                return;
         }
 
-        public ConsoleLogger(bool addThreadId)
+        var tid = AddThreadId ? "[" + Environment.CurrentManagedThreadId + "]:" : null;
+
+        if (!string.IsNullOrWhiteSpace(methodName))
         {
-            AddThreadId = addThreadId;
+            Console.WriteLine(tid + methodName + ": " + value);
         }
-
-        public bool AddThreadId { get; set; }
-
-        public virtual void Log(TraceLevel level, object value, [CallerMemberName] string? methodName = null)
+        else
         {
-            switch (level)
-            {
-                case TraceLevel.Error:
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    break;
-
-                case TraceLevel.Warning:
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    break;
-
-                case TraceLevel.Verbose:
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    break;
-
-                case TraceLevel.Off:
-                    return;
-            }
-
-            var tid = AddThreadId ? "[" + Environment.CurrentManagedThreadId + "]:" : null;
-
-            if (!string.IsNullOrWhiteSpace(methodName))
-            {
-                Console.WriteLine(tid + methodName + ": " + value);
-            }
-            else
-            {
-                Console.WriteLine(tid + value);
-            }
-            Console.ResetColor();
+            Console.WriteLine(tid + value);
         }
+        Console.ResetColor();
     }
 }

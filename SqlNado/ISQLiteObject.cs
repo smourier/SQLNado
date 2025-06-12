@@ -1,7 +1,6 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public interface ISQLiteObject
 {
-    public interface ISQLiteObject
-    {
-        SQLiteDatabase? Database { get; set; }
-    }
+    SQLiteDatabase? Database { get; set; }
 }

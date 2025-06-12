@@ -1,7 +1,6 @@
-﻿namespace SqlNado.Platforms
+﻿namespace SqlNado.Platforms;
+
+public interface ISQLiteWindows
 {
-    public interface ISQLiteWindows
-    {
-        bool IsUsingWindowsRuntime { get; }
-    }
+    bool IsUsingWindowsRuntime { get; }
 }

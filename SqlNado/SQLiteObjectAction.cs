@@ -1,10 +1,9 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteObjectAction
 {
-    public enum SQLiteObjectAction
-    {
-        Loading,
-        Loaded,
-        Saving,
-        Saved,
-    }
+    Loading,
+    Loaded,
+    Saving,
+    Saved,
 }

@@ -1,11 +1,10 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteConflictResolution
 {
-    public enum SQLiteConflictResolution
-    {
-        Abort,
-        Rollback,
-        Fail,
-        Ignore,
-        Replace,
-    }
+    Abort,
+    Rollback,
+    Fail,
+    Ignore,
+    Replace,
 }

@@ -1,26 +1,22 @@
-﻿using System;
-using System.ComponentModel;
+﻿namespace SqlNado.Utilities;
 
-namespace SqlNado.Utilities
+public class DictionaryObjectPropertyChangedEventArgs : PropertyChangedEventArgs
 {
-    public class DictionaryObjectPropertyChangedEventArgs : PropertyChangedEventArgs
+    public DictionaryObjectPropertyChangedEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, DictionaryObjectProperty newProperty)
+        : base(propertyName)
     {
-        public DictionaryObjectPropertyChangedEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, DictionaryObjectProperty newProperty)
-            : base(propertyName)
-        {
-            if (propertyName == null)
-                throw new ArgumentNullException(nameof(propertyName));
+        if (propertyName == null)
+            throw new ArgumentNullException(nameof(propertyName));
 
-            if (newProperty == null)
-                throw new ArgumentNullException(nameof(newProperty));
+        if (newProperty == null)
+            throw new ArgumentNullException(nameof(newProperty));
 
-            // existingProperty may be null
+        // existingProperty may be null
 
-            ExistingProperty = existingProperty;
-            NewProperty = newProperty;
-        }
-
-        public DictionaryObjectProperty? ExistingProperty { get; }
-        public DictionaryObjectProperty NewProperty { get; }
+        ExistingProperty = existingProperty;
+        NewProperty = newProperty;
     }
+
+    public DictionaryObjectProperty? ExistingProperty { get; }
+    public DictionaryObjectProperty NewProperty { get; }
 }

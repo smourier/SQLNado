@@ -1,8 +1,7 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteBlobOpenMode
 {
-    public enum SQLiteBlobOpenMode
-    {
-        ReadOnly = 0x0,
-        ReadWrite = 0x1,
-    }
+    ReadOnly = 0x0,
+    ReadWrite = 0x1,
 }

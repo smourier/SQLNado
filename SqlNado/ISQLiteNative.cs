@@ -1,7 +1,4 @@
-﻿using System;
-using System.Runtime.InteropServices;
-
-namespace SqlNado
+﻿namespace SqlNado
 {
 #pragma warning disable IDE1006 // Naming Styles
     namespace Native

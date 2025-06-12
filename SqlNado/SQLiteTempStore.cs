@@ -1,9 +1,8 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteTempStore
 {
-    public enum SQLiteTempStore
-    {
-        Default,
-        File,
-        Memory,
-    }
+    Default,
+    File,
+    Memory,
 }

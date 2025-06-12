@@ -1,8 +1,7 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteLockingMode
 {
-    public enum SQLiteLockingMode
-    {
-        Normal,
-        Exclusive,
-    }
+    Normal,
+    Exclusive,
 }

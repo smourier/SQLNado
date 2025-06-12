@@ -1,9 +1,8 @@
-﻿namespace SqlNado
+﻿namespace SqlNado;
+
+public enum SQLiteOnErrorAction
 {
-    public enum SQLiteOnErrorAction
-    {
-        Unhandled,
-        Break,
-        Continue,
-    }
+    Unhandled,
+    Break,
+    Continue,
 }
