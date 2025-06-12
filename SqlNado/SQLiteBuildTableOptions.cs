@@ -1,15 +1,7 @@
 ﻿namespace SqlNado;
 
-public class SQLiteBuildTableOptions
+public class SQLiteBuildTableOptions(SQLiteDatabase database)
 {
-    public SQLiteBuildTableOptions(SQLiteDatabase database)
-    {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        Database = database;
-    }
-
-    public SQLiteDatabase Database { get; }
+    public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
     public virtual string? CacheKey { get; set; }
 }

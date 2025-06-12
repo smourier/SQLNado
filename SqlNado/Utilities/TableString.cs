@@ -2,14 +2,14 @@
 
 public class TableString
 {
-    private static readonly Lazy<bool> _isRunningInKudu = new Lazy<bool>(() => Environment.GetEnvironmentVariables().Cast<DictionaryEntry>().Any(e => ((string)e.Key).IndexOf("kudu", StringComparison.OrdinalIgnoreCase) >= 0), true);
+    private static readonly Lazy<bool> _isRunningInKudu = new(() => Environment.GetEnvironmentVariables().Cast<DictionaryEntry>().Any(e => ((string)e.Key).IndexOf("kudu", StringComparison.OrdinalIgnoreCase) >= 0), true);
     public static bool IsRunningInKudu => _isRunningInKudu.Value;
 
     private const int _columnBorderWidth = 1;
     private const int _absoluteMinimumColumnWidth = 1;
-    private static readonly Lazy<bool> _isConsoleValid = new Lazy<bool>(GetConsoleValidity, true);
+    private static readonly Lazy<bool> _isConsoleValid = new(GetConsoleValidity, true);
     private static int _defaultMaximumWidth = ConsoleWindowWidth;
-    private readonly List<TableStringColumn> _columns = new List<TableStringColumn>();
+    private readonly List<TableStringColumn> _columns = [];
     private int _minimumColumnWidth;
     private int _maximumWidth;
     private int _maximumRowHeight;
@@ -280,11 +280,9 @@ public class TableString
 
     public virtual string Write(IEnumerable? enumerable)
     {
-        using (var sw = new StringWriter())
-        {
-            Write(sw, enumerable);
-            return sw.ToString();
-        }
+        using var sw = new StringWriter();
+        Write(sw, enumerable);
+        return sw.ToString();
     }
 
     public virtual void Write(TextWriter writer, IEnumerable? enumerable)
@@ -334,10 +332,7 @@ public class TableString
         wr.Write(TopLeftCharacter);
         middleLine.Append(MiddleLeftCharacter);
         bottomLine.Append(BottomLeftCharacter);
-        if (emptyLine != null)
-        {
-            emptyLine.Append(VerticalCharacter);
-        }
+        emptyLine?.Append(VerticalCharacter);
 
         for (var i = 0; i < columnsCount; i++)
         {
@@ -665,7 +660,7 @@ public class TableString
         return desiredPaddedColumnWidths.Length;
     }
 
-    protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object?> getValueFunc) => new TableStringColumn(this, name, getValueFunc);
+    protected virtual TableStringColumn CreateColumn(string name, Func<TableStringColumn, object, object?> getValueFunc) => new(this, name, getValueFunc);
     public virtual bool IsInConsoleMode(TextWriter writer) => IsConsoleValid && (writer == Console.Out || writer is ConsoleModeTextWriter);
 
     public virtual void WriteWithColor(TextWriter writer, ConsoleColor foreground, string? text) => WriteWithColor(writer, foreground, Console.BackgroundColor, text);
@@ -921,18 +916,9 @@ public class TableStringColumn
 
     public TableStringColumn(TableString table, string name, Func<TableStringColumn, object, object?> getValueFunc)
     {
-        if (table == null)
-            throw new ArgumentNullException(nameof(table));
-
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-
-        if (getValueFunc == null)
-            throw new ArgumentNullException(nameof(getValueFunc));
-
-        Table = table;
-        GetValueFunc = getValueFunc;
-        Name = name;
+        Table = table ?? throw new ArgumentNullException(nameof(table));
+        GetValueFunc = getValueFunc ?? throw new ArgumentNullException(nameof(getValueFunc));
+        Name = name ?? throw new ArgumentNullException(nameof(name));
         WidthWithPadding = -1;
     }
 
@@ -960,21 +946,12 @@ public class TableStringColumn
     public override string ToString() => Name;
 }
 
-public class TableStringCell
+public class TableStringCell(TableStringColumn column, object? value)
 {
     private string[]? _split;
 
-    public TableStringCell(TableStringColumn column, object? value)
-    {
-        if (column == null)
-            throw new ArgumentNullException(nameof(column));
-
-        Column = column;
-        Value = value;
-    }
-
-    public TableStringColumn Column { get; }
-    public object? Value { get; }
+    public TableStringColumn Column { get; } = column ?? throw new ArgumentNullException(nameof(column));
+    public object? Value { get; } = value;
     public virtual TableStringAlignment Alignment => Column.Alignment;
     public virtual string? Text { get; protected set; }
     public virtual string?[]? TextLines { get; protected set; }
@@ -986,10 +963,10 @@ public class TableStringCell
             if (Text == null)
                 return 0;
 
-            var pos = Text.IndexOfAny(new[] { '\r', '\n' });
+            var pos = Text.IndexOfAny(['\r', '\n']);
             if (pos >= 0)
             {
-                _split ??= Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                _split ??= Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
                 return _split.Max(s => s.Length);
             }
 
@@ -1068,15 +1045,15 @@ public class TableStringCell
 
         if (Text == null)
         {
-            TextLines = new string?[] { null };
+            TextLines = [null];
         }
         else if (_split == null && Text.Length <= Column.WidthWithoutPadding)
         {
-            TextLines = new string?[] { Align(EscapeTextLine(Text)) };
+            TextLines = [Align(EscapeTextLine(Text))];
         }
         else
         {
-            var split = _split ?? Text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var split = _split ?? Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
             var lines = new List<string?>();
             var segmentWidth = Column.WidthWithoutPadding - 1; // keep 1 char to display NewLineReplacement
             for (var i = 0; i < split.Length; i++)
@@ -1147,7 +1124,7 @@ public class TableStringCell
                     break;
             }
 
-            TextLines = lines.ToArray();
+            TextLines = [.. lines];
         }
     }
 
@@ -1341,18 +1318,12 @@ public class ObjectTableString(object? obj) : TableString
             firstColumnName = "Type";
         }
 
-        var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object?, object?>)r).Item1 ?? "<null>");
-        if (nameColumn == null)
-            throw new InvalidOperationException();
-
+        var nameColumn = CreateColumn(firstColumnName, (c, r) => ((Tuple<object?, object?>)r).Item1 ?? "<null>") ?? throw new InvalidOperationException();
         nameColumn.HeaderAlignment = TableStringAlignment.Left;
         nameColumn.Alignment = nameColumn.HeaderAlignment;
         AddColumn(nameColumn);
 
-        var valueColumn = CreateColumn("Value", (c, r) => ((Tuple<object?, object?>)r).Item2);
-        if (valueColumn == null)
-            throw new InvalidOperationException();
-
+        var valueColumn = CreateColumn("Value", (c, r) => ((Tuple<object?, object?>)r).Item2) ?? throw new InvalidOperationException();
         AddColumn(valueColumn);
 
         if (AddValueTypeColumn)
@@ -1364,11 +1335,7 @@ public class ObjectTableString(object? obj) : TableString
                     return null;
 
                 return value.GetType().FullName;
-            });
-
-            if (typeColumn == null)
-                throw new InvalidOperationException();
-
+            }) ?? throw new InvalidOperationException();
             AddColumn(typeColumn);
         }
     }
@@ -1376,11 +1343,9 @@ public class ObjectTableString(object? obj) : TableString
     public void WriteObject(TextWriter writer) => Write(writer, Values);
     public virtual string WriteObject()
     {
-        using (var sw = new StringWriter())
-        {
-            WriteObject(sw);
-            return sw.ToString();
-        }
+        using var sw = new StringWriter();
+        WriteObject(sw);
+        return sw.ToString();
     }
 }
 

@@ -2,7 +2,7 @@
 
 public static class Conversions
 {
-    private static readonly char[] _enumSeparators = new char[] { ',', ';', '+', '|', ' ' };
+    private static readonly char[] _enumSeparators = [',', ';', '+', '|', ' '];
 
     public static Type? GetEnumeratedType(Type collectionType)
     {
@@ -47,10 +47,8 @@ public static class Conversions
             throw new ArgumentNullException(nameof(text));
 
 #pragma warning disable S4790
-        using (var md5 = MD5.Create())
-        {
-            return new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(text)));
-        }
+        using var md5 = MD5.Create();
+        return new Guid(md5.ComputeHash(Encoding.UTF8.GetBytes(text)));
 #pragma warning restore S4790
     }
 
@@ -77,7 +75,7 @@ public static class Conversions
             return null;
 
         if (text.Length == 0)
-            return Array.Empty<byte>();
+            return [];
 
         var list = new List<byte>();
         var lo = false;
@@ -111,7 +109,7 @@ public static class Conversions
             lo = !lo;
         }
 
-        return list.ToArray();
+        return [.. list];
     }
 
     public static byte GetHexaByte(char c)
@@ -160,10 +158,7 @@ public static class Conversions
         if (text == null)
             return null;
 
-        if (encoding == null)
-        {
-            encoding = Encoding.Unicode;
-        }
+        encoding ??= Encoding.Unicode;
 
         return ToHexaDump(encoding.GetBytes(text));
     }
@@ -1032,24 +1027,12 @@ public static class Conversions
             throw new ArgumentNullException(nameof(value));
 
         var typeCode = Convert.GetTypeCode(value);
-        switch (typeCode)
+        return typeCode switch
         {
-            case TypeCode.SByte:
-            case TypeCode.Int16:
-            case TypeCode.Int32:
-            case TypeCode.Int64:
-                return (ulong)Convert.ToInt64(value, CultureInfo.CurrentCulture);
-
-            case TypeCode.Byte:
-            case TypeCode.UInt16:
-            case TypeCode.UInt32:
-            case TypeCode.UInt64:
-                return Convert.ToUInt64(value, CultureInfo.CurrentCulture);
-
-            case TypeCode.String:
-            default:
-                return ChangeType<ulong>(value, 0, CultureInfo.CurrentCulture);
-        }
+            TypeCode.SByte or TypeCode.Int16 or TypeCode.Int32 or TypeCode.Int64 => (ulong)Convert.ToInt64(value, CultureInfo.CurrentCulture),
+            TypeCode.Byte or TypeCode.UInt16 or TypeCode.UInt32 or TypeCode.UInt64 => Convert.ToUInt64(value, CultureInfo.CurrentCulture),
+            _ => ChangeType<ulong>(value, 0, CultureInfo.CurrentCulture),
+        };
     }
 
     private static bool StringToEnum(Type type, string[] names, Array values, string input, out object value)
@@ -1239,21 +1222,11 @@ public static class Conversions
                 return false;
             }
 
-            ulong tokenUl;
-            switch (Convert.GetTypeCode(tokenValue))
+            var tokenUl = Convert.GetTypeCode(tokenValue) switch
             {
-                case TypeCode.Int16:
-                case TypeCode.Int32:
-                case TypeCode.Int64:
-                case TypeCode.SByte:
-                    tokenUl = (ulong)Convert.ToInt64(tokenValue, CultureInfo.CurrentCulture);
-                    break;
-
-                default:
-                    tokenUl = Convert.ToUInt64(tokenValue, CultureInfo.CurrentCulture);
-                    break;
-            }
-
+                TypeCode.Int16 or TypeCode.Int32 or TypeCode.Int64 or TypeCode.SByte => (ulong)Convert.ToInt64(tokenValue, CultureInfo.CurrentCulture),
+                _ => Convert.ToUInt64(tokenValue, CultureInfo.CurrentCulture),
+            };
             ul |= tokenUl;
         }
         value = Enum.ToObject(type, ul);
@@ -1341,10 +1314,7 @@ public static class Conversions
         if (dic1.Count != dic2.Count)
             return false;
 
-        if (comparer == null)
-        {
-            comparer = EqualityComparer<TValue>.Default;
-        }
+        comparer ??= EqualityComparer<TValue>.Default;
 
         foreach (var kv1 in dic1)
         {

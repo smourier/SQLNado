@@ -124,7 +124,7 @@ public class SQLiteRow : IDictionary<string, object?>
         private readonly SQLiteRow _row = row;
         private int _index = -1;
 
-        public KeyValuePair<string, object?> Current => new KeyValuePair<string, object?>(_row.Names[_index], _row.Values[_index]);
+        public KeyValuePair<string, object?> Current => new(_row.Names[_index], _row.Values[_index]);
 
         public bool MoveNext()
         {

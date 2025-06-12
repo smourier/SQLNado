@@ -2,12 +2,10 @@
 
 public class Utf8Marshaler : ICustomMarshaler
 {
-    public static readonly Utf8Marshaler Instance = new Utf8Marshaler();
+    public static readonly Utf8Marshaler Instance = new();
 
     // *must* exist for a custom marshaler
-#pragma warning disable IDE0060 // Remove unused parameter
     public static ICustomMarshaler GetInstance(string cookie) => Instance;
-#pragma warning restore IDE0060 // Remove unused parameter
 
     public void CleanUpManagedData(object ManagedObj)
     {
@@ -36,12 +34,10 @@ public class Utf8Marshaler : ICustomMarshaler
         return ptr;
     }
 
-    public object MarshalNativeToManaged(IntPtr pNativeData)
+    public object? MarshalNativeToManaged(IntPtr pNativeData)
     {
         if (pNativeData == IntPtr.Zero)
-#pragma warning disable CS8603 // Possible null reference return.
             return null;
-#pragma warning restore CS8603 // Possible null reference return.
 
         // look for the terminating zero
         var i = 0;

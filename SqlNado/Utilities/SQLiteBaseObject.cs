@@ -4,10 +4,7 @@ public abstract class SQLiteBaseObject : ChangeTrackingDictionaryObject, ISQLite
 {
     protected SQLiteBaseObject(SQLiteDatabase database)
     {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        ((ISQLiteObject)this).Database = database;
+        ((ISQLiteObject)this).Database = database ?? throw new ArgumentNullException(nameof(database));
     }
 
     SQLiteDatabase? ISQLiteObject.Database { get; set; }

@@ -54,24 +54,12 @@ public sealed class SQLiteValue
     public string? StringValue { get; }
     public byte[]? BlobValue { get; }
 
-    public override string? ToString()
+    public override string? ToString() => Type switch
     {
-        switch (Type)
-        {
-            case SQLiteColumnType.BLOB:
-                return "0x" + Conversions.ToHexa(BlobValue);
-
-            case SQLiteColumnType.REAL:
-                return DoubleValue.ToString(CultureInfo.CurrentCulture);
-
-            case SQLiteColumnType.INTEGER:
-                return Int64Value.ToString(CultureInfo.CurrentCulture);
-
-            case SQLiteColumnType.NULL:
-                return "<NULL>";
-
-            default:
-                return StringValue;
-        }
-    }
+        SQLiteColumnType.BLOB => "0x" + Conversions.ToHexa(BlobValue),
+        SQLiteColumnType.REAL => DoubleValue.ToString(CultureInfo.CurrentCulture),
+        SQLiteColumnType.INTEGER => Int64Value.ToString(CultureInfo.CurrentCulture),
+        SQLiteColumnType.NULL => "<NULL>",
+        _ => StringValue,
+    };
 }

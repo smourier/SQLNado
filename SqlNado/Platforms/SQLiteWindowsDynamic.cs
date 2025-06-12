@@ -8,10 +8,7 @@ public class SQLiteWindowsDynamic : ISQLiteNative, ISQLiteWindows
 
     public SQLiteWindowsDynamic(string libraryPath, CallingConvention callingConvention)
     {
-        if (libraryPath == null)
-            throw new ArgumentNullException(nameof(libraryPath));
-
-        _initialLibraryPath = libraryPath;
+        _initialLibraryPath = libraryPath ?? throw new ArgumentNullException(nameof(libraryPath));
         CallingConvention = callingConvention;
         _libraryPath = new Lazy<string?>(GetLibraryPath);
     }

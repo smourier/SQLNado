@@ -1,16 +1,8 @@
 ﻿namespace SqlNado;
 
-public class SQLiteBindOptions
+public class SQLiteBindOptions(SQLiteDatabase database)
 {
-    public SQLiteBindOptions(SQLiteDatabase database)
-    {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        Database = database;
-    }
-
-    public SQLiteDatabase Database { get; }
+    public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
     public virtual bool GuidAsBlob { get; set; }
     public virtual string? GuidAsStringFormat { get; set; }
     public virtual bool TimeSpanAsInt64 { get; set; } // ticks

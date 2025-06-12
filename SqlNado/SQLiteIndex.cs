@@ -5,10 +5,7 @@ public sealed class SQLiteIndex
 {
     internal SQLiteIndex(SQLiteDatabase database)
     {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        Database = database;
+        Database = database ?? throw new ArgumentNullException(nameof(database));
         Name = string.Empty;
         TableName = string.Empty;
     }

@@ -1,23 +1,11 @@
 ﻿namespace SqlNado;
 
-public class SQLiteQueryTranslator : ExpressionVisitor
+public class SQLiteQueryTranslator(SQLiteDatabase database, TextWriter writer) : ExpressionVisitor
 {
     private SQLiteBindOptions? _bindOptions;
 
-    public SQLiteQueryTranslator(SQLiteDatabase database, TextWriter writer)
-    {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        if (writer == null)
-            throw new ArgumentNullException(nameof(writer));
-
-        Database = database;
-        Writer = writer;
-    }
-
-    public SQLiteDatabase Database { get; }
-    public TextWriter Writer { get; }
+    public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
+    public TextWriter Writer { get; } = writer ?? throw new ArgumentNullException(nameof(writer));
     public SQLiteBindOptions? BindOptions { get => _bindOptions ?? Database.BindOptions; set => _bindOptions = value; }
     public int? Skip { get; private set; }
     public int? Take { get; private set; }
@@ -56,15 +44,13 @@ public class SQLiteQueryTranslator : ExpressionVisitor
         if (expression == null)
             throw new ArgumentNullException(nameof(expression));
 
-        using (var writer = new StringWriter())
+        using var writer = new StringWriter();
+        var translator = new SQLiteQueryTranslator(Database, writer)
         {
-            var translator = new SQLiteQueryTranslator(Database, writer)
-            {
-                BindOptions = BindOptions
-            };
-            translator.Visit(expression);
-            return writer.ToString();
-        }
+            BindOptions = BindOptions
+        };
+        translator.Visit(expression);
+        return writer.ToString();
     }
 
     private static Expression StripQuotes(Expression expression)
@@ -550,10 +536,7 @@ public class SQLiteQueryTranslator : ExpressionVisitor
         public static Expression? Eval(Expression expression, Func<Expression, bool>? fnCanBeEvaluated) => Eval(expression, fnCanBeEvaluated, null);
         public static Expression? Eval(Expression expression, Func<Expression, bool>? fnCanBeEvaluated, Func<ConstantExpression, Expression>? fnPostEval)
         {
-            if (fnCanBeEvaluated == null)
-            {
-                fnCanBeEvaluated = CanBeEvaluatedLocally;
-            }
+            fnCanBeEvaluated ??= CanBeEvaluatedLocally;
             return SubtreeEvaluator.DoEval(Nominator.Nominate(fnCanBeEvaluated, expression), fnPostEval, expression);
         }
 
@@ -645,20 +628,12 @@ public class SQLiteQueryTranslator : ExpressionVisitor
                 return PostEval(constant);
             }
 
-            private static object? GetValue(MemberInfo member, object? instance)
+            private static object? GetValue(MemberInfo member, object? instance) => member.MemberType switch
             {
-                switch (member.MemberType)
-                {
-                    case MemberTypes.Property:
-                        return ((PropertyInfo)member).GetValue(instance, null);
-
-                    case MemberTypes.Field:
-                        return ((FieldInfo)member).GetValue(instance);
-
-                    default:
-                        throw new InvalidOperationException();
-                }
-            }
+                MemberTypes.Property => ((PropertyInfo)member).GetValue(instance, null),
+                MemberTypes.Field => ((FieldInfo)member).GetValue(instance),
+                _ => throw new InvalidOperationException(),
+            };
 
             private static bool IsNullableType(Type type) => type != null && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
             private static Type GetNonNullableType(Type type) => IsNullableType(type) ? type.GetGenericArguments()[0] : type;
@@ -667,7 +642,7 @@ public class SQLiteQueryTranslator : ExpressionVisitor
         private sealed class Nominator(Func<Expression, bool> fnCanBeEvaluated) : ExpressionVisitor
         {
             private readonly Func<Expression, bool> _fnCanBeEvaluated = fnCanBeEvaluated;
-            private readonly HashSet<Expression> _candidates = new HashSet<Expression>();
+            private readonly HashSet<Expression> _candidates = [];
             private bool _cannotBeEvaluated;
 
             public static HashSet<Expression> Nominate(Func<Expression, bool> fnCanBeEvaluated, Expression expression)

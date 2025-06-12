@@ -1,20 +1,10 @@
 ﻿namespace SqlNado;
 
-public class SQLiteError
+public class SQLiteError(SQLiteStatement statement, int index, SQLiteErrorCode code)
 {
-    public SQLiteError(SQLiteStatement statement, int index, SQLiteErrorCode code)
-    {
-        if (statement == null)
-            throw new ArgumentNullException(nameof(statement));
-
-        Statement = statement;
-        Index = index;
-        Code = code;
-    }
-
-    public SQLiteStatement Statement { get; }
-    public int Index { get; set; }
-    public SQLiteErrorCode Code { get; set; }
+    public SQLiteStatement Statement { get; } = statement ?? throw new ArgumentNullException(nameof(statement));
+    public int Index { get; set; } = index;
+    public SQLiteErrorCode Code { get; set; } = code;
 
     public override string ToString() => Index + ":" + Code + ":" + Statement;
 }

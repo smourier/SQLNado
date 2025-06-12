@@ -1,26 +1,10 @@
 ﻿namespace SqlNado;
 
-public class SQLiteObjectIndex
+public class SQLiteObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns)
 {
-    public SQLiteObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns)
-    {
-        if (table == null)
-            throw new ArgumentNullException(nameof(table));
-
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-
-        if (columns == null)
-            throw new ArgumentNullException(nameof(columns));
-
-        Table = table;
-        Name = name;
-        Columns = columns;
-    }
-
-    public SQLiteObjectTable Table { get; }
-    public string Name { get; }
-    public IReadOnlyList<SQLiteIndexedColumn> Columns { get; }
+    public SQLiteObjectTable Table { get; } = table ?? throw new ArgumentNullException(nameof(table));
+    public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
+    public IReadOnlyList<SQLiteIndexedColumn> Columns { get; } = columns ?? throw new ArgumentNullException(nameof(columns));
     public virtual string? SchemaName { get; set; }
     public virtual bool IsUnique { get; set; }
 

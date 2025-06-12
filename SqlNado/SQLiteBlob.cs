@@ -6,22 +6,12 @@ public class SQLiteBlob : IDisposable
 
     public SQLiteBlob(SQLiteDatabase database, IntPtr handle, string tableName, string columnName, long rowId, SQLiteBlobOpenMode mode)
     {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
         if (handle == IntPtr.Zero)
             throw new ArgumentException(null, nameof(handle));
-
-        if (tableName == null)
-            throw new ArgumentNullException(nameof(tableName));
-
-        if (columnName == null)
-            throw new ArgumentNullException(nameof(columnName));
-
-        Database = database;
+        Database = database ?? throw new ArgumentNullException(nameof(database));
         _handle = handle;
-        TableName = tableName;
-        ColumnName = columnName;
+        TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+        ColumnName = columnName ?? throw new ArgumentNullException(nameof(columnName));
         RowId = rowId;
         Mode = mode;
     }
@@ -46,11 +36,9 @@ public class SQLiteBlob : IDisposable
     // SQLiteBlob's design targets streams, not byte arrays. If you really want a byte array, then don't use this blob class type, just use byte[]
     public virtual byte[] ToArray()
     {
-        using (var ms = new MemoryStream(Size))
-        {
-            CopyTo(ms);
-            return ms.ToArray();
-        }
+        using var ms = new MemoryStream(Size);
+        CopyTo(ms);
+        return ms.ToArray();
     }
 
     public virtual void CopyTo(Stream output)
@@ -58,10 +46,8 @@ public class SQLiteBlob : IDisposable
         if (output == null)
             throw new ArgumentNullException(nameof(output));
 
-        using (var blob = new BlobStream(this))
-        {
-            blob.CopyTo(output);
-        }
+        using var blob = new BlobStream(this);
+        blob.CopyTo(output);
     }
 
     public virtual void CopyFrom(Stream input)
@@ -69,10 +55,8 @@ public class SQLiteBlob : IDisposable
         if (input == null)
             throw new ArgumentNullException(nameof(input));
 
-        using (var blob = new BlobStream(this))
-        {
-            input.CopyTo(blob);
-        }
+        using var blob = new BlobStream(this);
+        input.CopyTo(blob);
     }
 
     protected internal IntPtr CheckDisposed()
@@ -101,19 +85,11 @@ public class SQLiteBlob : IDisposable
 
     ~SQLiteBlob() => Dispose(false);
 
-    protected class BlobStream : Stream
+    protected class BlobStream(SQLiteBlob blob) : Stream
     {
         private int _position;
 
-        public BlobStream(SQLiteBlob blob)
-        {
-            if (blob == null)
-                throw new ArgumentNullException(nameof(blob));
-
-            Blob = blob;
-        }
-
-        public SQLiteBlob Blob { get; }
+        public SQLiteBlob Blob { get; } = blob ?? throw new ArgumentNullException(nameof(blob));
         public override bool CanRead => true;
         public override bool CanSeek => true;
         public override bool CanWrite => Blob.Mode == SQLiteBlobOpenMode.ReadWrite;

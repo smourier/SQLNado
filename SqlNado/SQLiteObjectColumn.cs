@@ -1,45 +1,20 @@
 ﻿namespace SqlNado;
 
-public class SQLiteObjectColumn
+public class SQLiteObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
+    Func<object, object> getValueFunc,
+    Action<SQLiteLoadOptions, object?, object?>? setValueAction)
 {
-    public SQLiteObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
-        Func<object, object> getValueFunc,
-        Action<SQLiteLoadOptions, object?, object?>? setValueAction)
-    {
-        if (table == null)
-            throw new ArgumentNullException(nameof(table));
-
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-
-        if (dataType == null)
-            throw new ArgumentNullException(nameof(dataType));
-
-        if (clrType == null)
-            throw new ArgumentNullException(nameof(clrType));
-
-        if (getValueFunc == null)
-            throw new ArgumentNullException(nameof(getValueFunc));
-
-        Table = table;
-        Name = name;
-        DataType = dataType;
-        ClrType = clrType;
-        GetValueFunc = getValueFunc;
-        SetValueAction = setValueAction; // can be null for RO props
-    }
-
-    public SQLiteObjectTable Table { get; }
-    public string Name { get; }
+    public SQLiteObjectTable Table { get; } = table ?? throw new ArgumentNullException(nameof(table));
+    public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
     [Browsable(false)]
     public string EscapedName => SQLiteStatement.EscapeName(Name)!;
-    public string DataType { get; }
-    public Type ClrType { get; }
+    public string DataType { get; } = dataType ?? throw new ArgumentNullException(nameof(dataType));
+    public Type ClrType { get; } = clrType ?? throw new ArgumentNullException(nameof(clrType));
     public int Index { get; internal set; }
     [Browsable(false)]
-    public Func<object, object> GetValueFunc { get; }
+    public Func<object, object> GetValueFunc { get; } = getValueFunc ?? throw new ArgumentNullException(nameof(getValueFunc));
     [Browsable(false)]
-    public Action<SQLiteLoadOptions, object?, object?>? SetValueAction { get; }
+    public Action<SQLiteLoadOptions, object?, object?>? SetValueAction { get; } = setValueAction; // can be null for RO props
     public virtual bool IsNullable { get; set; }
     public virtual bool IsReadOnly { get; set; }
     public virtual bool IsPrimaryKey { get; set; }
@@ -184,7 +159,7 @@ public class SQLiteObjectColumn
         if (SetValueAction == null)
             throw new InvalidOperationException();
 
-        options = options ?? Table.Database.CreateLoadOptions();
+        options ??= Table.Database.CreateLoadOptions();
         if (options == null)
             throw new InvalidOperationException();
 

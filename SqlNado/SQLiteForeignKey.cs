@@ -1,15 +1,10 @@
 ﻿namespace SqlNado;
 
-#pragma warning disable CA1036 // Override methods on comparable types
 public sealed class SQLiteForeignKey : IComparable<SQLiteForeignKey>
-#pragma warning restore CA1036 // Override methods on comparable types
 {
     internal SQLiteForeignKey(SQLiteTable table)
     {
-        if (table == null)
-            throw new ArgumentNullException(nameof(table));
-
-        Table = table;
+        Table = table ?? throw new ArgumentNullException(nameof(table));
     }
 
     [Browsable(false)] // remove from tablestring dumps

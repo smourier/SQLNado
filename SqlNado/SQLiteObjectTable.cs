@@ -1,32 +1,17 @@
 ﻿namespace SqlNado;
 
-public class SQLiteObjectTable
+public class SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions? options = null)
 {
-    private readonly List<SQLiteObjectColumn> _columns = new List<SQLiteObjectColumn>();
-    private readonly List<SQLiteObjectIndex> _indices = new List<SQLiteObjectIndex>();
+    private readonly List<SQLiteObjectColumn> _columns = [];
+    private readonly List<SQLiteObjectIndex> _indices = [];
 
-#pragma warning disable S2245
-    private static readonly Random _random = new Random(Environment.TickCount);
-#pragma warning restore S2245
+    private static readonly Random _random = new(Environment.TickCount);
 
     internal const string _tempTablePrefix = "__temp";
 
-    public SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuildTableOptions? options = null)
-    {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-
-        Database = database;
-        Name = name;
-        Options = options;
-    }
-
-    public SQLiteDatabase Database { get; }
-    public SQLiteBuildTableOptions? Options { get; }
-    public string Name { get; }
+    public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
+    public SQLiteBuildTableOptions? Options { get; } = options;
+    public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
     public string? Schema { get; set; } // unused in SqlNado's SQLite
     public string? Module { get; set; }
     public string?[]? ModuleArguments { get; set; }
@@ -144,7 +129,7 @@ public class SQLiteObjectTable
         {
             list.Add(col.GetValue(obj));
         }
-        return list.ToArray();
+        return [.. list];
     }
 
     public virtual object[] GetPrimaryKeyForBind(object obj)
@@ -152,13 +137,10 @@ public class SQLiteObjectTable
         var list = new List<object>();
         foreach (var col in PrimaryKeyColumns)
         {
-            var value = col.GetValueForBind(obj);
-            if (value == null)
-                throw new InvalidOperationException();
-
+            var value = col.GetValueForBind(obj) ?? throw new InvalidOperationException();
             list.Add(value);
         }
-        return list.ToArray();
+        return [.. list];
     }
 
     public virtual void SetPrimaryKey(SQLiteLoadOptions? options, object instance, object[] primaryKey)
@@ -380,7 +362,7 @@ public class SQLiteObjectTable
         if (statement == null)
             throw new ArgumentNullException(nameof(statement));
 
-        options = options ?? Database.CreateLoadOptions();
+        options ??= Database.CreateLoadOptions();
         if (options == null)
             throw new InvalidOperationException();
 
@@ -414,7 +396,7 @@ public class SQLiteObjectTable
         if (statement == null)
             throw new ArgumentNullException(nameof(statement));
 
-        options = options ?? Database.CreateLoadOptions();
+        options ??= Database.CreateLoadOptions();
         if (options == null)
             throw new InvalidOperationException();
 
@@ -445,7 +427,7 @@ public class SQLiteObjectTable
         if (instance == null)
             return false;
 
-        options = options ?? Database.CreateSaveOptions();
+        options ??= Database.CreateSaveOptions();
         if (options == null)
             throw new InvalidOperationException();
 
@@ -520,7 +502,7 @@ public class SQLiteObjectTable
                 {
                     pk.InsertRange(0, updateArgs!);
                 }
-                count = Database.ExecuteNonQuery(sql, pk.ToArray());
+                count = Database.ExecuteNonQuery(sql, [.. pk]);
                 // note the count is ok even if all values did not changed
             }
 
@@ -552,7 +534,7 @@ public class SQLiteObjectTable
 
                 return SQLiteOnErrorAction.Unhandled;
             }
-            count = Database.ExecuteNonQuery(sql, onError, insertArgs.ToArray());
+            count = Database.ExecuteNonQuery(sql, onError, [.. insertArgs]);
         }
 
         lo?.OnSaveAction(SQLiteObjectAction.Saved, options);
@@ -580,7 +562,7 @@ public class SQLiteObjectTable
         if (!Columns.Where(c => !c.IsComputed).Any())
             throw new SqlNadoException("0006: Object table '" + Name + "' has no database columns.");
 
-        options = options ?? Database.CreateSaveOptions();
+        options ??= Database.CreateSaveOptions();
         if (options == null)
             throw new InvalidOperationException();
 
@@ -603,20 +585,18 @@ public class SQLiteObjectTable
                 return SQLiteOnErrorAction.Unhandled;
             }
 
-            using (var statement = Database.PrepareStatement(sql, onError))
+            using var statement = Database.PrepareStatement(sql, onError);
+            var c = 0;
+            if (statement.PrepareError == SQLiteErrorCode.SQLITE_OK)
             {
-                var c = 0;
-                if (statement.PrepareError == SQLiteErrorCode.SQLITE_OK)
-                {
-                    c = statement.StepOne(null);
-                }
-
-                if (options.SynchronizeIndices)
-                {
-                    SynchronizeIndices(options);
-                }
-                return c;
+                c = statement.StepOne(null);
             }
+
+            if (options.SynchronizeIndices)
+            {
+                SynchronizeIndices(options);
+            }
+            return c;
         }
 
         if (existing.IsFts) // can't alter vtable

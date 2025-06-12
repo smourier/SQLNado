@@ -1,9 +1,7 @@
 ﻿namespace SqlNado;
 
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-#pragma warning disable CA1036 // Override methods on comparable types
 public sealed class SQLiteColumnAttribute : Attribute, IComparable, IComparable<SQLiteColumnAttribute>
-#pragma warning restore CA1036 // Override methods on comparable types
 {
     // because Guid.Empty is not a const
     public const string GuidEmpty = "00000000-0000-0000-0000-000000000000";
@@ -16,7 +14,7 @@ public sealed class SQLiteColumnAttribute : Attribute, IComparable, IComparable<
     internal bool? _isDefaultValueIntrinsic;
     internal bool? _autoIncrements;
     internal int? _sortOrder;
-    private readonly List<SQLiteIndexAttribute> _indices = new List<SQLiteIndexAttribute>();
+    private readonly List<SQLiteIndexAttribute> _indices = [];
 
     public string? Name { get; set; }
     public string? DataType { get; set; }

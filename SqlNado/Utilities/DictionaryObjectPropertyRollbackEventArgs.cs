@@ -1,20 +1,8 @@
 ﻿namespace SqlNado.Utilities;
 
-public class DictionaryObjectPropertyRollbackEventArgs : EventArgs
+public class DictionaryObjectPropertyRollbackEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, object? invalidValue) : EventArgs
 {
-    public DictionaryObjectPropertyRollbackEventArgs(string propertyName, DictionaryObjectProperty? existingProperty, object? invalidValue)
-    {
-        if (propertyName == null)
-            throw new ArgumentNullException(nameof(propertyName));
-
-        // existingProperty may be null
-
-        PropertyName = propertyName;
-        ExistingProperty = existingProperty;
-        InvalidValue = invalidValue;
-    }
-
-    public string PropertyName { get; }
-    public DictionaryObjectProperty? ExistingProperty { get; }
-    public object? InvalidValue { get; }
+    public string PropertyName { get; } = propertyName ?? throw new ArgumentNullException(nameof(propertyName));
+    public DictionaryObjectProperty? ExistingProperty { get; } = existingProperty;
+    public object? InvalidValue { get; } = invalidValue;
 }

@@ -1,16 +1,8 @@
 ﻿namespace SqlNado;
 
-public class SQLiteLoadOptions
+public class SQLiteLoadOptions(SQLiteDatabase database)
 {
-    public SQLiteLoadOptions(SQLiteDatabase database)
-    {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        Database = database;
-    }
-
-    public SQLiteDatabase Database { get; }
+    public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
     public virtual bool ObjectEventsDisabled { get; set; }
     public virtual bool ObjectChangeEventsDisabled { get; set; }
     public virtual bool CreateIfNotLoaded { get; set; }

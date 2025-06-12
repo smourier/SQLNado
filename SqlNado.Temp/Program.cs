@@ -41,31 +41,29 @@ namespace SqlNado.Temp
 
         static void SafeMain(string[] args)
         {
-            using (var db = new SQLiteDatabase(":memory:"))
+            using var db = new SQLiteDatabase(":memory:");
+            Console.WriteLine(SQLiteDatabase.NativeDllPath);
+
+            db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1);
+            var tok = new StopWordTokenizer(db);
+            db.SetTokenizer(tok);
+
+            // insert data as in SQLite exemple
+            db.Save(new Mail { docid = 1, Subject = "software feedback", Body = "found it too slow" });
+            db.Save(new Mail { docid = 2, Subject = "software feedback", Body = "no feedback" });
+            db.Save(new Mail { docid = 3, Subject = "slow lunch order", Body = "was a software problem" });
+
+            for (var i = 0; i < 1; i++)
             {
-                Console.WriteLine(SQLiteDatabase.NativeDllPath);
+                // check result
+                Console.WriteLine(db.LoadAll<Mail>().Count());
 
-                db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1);
-                var tok = new StopWordTokenizer(db);
-                db.SetTokenizer(tok);
-
-                // insert data as in SQLite exemple
-                db.Save(new Mail { docid = 1, Subject = "software feedback", Body = "found it too slow" });
-                db.Save(new Mail { docid = 2, Subject = "software feedback", Body = "no feedback" });
-                db.Save(new Mail { docid = 3, Subject = "slow lunch order", Body = "was a software problem" });
-
-                for (var i = 0; i < 1; i++)
-                {
-                    // check result
-                    Console.WriteLine(db.LoadAll<Mail>().Count());
-
-                    Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE Subject MATCH 'software'").Select(m => m.docid)));
-                    Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE body MATCH 'feedback'").Select(m => m.docid)));
-                    Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE mail MATCH 'software'").Select(m => m.docid)));
-                    Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE mail MATCH 'slow'").Select(m => m.docid)));
-                    Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE mail MATCH 'no'").Select(m => m.docid)));
-                    GC.Collect(1000, GCCollectionMode.Forced, true);
-                }
+                Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE Subject MATCH 'software'").Select(m => m.docid)));
+                Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE body MATCH 'feedback'").Select(m => m.docid)));
+                Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE mail MATCH 'software'").Select(m => m.docid)));
+                Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE mail MATCH 'slow'").Select(m => m.docid)));
+                Console.WriteLine(string.Join(",", db.Load<Mail>("WHERE mail MATCH 'no'").Select(m => m.docid)));
+                GC.Collect(1000, GCCollectionMode.Forced, true);
             }
         }
 
@@ -89,19 +87,17 @@ namespace SqlNado.Temp
 
             static StopWordTokenizer()
             {
-                _words = new HashSet<string>();
-                using (var sr = new StringReader(_stopWords))
+                _words = [];
+                using var sr = new StringReader(_stopWords);
+                do
                 {
-                    do
-                    {
-                        var word = sr.ReadLine();
-                        if (word == null)
-                            break;
+                    var word = sr.ReadLine();
+                    if (word == null)
+                        break;
 
-                        _words.Add(word);
-                    }
-                    while (true);
+                    _words.Add(word);
                 }
+                while (true);
             }
 
             protected override void Dispose(bool disposing)
@@ -310,19 +306,17 @@ yourselves";
 
         static void SafeMain4(string[] args)
         {
-            using (var db = new SQLiteDatabase(":memory:"))
+            using var db = new SQLiteDatabase(":memory:");
+            for (int i = 0; i < 10; i++)
             {
-                for (int i = 0; i < 10; i++)
-                {
-                    var c = new CustomerWithRowId();
-                    c.Name = "bob" + i;
-                    db.Save(c);
-                }
+                var c = new CustomerWithRowId();
+                c.Name = "bob" + i;
+                db.Save(c);
+            }
 
-                foreach (var customer in db.LoadAll<CustomerWithRowId>())
-                {
-                    Console.WriteLine(customer.Name + " id:" + customer.MyRowId);
-                }
+            foreach (var customer in db.LoadAll<CustomerWithRowId>())
+            {
+                Console.WriteLine(customer.Name + " id:" + customer.MyRowId);
             }
         }
 
@@ -334,29 +328,27 @@ yourselves";
                 File.Delete(name);
             }
 
-            using (var db = new SQLiteDatabase(name))
+            using var db = new SQLiteDatabase(name);
+            using (var tok = db.GetTokenizer("unicode61", "remove_diacritics=0", "tokenchars=.=", "separators=X"))
             {
-                using (var tok = db.GetTokenizer("unicode61", "remove_diacritics=0", "tokenchars=.=", "separators=X"))
-                {
-                    Console.WriteLine(string.Join(Environment.NewLine, tok.Tokenize("hello friends")));
-                    //GC.Collect(1000, GCCollectionMode.Forced, true);
-                }
-
-                var sp = new StopWordTokenizer(db);
-                Console.WriteLine(db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1));
-                db.SetTokenizer(sp);
-
-                db.ExecuteNonQuery("CREATE VIRTUAL TABLE tok1 USING fts3tokenize('" + sp.Name + "');");
-
-                for (int i = 0; i < 10; i++)
-                {
-                    var tokens = db.LoadRows(@"SELECT token, start, end, position FROM tok1 WHERE input=?;",
-                        "This is a test sentence.");
-                    Console.Write(tokens.ToArray().Length);
-                    //GC.Collect(1000, GCCollectionMode.Forced, true);
-                }
-                //Console.WriteLine(string.Join(Environment.NewLine, tokens.Select(t => t["token"])));
+                Console.WriteLine(string.Join(Environment.NewLine, tok.Tokenize("hello friends")));
+                //GC.Collect(1000, GCCollectionMode.Forced, true);
             }
+
+            var sp = new StopWordTokenizer(db);
+            Console.WriteLine(db.Configure(SQLiteDatabaseConfiguration.SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER, true, 1));
+            db.SetTokenizer(sp);
+
+            db.ExecuteNonQuery("CREATE VIRTUAL TABLE tok1 USING fts3tokenize('" + sp.Name + "');");
+
+            for (int i = 0; i < 10; i++)
+            {
+                var tokens = db.LoadRows(@"SELECT token, start, end, position FROM tok1 WHERE input=?;",
+                    "This is a test sentence.");
+                Console.Write(tokens.ToArray().Length);
+                //GC.Collect(1000, GCCollectionMode.Forced, true);
+            }
+            //Console.WriteLine(string.Join(Environment.NewLine, tokens.Select(t => t["token"])));
         }
 
         static void SafeMain3(string[] args)
@@ -440,116 +432,106 @@ yourselves";
             {
                 File.Delete("test.db");
             }
-            using (var db = new SQLiteDatabase(""))
+            using var db = new SQLiteDatabase("");
+            //db.Logger = new ConsoleLogger(true);
+            db.EnableStatementsCache = true;
+            db.CollationNeeded += OnCollationNeeded;
+            db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
+
+            var user = new User(db);
+            user.Name = "bob";
+            user.Email = "bob@example.com";
+            db.Save(user);
+
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    ThreadPool.QueueUserWorkItem((state) =>
+            //    {
+            //        int ii = (int)state;
+            //        db.SynchronizeSchema<SimpleUser>();
+
+            //        TableStringExtensions.ToTableString(db.GetTable<SimpleUser>(), Console.Out);
+
+            //        var su = new SimpleUser();
+            //        su.Name = "toto";
+            //        su.Email = "a.b@x.com";
+            //        db.Save(su);
+
+            //        db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
+            //        db.LoadAll<SimpleUser>().ToTableString(Console.Out);
+            //    }, i);
+            //}
+
+            Console.ReadLine();
+            db.GetStatementsCacheEntries().ToTableString(Console.Out);
+            return;
+
+            //db.DeleteTable<UserWithBlob>();
+            //db.DeleteTable<Product>();
+            //db.Vacuum();
+            //db.SynchronizeSchema<TestQuery>();
+
+            //TestQuery.Ensure(db);
+            //db.LoadAll<TestQuery>().ToTableString(Console.Out);
+
+            //db.BeginTransaction();
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    var c = db.CreateObjectInstance<UserWithBlob>();
+            //    c.Email = "bob" + i + "." + Environment.TickCount + "@mail.com";
+            //    c.Name = "Name" + i + DateTime.Now;
+            //    c.Options = UserOptions.Super;
+            //    db.Save(c);
+            //    //c.Photo = File.ReadAllBytes(@"d:\temp\IMG_0803.JPG");
+            //    //c.Photo.Save(@"d:\temp\IMG_0803.JPG");
+
+            //    //var p = db.CreateObjectInstance<Product>();
+            //    //p.Id = Guid.NewGuid();
+            //    //p.User = c;
+            //    //db.Save(p);
+            //}
+            //db.Commit();
+
+            //var table = db.GetTable<UserWithBlob>();
+            //if (table != null)
+            //{
+            //    TableStringExtensions.ToTableString(table, Console.Out);
+            //    //TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
+            //    var one = db.LoadAll<UserWithBlob>().FirstOrDefault();
+            //    one.Photo.Load("test.jpg");
+            //    TableStringExtensions.ToTableString(one, Console.Out);
+            //}
+
+            //var table2 = db.GetTable<Product>();
+            //if (table2 != null)
+            //{
+            //    TableStringExtensions.ToTableString(table2, Console.Out);
+            //    TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
+            //}
+
+            db.SetScalarFunction("toto", 1, true, (c) =>
             {
-                //db.Logger = new ConsoleLogger(true);
-                db.EnableStatementsCache = true;
-                db.CollationNeeded += OnCollationNeeded;
-                db.DefaultColumnCollation = nameof(StringComparer.OrdinalIgnoreCase);
+                c.SetResult("héllo world");
+            });
 
-                var user = new User(db);
-                user.Name = "bob";
-                user.Email = "bob@example.com";
-                db.Save(user);
-
-                //for (int i = 0; i < 10; i++)
-                //{
-                //    ThreadPool.QueueUserWorkItem((state) =>
-                //    {
-                //        int ii = (int)state;
-                //        db.SynchronizeSchema<SimpleUser>();
-
-                //        TableStringExtensions.ToTableString(db.GetTable<SimpleUser>(), Console.Out);
-
-                //        var su = new SimpleUser();
-                //        su.Name = "toto";
-                //        su.Email = "a.b@x.com";
-                //        db.Save(su);
-
-                //        db.GetTableRows<SimpleUser>().ToTableString(Console.Out);
-                //        db.LoadAll<SimpleUser>().ToTableString(Console.Out);
-                //    }, i);
-                //}
-
-                Console.ReadLine();
-                db.GetStatementsCacheEntries().ToTableString(Console.Out);
-                return;
-
-                //db.DeleteTable<UserWithBlob>();
-                //db.DeleteTable<Product>();
-                //db.Vacuum();
-                //db.SynchronizeSchema<TestQuery>();
-
-                //TestQuery.Ensure(db);
-                //db.LoadAll<TestQuery>().ToTableString(Console.Out);
-
-                //db.BeginTransaction();
-                //for (int i = 0; i < 10; i++)
-                //{
-                //    var c = db.CreateObjectInstance<UserWithBlob>();
-                //    c.Email = "bob" + i + "." + Environment.TickCount + "@mail.com";
-                //    c.Name = "Name" + i + DateTime.Now;
-                //    c.Options = UserOptions.Super;
-                //    db.Save(c);
-                //    //c.Photo = File.ReadAllBytes(@"d:\temp\IMG_0803.JPG");
-                //    //c.Photo.Save(@"d:\temp\IMG_0803.JPG");
-
-                //    //var p = db.CreateObjectInstance<Product>();
-                //    //p.Id = Guid.NewGuid();
-                //    //p.User = c;
-                //    //db.Save(p);
-                //}
-                //db.Commit();
-
-                //var table = db.GetTable<UserWithBlob>();
-                //if (table != null)
-                //{
-                //    TableStringExtensions.ToTableString(table, Console.Out);
-                //    //TableStringExtensions.ToTableString(table.GetRows(), Console.Out);
-                //    var one = db.LoadAll<UserWithBlob>().FirstOrDefault();
-                //    one.Photo.Load("test.jpg");
-                //    TableStringExtensions.ToTableString(one, Console.Out);
-                //}
-
-                //var table2 = db.GetTable<Product>();
-                //if (table2 != null)
-                //{
-                //    TableStringExtensions.ToTableString(table2, Console.Out);
-                //    TableStringExtensions.ToTableString(table2.GetRows(), Console.Out);
-                //}
-
-                db.SetScalarFunction("toto", 1, true, (c) =>
-                {
-                    c.SetResult("héllo world");
-                });
-
-                //db.Query<TestQuery>().Where(u => u.Department.Contains("h") || u.Department == "accounting").ToTableString(Console.Out);
-                //db.Query<TestQuery>().Where(u => u.Department.Substring(1) == "R" || u.Department.Substring(1) == "r").
-                //    Select(u => new { D = u.Department }).ToTableString(Console.Out);
-                //db.Query<TestQuery>().Where(u => u.Department.Contains("r")).ToTableString(Console.Out);
-                //db.Query<TestQuery>().Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
-                var sc = StringComparison.CurrentCultureIgnoreCase;
-                var eq = EqualityComparer<string>.Default;
-                db.Query<TestQuery>().Where(u => u.Department.Contains("h", sc)).ToTableString(Console.Out);
-                db.Query<TestQuery>().Where(u => u.Department.Contains("h", sc)).OrderBy(u => u.Name).ThenByDescending(u => u.MonthlySalary).ToTableString(Console.Out);
-                string h = "h";
-                string r = "r";
-                //TableStringExtensions.ToTableString(db.GetTable<TestQuery>(), Console.Out);
-                db.GetTable<TestQuery>().Columns.ToTableString(Console.Out);
-
-            }
+            //db.Query<TestQuery>().Where(u => u.Department.Contains("h") || u.Department == "accounting").ToTableString(Console.Out);
+            //db.Query<TestQuery>().Where(u => u.Department.Substring(1) == "R" || u.Department.Substring(1) == "r").
+            //    Select(u => new { D = u.Department }).ToTableString(Console.Out);
+            //db.Query<TestQuery>().Where(u => u.Department.Contains("r")).ToTableString(Console.Out);
+            //db.Query<TestQuery>().Where(u => u.StartDateUtc > DateTime.UtcNow).ToTableString(Console.Out);
+            var sc = StringComparison.CurrentCultureIgnoreCase;
+            var eq = EqualityComparer<string>.Default;
+            db.Query<TestQuery>().Where(u => u.Department.Contains("h", sc)).ToTableString(Console.Out);
+            db.Query<TestQuery>().Where(u => u.Department.Contains("h", sc)).OrderBy(u => u.Name).ThenByDescending(u => u.MonthlySalary).ToTableString(Console.Out);
+            string h = "h";
+            string r = "r";
+            //TableStringExtensions.ToTableString(db.GetTable<TestQuery>(), Console.Out);
+            db.GetTable<TestQuery>().Columns.ToTableString(Console.Out);
         }
 
-        private static void OnCollationNeeded(object sender, SQLiteCollationNeededEventArgs e)
-        {
-            Console.WriteLine("OnCollationNeeded sender:" + sender + " name: " + e.CollationName);
-            //e.Database.SetCollationFunction(nameof(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
-        }
+        private static void OnCollationNeeded(object sender, SQLiteCollationNeededEventArgs e) => Console.WriteLine("OnCollationNeeded sender:" + sender + " name: " + e.CollationName);//e.Database.SetCollationFunction(nameof(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
 
-        private static void OnPropertyRollback(object sender, DictionaryObjectPropertyRollbackEventArgs e)
-        {
-            Console.WriteLine("OnPropertyRollback sender:" + sender + " name: " + e.PropertyName + " value: " + e.ExistingProperty?.Value + " invalid: " + e.InvalidValue);
-        }
+        private static void OnPropertyRollback(object sender, DictionaryObjectPropertyRollbackEventArgs e) => Console.WriteLine("OnPropertyRollback sender:" + sender + " name: " + e.PropertyName + " value: " + e.ExistingProperty?.Value + " invalid: " + e.InvalidValue);
 
         private static void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -852,15 +834,9 @@ yourselves";
         //[SQLiteColumn(Ignore = true)]
         //public object[] PrimaryKey => new object[] { Id };
 
-        public bool OnLoadAction(SQLiteObjectAction action, SQLiteStatement statement, SQLiteLoadOptions options)
-        {
-            return true;
-        }
+        public bool OnLoadAction(SQLiteObjectAction action, SQLiteStatement statement, SQLiteLoadOptions options) => true;
 
-        public bool OnSaveAction(SQLiteObjectAction action, SQLiteSaveOptions options)
-        {
-            return true;
-        }
+        public bool OnSaveAction(SQLiteObjectAction action, SQLiteSaveOptions options) => true;
     }
 
     public class StopWordTokenizer(SQLiteDatabase database, params string[] arguments) : SQLiteTokenizer(database, "unicode_stopwords")
@@ -871,19 +847,17 @@ yourselves";
 
         static StopWordTokenizer()
         {
-            _words = new HashSet<string>();
-            using (var sr = new StringReader(_stopWords))
+            _words = [];
+            using var sr = new StringReader(_stopWords);
+            do
             {
-                do
-                {
-                    var word = sr.ReadLine();
-                    if (word == null)
-                        break;
+                var word = sr.ReadLine();
+                if (word == null)
+                    break;
 
-                    _words.Add(word);
-                }
-                while (true);
+                _words.Add(word);
             }
+            while (true);
         }
 
         protected override void Dispose(bool disposing)

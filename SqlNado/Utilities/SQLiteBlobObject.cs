@@ -1,21 +1,9 @@
 ﻿namespace SqlNado.Utilities;
 
-public class SQLiteBlobObject : ISQLiteBlobObject
+public class SQLiteBlobObject(SQLiteBaseObject owner, string columnName) : ISQLiteBlobObject
 {
-    public SQLiteBlobObject(SQLiteBaseObject owner, string columnName)
-    {
-        if (owner == null)
-            throw new ArgumentNullException(nameof(owner));
-
-        if (columnName == null)
-            throw new ArgumentNullException(nameof(columnName));
-
-        Owner = owner;
-        ColumnName = columnName;
-    }
-
-    public SQLiteBaseObject Owner { get; }
-    public string ColumnName { get; }
+    public SQLiteBaseObject Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
+    public string ColumnName { get; } = columnName ?? throw new ArgumentNullException(nameof(columnName));
 
     bool ISQLiteBlobObject.TryGetData(out byte[]? data)
     {
@@ -29,10 +17,8 @@ public class SQLiteBlobObject : ISQLiteBlobObject
         if (inputData == null)
             throw new ArgumentNullException(nameof(inputData));
 
-        using (var ms = new MemoryStream(inputData))
-        {
-            return Save(ms, rowId);
-        }
+        using var ms = new MemoryStream(inputData);
+        return Save(ms, rowId);
     }
 
     public int Save(string inputFilePath) => Save(inputFilePath, -1);
@@ -41,10 +27,8 @@ public class SQLiteBlobObject : ISQLiteBlobObject
         if (inputFilePath == null)
             throw new ArgumentNullException(nameof(inputFilePath));
 
-        using (var file = File.OpenRead(inputFilePath))
-        {
-            return Save(file, rowId);
-        }
+        using var file = File.OpenRead(inputFilePath);
+        return Save(file, rowId);
     }
 
     public int Save(Stream inputStream) => Save(inputStream, -1);
@@ -68,10 +52,7 @@ public class SQLiteBlobObject : ISQLiteBlobObject
 
         var db = ((ISQLiteObject)Owner).Database;
         var table = db!.GetObjectTable(Owner.GetType());
-        var col = table.GetColumn(ColumnName);
-        if (col == null)
-            throw new SqlNadoException("0018: Cannot find column name '" + ColumnName + "' on table '" + table.Name + "'.'");
-
+        var col = table.GetColumn(ColumnName) ?? throw new SqlNadoException("0018: Cannot find column name '" + ColumnName + "' on table '" + table.Name + "'.'");
         if (rowId < 0)
         {
             rowId = table.GetRowId(Owner);
@@ -97,11 +78,9 @@ public class SQLiteBlobObject : ISQLiteBlobObject
     public byte[] ToArray() => ToArray(-1);
     public byte[] ToArray(long rowId)
     {
-        using (var ms = new MemoryStream())
-        {
-            Load(ms, rowId);
-            return ms.ToArray();
-        }
+        using var ms = new MemoryStream();
+        Load(ms, rowId);
+        return ms.ToArray();
     }
 
     public int Load(string outputFilePath) => Load(outputFilePath, -1);
@@ -110,10 +89,8 @@ public class SQLiteBlobObject : ISQLiteBlobObject
         if (outputFilePath == null)
             throw new ArgumentNullException(nameof(outputFilePath));
 
-        using (var file = File.OpenWrite(outputFilePath))
-        {
-            return Load(file, rowId);
-        }
+        using var file = File.OpenWrite(outputFilePath);
+        return Load(file, rowId);
     }
 
     public int Load(Stream outputStream) => Load(outputStream, -1);
@@ -124,19 +101,14 @@ public class SQLiteBlobObject : ISQLiteBlobObject
 
         var db = ((ISQLiteObject)Owner).Database;
         var table = db!.GetObjectTable(Owner.GetType());
-        var col = table.GetColumn(ColumnName);
-        if (col == null)
-            throw new SqlNadoException("0021: Cannot find column name '" + ColumnName + "' on table '" + table.Name + "'.'");
-
+        var col = table.GetColumn(ColumnName) ?? throw new SqlNadoException("0021: Cannot find column name '" + ColumnName + "' on table '" + table.Name + "'.'");
         if (rowId < 0)
         {
             rowId = table.GetRowId(Owner);
         }
 
-        using (var blob = db.OpenBlob(table.Name, col.Name, rowId))
-        {
-            blob.CopyTo(outputStream);
-            return blob.Size;
-        }
+        using var blob = db.OpenBlob(table.Name, col.Name, rowId);
+        blob.CopyTo(outputStream);
+        return blob.Size;
     }
 }

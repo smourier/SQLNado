@@ -1,16 +1,8 @@
 ﻿namespace SqlNado;
 
-public class SQLiteIndexedColumn
+public class SQLiteIndexedColumn(string name)
 {
-    public SQLiteIndexedColumn(string name)
-    {
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-
-        Name = name;
-    }
-
-    public string Name { get; }
+    public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
     [Browsable(false)]
     public string EscapedName => SQLiteStatement.EscapeName(Name)!;
     public virtual string? CollationName { get; set; }

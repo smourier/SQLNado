@@ -1,6 +1,5 @@
 ﻿namespace SqlNado;
 
-#pragma warning disable S2342
 [Flags]
 public enum SQLiteTextEncoding
 {
@@ -12,5 +11,3 @@ public enum SQLiteTextEncoding
     SQLITE_UTF16_ALIGNED = 8,       /* sqlite3_create_collation only */
     SQLITE_DETERMINISTIC = 0x800,    // function will always return the same result given the same inputs within a single SQL statement
 }
-#pragma warning restore S2342
-

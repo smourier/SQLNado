@@ -3,7 +3,7 @@
 // all properties and methods start with DictionaryObject and are protected so they won't interfere with super type
 public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChanged, System.ComponentModel.INotifyPropertyChanging, IDataErrorInfo, INotifyDataErrorInfo
 {
-    private readonly ConcurrentDictionary<string, DictionaryObjectProperty?> _properties = new ConcurrentDictionary<string, DictionaryObjectProperty?>(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, DictionaryObjectProperty?> _properties = new(StringComparer.Ordinal);
 
     protected DictionaryObject()
     {
@@ -93,7 +93,7 @@ public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChang
             return true;
 
         var dic = new Dictionary<object, int>(new ObjectComparer(this));
-        var left = errors1 != null ? errors1.Cast<object>() : Enumerable.Empty<object>();
+        var left = errors1 != null ? errors1.Cast<object>() : [];
         foreach (var obj in left)
         {
             if (dic.ContainsKey(obj))
@@ -125,7 +125,7 @@ public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChang
     protected virtual DictionaryObjectProperty? DictionaryObjectUpdatingProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty) => null;
     protected virtual DictionaryObjectProperty? DictionaryObjectUpdatedProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty) => null;
     protected virtual DictionaryObjectProperty? DictionaryObjectRollbackProperty(DictionaryObjectPropertySetOptions options, string name, DictionaryObjectProperty? oldProperty, DictionaryObjectProperty newProperty) => null;
-    protected virtual DictionaryObjectProperty? DictionaryObjectCreateProperty() => new DictionaryObjectProperty();
+    protected virtual DictionaryObjectProperty? DictionaryObjectCreateProperty() => new();
 
     protected bool DictionaryObjectSetPropertyValue(object? value, [CallerMemberName] string? name = null) => DictionaryObjectSetPropertyValue(value, DictionaryObjectPropertySetOptions.None, name);
     protected virtual bool DictionaryObjectSetPropertyValue(object? value, DictionaryObjectPropertySetOptions options, [CallerMemberName] string? name = null)
@@ -154,10 +154,7 @@ public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChang
             forceChanged = false;
         }
 
-        var newProp = DictionaryObjectCreateProperty();
-        if (newProp == null)
-            throw new InvalidOperationException();
-
+        var newProp = DictionaryObjectCreateProperty() ?? throw new InvalidOperationException();
         newProp.Value = value;
         DictionaryObjectProperty? oldProp = null;
         var finalProp = DictionaryObjectProperties.AddOrUpdate(name, newProp, (k, o) =>
@@ -198,10 +195,7 @@ public abstract class DictionaryObject : IDictionaryObject, INotifyPropertyChang
             if (rollbackOnError && (DictionaryObjectGetErrors(name)?.Cast<object>().Any()).GetValueOrDefault())
             {
                 var rolled = DictionaryObjectRollbackProperty(options, name, oldProp, newProp);
-                if (rolled == null)
-                {
-                    rolled = oldProp;
-                }
+                rolled ??= oldProp;
 
                 if (rolled == null)
                 {

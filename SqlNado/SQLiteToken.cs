@@ -4,9 +4,6 @@ public class SQLiteToken
 {
     public SQLiteToken(string text, int startOffset, int endOffset, int position)
     {
-        if (text == null)
-            throw new ArgumentNullException(nameof(text));
-
         if (startOffset < 0)
             throw new ArgumentException(null, nameof(startOffset));
 
@@ -16,7 +13,7 @@ public class SQLiteToken
         if (position < 0)
             throw new ArgumentException(null, nameof(position));
 
-        Text = text;
+        Text = text ?? throw new ArgumentNullException(nameof(text));
         StartOffset = startOffset;
         EndOffset = endOffset;
         Position = position;

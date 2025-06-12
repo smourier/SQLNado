@@ -10,10 +10,7 @@ public static class SQLiteExtensions
         if (so == null)
             throw new ArgumentNullException(nameof(so));
 
-        var db = so.Database;
-        if (db == null)
-            throw new ArgumentException(null, nameof(so));
-
+        var db = so.Database ?? throw new ArgumentException(null, nameof(so));
         return db.GetObjectTable(so.GetType());
     }
 

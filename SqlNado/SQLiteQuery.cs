@@ -7,10 +7,7 @@ public class SQLiteQuery<T> : IOrderedQueryable<T>
 
     public SQLiteQuery(SQLiteDatabase database)
     {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        Database = database;
+        Database = database ?? throw new ArgumentNullException(nameof(database));
         _provider = new QueryProvider(this);
         _expression = Expression.Constant(this);
     }
@@ -30,7 +27,7 @@ public class SQLiteQuery<T> : IOrderedQueryable<T>
     public SQLiteDatabase Database { get; }
     public SQLiteBindOptions? BindOptions { get; set; }
 
-    protected virtual SQLiteQueryTranslator CreateTranslator(TextWriter writer) => new SQLiteQueryTranslator(Database, writer);
+    protected virtual SQLiteQueryTranslator CreateTranslator(TextWriter writer) => new(Database, writer);
     public IEnumerator<T> GetEnumerator() => _provider.ExecuteEnumerable<T>(_expression).GetEnumerator();
     public override string ToString() => GetQueryText(_expression);
 
@@ -44,16 +41,11 @@ public class SQLiteQuery<T> : IOrderedQueryable<T>
         if (expression == null)
             throw new ArgumentNullException(nameof(expression));
 
-        using (var sw = new StringWriter())
-        {
-            var translator = CreateTranslator(sw);
-            if (translator == null)
-                throw new InvalidOperationException();
-
-            translator.BindOptions = BindOptions;
-            translator.Translate(expression);
-            return sw.ToString();
-        }
+        using var sw = new StringWriter();
+        var translator = CreateTranslator(sw) ?? throw new InvalidOperationException();
+        translator.BindOptions = BindOptions;
+        translator.Translate(expression);
+        return sw.ToString();
     }
 
     private sealed class QueryProvider(SQLiteQuery<T> query) : IQueryProvider
@@ -85,7 +77,7 @@ public class SQLiteQuery<T> : IOrderedQueryable<T>
             }
 
             var ee = _executeEnumerable.MakeGenericMethod(elementType);
-            return (TResult)ee.Invoke(this, new object?[] { sql })!;
+            return (TResult)ee.Invoke(this, [sql])!;
         }
 
         // poor man tentative to fix queries without Where() specified

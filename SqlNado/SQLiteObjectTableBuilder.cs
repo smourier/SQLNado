@@ -1,30 +1,17 @@
 ﻿namespace SqlNado;
 
-public class SQLiteObjectTableBuilder
+public class SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions? options = null)
 {
-    public SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLiteBuildTableOptions? options = null)
-    {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
+    public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
+    public Type Type { get; } = type ?? throw new ArgumentNullException(nameof(type));
+    public SQLiteBuildTableOptions? Options { get; } = options;
 
-        if (type == null)
-            throw new ArgumentNullException(nameof(type));
-
-        Database = database;
-        Type = type;
-        Options = options;
-    }
-
-    public SQLiteDatabase Database { get; }
-    public Type Type { get; }
-    public SQLiteBuildTableOptions? Options { get; }
-
-    protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new SQLiteIndexedColumn(name);
-    protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new SQLiteObjectIndex(table, name, columns);
-    protected virtual SQLiteObjectTable CreateObjectTable(string name) => new SQLiteObjectTable(Database, name, Options);
+    protected virtual SQLiteIndexedColumn CreateIndexedColumn(string name) => new(name);
+    protected virtual SQLiteObjectIndex CreateObjectIndex(SQLiteObjectTable table, string name, IReadOnlyList<SQLiteIndexedColumn> columns) => new(table, name, columns);
+    protected virtual SQLiteObjectTable CreateObjectTable(string name) => new(Database, name, Options);
     protected virtual SQLiteObjectColumn CreateObjectColumn(SQLiteObjectTable table, string name, string dataType, Type clrType,
         Func<object, object> getValueFunc,
-        Action<SQLiteLoadOptions, object?, object?>? setValueAction) => new SQLiteObjectColumn(table, name, dataType, clrType, getValueFunc, setValueAction);
+        Action<SQLiteLoadOptions, object?, object?>? setValueAction) => new(table, name, dataType, clrType, getValueFunc, setValueAction);
 
     public virtual SQLiteObjectTable Build()
     {
@@ -37,10 +24,7 @@ public class SQLiteObjectTableBuilder
         if (name == null)
             throw new InvalidOperationException();
 
-        var table = CreateObjectTable(name);
-        if (table == null)
-            throw new InvalidOperationException();
-
+        var table = CreateObjectTable(name) ?? throw new InvalidOperationException();
         if (typeAtt != null)
         {
             table.DisableRowId = typeAtt.WithoutRowId;
@@ -55,7 +39,7 @@ public class SQLiteObjectTableBuilder
                 var args = Conversions.SplitToList<string>(typeAtt.ModuleArguments, ',');
                 if (args != null && args.Count > 0)
                 {
-                    table.ModuleArguments = args.ToArray();
+                    table.ModuleArguments = [.. args];
                 }
             }
         }
@@ -82,7 +66,7 @@ public class SQLiteObjectTableBuilder
 
                 if (!indices.TryGetValue(idx.Name, out var atts))
                 {
-                    atts = new List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>();
+                    atts = [];
                     indices.Add(idx.Name, atts);
                 }
                 ((List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>)atts).Add(new Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>(attribute, idx));
@@ -90,10 +74,7 @@ public class SQLiteObjectTableBuilder
 
             var column = CreateObjectColumn(table, attribute.Name!, attribute.DataType!, attribute.ClrType!,
                 attribute.GetValueExpression!.Compile(),
-                attribute.SetValueExpression?.Compile());
-            if (column == null)
-                throw new InvalidOperationException();
-
+                attribute.SetValueExpression?.Compile()) ?? throw new InvalidOperationException();
             table.AddColumn(column);
             column.CopyAttributes(attribute);
 
@@ -172,10 +153,7 @@ public class SQLiteObjectTableBuilder
                 if (kv.Item1.Name == null)
                     throw new InvalidOperationException();
 
-                var col = CreateIndexedColumn(kv.Item1.Name);
-                if (col == null)
-                    throw new InvalidOperationException();
-
+                var col = CreateIndexedColumn(kv.Item1.Name) ?? throw new InvalidOperationException();
                 col.CollationName = kv.Item2.CollationName;
                 col.Direction = kv.Item2.Direction;
 
@@ -193,10 +171,7 @@ public class SQLiteObjectTableBuilder
                 columns.Add(col);
             }
 
-            var oidx = CreateObjectIndex(table, index.Key, columns);
-            if (oidx == null)
-                throw new InvalidOperationException();
-
+            var oidx = CreateObjectIndex(table, index.Key, columns) ?? throw new InvalidOperationException();
             oidx.IsUnique = unique;
             oidx.SchemaName = schemaName;
             table.AddIndex(oidx);
@@ -297,7 +272,7 @@ public class SQLiteObjectTableBuilder
         value.EqualsIgnoreCase("CURRENT_DATE") ||
         value.EqualsIgnoreCase("CURRENT_TIMESTAMP");
 
-    protected virtual SQLiteColumnAttribute CreateColumnAttribute() => new SQLiteColumnAttribute();
+    protected virtual SQLiteColumnAttribute CreateColumnAttribute() => new();
 
     protected virtual SQLiteColumnAttribute? AddAnnotationAttributes(PropertyInfo property, SQLiteColumnAttribute? attribute)
     {
@@ -361,7 +336,7 @@ public class SQLiteObjectTableBuilder
                 {
                     att.DataType = nameof(SQLiteColumnType.TEXT);
                     // we need to force this column type options
-                    att.BindOptions = att.BindOptions ?? Database.CreateBindOptions();
+                    att.BindOptions ??= Database.CreateBindOptions();
                     if (att.BindOptions == null)
                         throw new InvalidOperationException();
 
@@ -435,7 +410,7 @@ public class SQLiteObjectTableBuilder
 
                 var tryConvert = Expression.Call(
                     optionsParameter,
-                    typeof(SQLiteLoadOptions).GetMethod(nameof(SQLiteLoadOptions.TryChangeType), new Type[] { typeof(object), typeof(Type), typeof(object).MakeByRefType() })!,
+                    typeof(SQLiteLoadOptions).GetMethod(nameof(SQLiteLoadOptions.TryChangeType), [typeof(object), typeof(Type), typeof(object).MakeByRefType()])!,
                     valueParameter,
                     Expression.Constant(att.ClrType, typeof(Type)),
                     convertedValue);

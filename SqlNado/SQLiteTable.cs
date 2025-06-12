@@ -7,11 +7,8 @@ public sealed class SQLiteTable
 
     internal SQLiteTable(SQLiteDatabase database)
     {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        Database = database;
-        TokenizedSql = Array.Empty<string>();
+        Database = database ?? throw new ArgumentNullException(nameof(database));
+        TokenizedSql = [];
         Name = string.Empty;
     }
 
@@ -41,14 +38,14 @@ public sealed class SQLiteTable
             _sql = value;
             if (string.IsNullOrWhiteSpace(Sql))
             {
-                TokenizedSql = Array.Empty<string>();
+                TokenizedSql = [];
                 Module = null;
                 ModuleArguments = null;
             }
             else
             {
                 var split = Sql?.Split(' ', '\t', '\r', '\n');
-                TokenizedSql = split!.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
+                TokenizedSql = [.. split!.Where(s => !string.IsNullOrWhiteSpace(s))];
                 for (var i = 0; i < TokenizedSql.Length; i++)
                 {
                     if (TokenizedSql[i].EqualsIgnoreCase("using") && (i + 1) < TokenizedSql.Length)
@@ -76,7 +73,7 @@ public sealed class SQLiteTable
                             {
                                 args = usng.Substring(pos + 1, end - pos - 1);
                             }
-                            ModuleArguments = Conversions.SplitToList<string?>(args, ',').ToArray();
+                            ModuleArguments = [.. Conversions.SplitToList<string?>(args, ',')];
                         }
                     }
                 }
@@ -126,12 +123,9 @@ public sealed class SQLiteTable
             List<SQLiteColumn> list;
             if (!string.IsNullOrWhiteSpace(Name))
             {
-                var options = Database.CreateLoadOptions();
-                if (options == null)
-                    throw new InvalidOperationException();
-
+                var options = Database.CreateLoadOptions() ?? throw new InvalidOperationException();
                 options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
-                list = Database.Load<SQLiteColumn>("PRAGMA table_info(" + EscapedName + ")", options).ToList();
+                list = [.. Database.Load<SQLiteColumn>("PRAGMA table_info(" + EscapedName + ")", options)];
                 var pkColumns = list.Where(CanBeRowId).ToArray();
                 if (pkColumns.Length == 1)
                 {
@@ -140,7 +134,7 @@ public sealed class SQLiteTable
             }
             else
             {
-                list = new List<SQLiteColumn>();
+                list = [];
             }
             return list;
         }
@@ -153,10 +147,7 @@ public sealed class SQLiteTable
             List<SQLiteColumn> list;
             if (!string.IsNullOrWhiteSpace(Name))
             {
-                var options = Database.CreateLoadOptions();
-                if (options == null)
-                    throw new InvalidOperationException();
-
+                var options = Database.CreateLoadOptions() ?? throw new InvalidOperationException();
                 options.GetInstanceFunc = (t, s, o) => new SQLiteColumn(this);
                 var all = Database.Load<SQLiteColumn>("PRAGMA table_xinfo(" + EscapedName + ")", options).ToList();
                 var pkColumns = all.Where(CanBeRowId).ToArray();
@@ -177,7 +168,7 @@ public sealed class SQLiteTable
             }
             else
             {
-                list = new List<SQLiteColumn>();
+                list = [];
             }
             return list;
         }
@@ -197,12 +188,9 @@ public sealed class SQLiteTable
         get
         {
             if (string.IsNullOrWhiteSpace(Name))
-                return Enumerable.Empty<SQLiteForeignKey>();
+                return [];
 
-            var options = Database.CreateLoadOptions();
-            if (options == null)
-                throw new InvalidOperationException();
-
+            var options = Database.CreateLoadOptions() ?? throw new InvalidOperationException();
             options.GetInstanceFunc = (t, s, o) => new SQLiteForeignKey(this);
             return Database.Load<SQLiteForeignKey>("PRAGMA foreign_key_list(" + EscapedName + ")", options);
         }
@@ -213,12 +201,9 @@ public sealed class SQLiteTable
         get
         {
             if (string.IsNullOrWhiteSpace(Name))
-                return Enumerable.Empty<SQLiteTableIndex>();
+                return [];
 
-            var options = Database.CreateLoadOptions();
-            if (options == null)
-                throw new InvalidOperationException();
-
+            var options = Database.CreateLoadOptions() ?? throw new InvalidOperationException();
             options.GetInstanceFunc = (t, s, o) => new SQLiteTableIndex(this);
             return Database.Load<SQLiteTableIndex>("PRAGMA index_list(" + EscapedName + ")", options);
         }

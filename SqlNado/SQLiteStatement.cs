@@ -1,28 +1,18 @@
 ﻿namespace SqlNado;
 
-#pragma warning disable S3971
-#pragma warning disable S3881
-#pragma warning disable CA1063 // Implement IDisposable Correctly
 public class SQLiteStatement : IDisposable
-#pragma warning restore CA1063 // Implement IDisposable Correctly
 {
     private IntPtr _handle;
     internal bool _realDispose = true;
     internal int _locked;
-    private static readonly byte[] _zeroBytes = Array.Empty<byte>();
+    private static readonly byte[] _zeroBytes = [];
     private Dictionary<string, int>? _columnsIndices;
     private string[]? _columnsNames;
 
     public SQLiteStatement(SQLiteDatabase database, string sql, Func<SQLiteError, SQLiteOnErrorAction>? prepareErrorHandler)
     {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        if (sql == null)
-            throw new ArgumentNullException(nameof(sql));
-
-        Database = database;
-        Sql = sql;
+        Database = database ?? throw new ArgumentNullException(nameof(database));
+        Sql = sql ?? throw new ArgumentNullException(nameof(sql));
         database.Log(TraceLevel.Verbose, "Preparing statement `" + sql + "`", nameof(SQLiteStatement) + ".ctor");
 
         if (prepareErrorHandler != null)
@@ -64,10 +54,7 @@ public class SQLiteStatement : IDisposable
                 {
                     for (var i = 0; i < _columnsNames.Length; i++)
                     {
-                        var name = GetColumnName(i);
-                        if (name == null)
-                            throw new InvalidOperationException();
-
+                        var name = GetColumnName(i) ?? throw new InvalidOperationException();
                         _columnsNames[i] = name;
                     }
                 }
@@ -119,10 +106,7 @@ public class SQLiteStatement : IDisposable
     {
         SQLiteErrorCode code;
         var type = Database.GetBindType(value); // never null
-        var ctx = Database.CreateBindContext();
-        if (ctx == null)
-            throw new InvalidOperationException();
-
+        var ctx = Database.CreateBindContext() ?? throw new InvalidOperationException();
         ctx.Statement = this;
         ctx.Value = value;
         ctx.Index = index;
@@ -469,9 +453,7 @@ public class SQLiteStatement : IDisposable
         GC.SuppressFinalize(this);
     }
 
-#pragma warning disable CA1063 // Implement IDisposable Correctly
     public virtual void Dispose()
-#pragma warning restore CA1063 // Implement IDisposable Correctly
     {
         if (_realDispose)
         {
@@ -485,10 +467,6 @@ public class SQLiteStatement : IDisposable
         }
     }
 
-#pragma warning disable CA1063 // Implement IDisposable Correctly
     ~SQLiteStatement() => RealDispose();
-#pragma warning restore CA1063 // Implement IDisposable Correctly
 }
-#pragma warning restore S3881
-#pragma warning restore S3971
 

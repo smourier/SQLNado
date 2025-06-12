@@ -7,14 +7,8 @@ public class SQLiteCollationNeededEventArgs : EventArgs
 
     public SQLiteCollationNeededEventArgs(SQLiteDatabase database, string collationName)
     {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        if (collationName == null)
-            throw new ArgumentNullException(nameof(collationName));
-
-        Database = database;
-        CollationName = collationName;
+        Database = database ?? throw new ArgumentNullException(nameof(database));
+        CollationName = collationName ?? throw new ArgumentNullException(nameof(collationName));
         CollationOptions = CompareOptions.OrdinalIgnoreCase; // default is case insensitive
         if (CollationName.Length > 2 && CollationName.StartsWith(CultureInfoCollationPrefix, StringComparison.OrdinalIgnoreCase))
         {

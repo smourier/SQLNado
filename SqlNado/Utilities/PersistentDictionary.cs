@@ -14,7 +14,7 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
         IsTypedValue = typeof(Tv) == typeof(object);
         DeleteOnDispose = filePath == null;
 
-        filePath = filePath ?? CreateTempFilePath();
+        filePath ??= CreateTempFilePath();
 
         _database = new SQLiteDatabase(filePath, options)
         {
@@ -55,10 +55,7 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
 
     protected SQLiteDatabase CheckDisposed()
     {
-        var db = _database;
-        if (db == null)
-            throw new ObjectDisposedException(nameof(Database));
-
+        var db = _database ?? throw new ObjectDisposedException(nameof(Database));
         return db;
     }
 
@@ -120,10 +117,7 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
             throw new ArgumentNullException(nameof(key));
 
         var db = CheckDisposed();
-        var options = db.CreateSaveOptions();
-        if (options == null)
-            throw new InvalidOperationException();
-
+        var options = db.CreateSaveOptions() ?? throw new InvalidOperationException();
         options.SynchronizeSchema = false;
         if (IsTypedValue)
         {
@@ -311,65 +305,28 @@ public class PersistentDictionary<Tk, Tv> : IDictionary<Tk, Tv>, IDisposable
         }
 
 
-        switch (i)
+        return i switch
         {
-            case (int)TypeCode.Boolean:
-                return input != null ? bool.Parse(input) : false;
-
-            case (int)TypeCode.Byte:
-                return input != null ? byte.Parse(input, CultureInfo.InvariantCulture) : (byte)0;
-
-            case (int)TypeCode.Char:
-                return input != null ? char.Parse(input) : (char)0;
-
-            case (int)TypeCode.DateTime:
-                return input != null ? DateTime.Parse(input, CultureInfo.InvariantCulture) : DateTime.MinValue;
-
-            case (int)TypeCode.Decimal:
-                return input != null ? decimal.Parse(input, CultureInfo.InvariantCulture) : 0m;
-
-            case (int)TypeCode.Double:
-                return input != null ? double.Parse(input, CultureInfo.InvariantCulture) : 0d;
-
-            case (int)TypeCode.Int16:
-                return input != null ? short.Parse(input, CultureInfo.InvariantCulture) : (short)0;
-
-            case (int)TypeCode.Int32:
-                return input != null ? int.Parse(input, CultureInfo.InvariantCulture) : 0;
-
-            case (int)TypeCode.Int64:
-                return input != null ? long.Parse(input, CultureInfo.InvariantCulture) : 0L;
-
-            case (int)TypeCode.SByte:
-                return input != null ? sbyte.Parse(input, CultureInfo.InvariantCulture) : (sbyte)0;
-
-            case (int)TypeCode.Single:
-                return input != null ? float.Parse(input, CultureInfo.InvariantCulture) : 0f;
-
-            case (int)TypeCode.UInt16:
-                return input != null ? ushort.Parse(input, CultureInfo.InvariantCulture) : (ushort)0;
-
-            case (int)TypeCode.UInt32:
-                return input != null ? uint.Parse(input, CultureInfo.InvariantCulture) : 0u;
-
-            case (int)TypeCode.UInt64:
-                return input != null ? ulong.Parse(input, CultureInfo.InvariantCulture) : 0ul;
-
-            case (int)TypeCodeEx.ByteArray:
-                return input != null ? Conversions.ToBytes(input) : null;
-
-            case (int)TypeCodeEx.DateTimeOffset:
-                return input != null ? DateTimeOffset.Parse(input, CultureInfo.InvariantCulture) : DateTimeOffset.MinValue;
-
-            case (int)TypeCodeEx.Guid:
-                return input != null ? Guid.Parse(input) : Guid.Empty;
-
-            case (int)TypeCodeEx.TimeSpan:
-                return input != null ? TimeSpan.Parse(input, CultureInfo.InvariantCulture) : TimeSpan.Zero;
-
-            default:
-                throw new NotSupportedException();
-        }
+            (int)TypeCode.Boolean => input != null ? bool.Parse(input) : false,
+            (int)TypeCode.Byte => input != null ? byte.Parse(input, CultureInfo.InvariantCulture) : (byte)0,
+            (int)TypeCode.Char => input != null ? char.Parse(input) : (char)0,
+            (int)TypeCode.DateTime => input != null ? DateTime.Parse(input, CultureInfo.InvariantCulture) : DateTime.MinValue,
+            (int)TypeCode.Decimal => input != null ? decimal.Parse(input, CultureInfo.InvariantCulture) : 0m,
+            (int)TypeCode.Double => input != null ? double.Parse(input, CultureInfo.InvariantCulture) : 0d,
+            (int)TypeCode.Int16 => input != null ? short.Parse(input, CultureInfo.InvariantCulture) : (short)0,
+            (int)TypeCode.Int32 => input != null ? int.Parse(input, CultureInfo.InvariantCulture) : 0,
+            (int)TypeCode.Int64 => input != null ? long.Parse(input, CultureInfo.InvariantCulture) : 0L,
+            (int)TypeCode.SByte => input != null ? sbyte.Parse(input, CultureInfo.InvariantCulture) : (sbyte)0,
+            (int)TypeCode.Single => input != null ? float.Parse(input, CultureInfo.InvariantCulture) : 0f,
+            (int)TypeCode.UInt16 => input != null ? ushort.Parse(input, CultureInfo.InvariantCulture) : (ushort)0,
+            (int)TypeCode.UInt32 => input != null ? uint.Parse(input, CultureInfo.InvariantCulture) : 0u,
+            (int)TypeCode.UInt64 => input != null ? ulong.Parse(input, CultureInfo.InvariantCulture) : 0ul,
+            (int)TypeCodeEx.ByteArray => input != null ? Conversions.ToBytes(input) : null,
+            (int)TypeCodeEx.DateTimeOffset => input != null ? DateTimeOffset.Parse(input, CultureInfo.InvariantCulture) : DateTimeOffset.MinValue,
+            (int)TypeCodeEx.Guid => input != null ? Guid.Parse(input) : Guid.Empty,
+            (int)TypeCodeEx.TimeSpan => input != null ? TimeSpan.Parse(input, CultureInfo.InvariantCulture) : TimeSpan.Zero,
+            _ => throw new NotSupportedException(),
+        };
     }
 
     private static string CreateTempFilePath() => Path.Combine(Path.GetTempPath(), "__pd" + Guid.NewGuid().ToString("N")) + ".db";

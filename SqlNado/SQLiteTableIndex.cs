@@ -4,10 +4,7 @@ public sealed class SQLiteTableIndex
 {
     internal SQLiteTableIndex(SQLiteTable table)
     {
-        if (table == null)
-            throw new ArgumentNullException(nameof(table));
-
-        Table = table;
+        Table = table ?? throw new ArgumentNullException(nameof(table));
         Name = string.Empty;
     }
 
@@ -47,10 +44,7 @@ public sealed class SQLiteTableIndex
     {
         get
         {
-            var options = Table.Database.CreateLoadOptions();
-            if (options == null)
-                throw new InvalidOperationException();
-
+            var options = Table.Database.CreateLoadOptions() ?? throw new InvalidOperationException();
             options.GetInstanceFunc = (t, s, o) => new SQLiteIndexColumn(this);
             return Table.Database.Load<SQLiteIndexColumn>("PRAGMA index_xinfo(" + SQLiteStatement.EscapeName(Name) + ")", options);
         }

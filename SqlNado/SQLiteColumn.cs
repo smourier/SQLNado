@@ -7,10 +7,7 @@ public sealed class SQLiteColumn
 
     internal SQLiteColumn(SQLiteTable table)
     {
-        if (table == null)
-            throw new ArgumentNullException(nameof(table));
-
-        Table = table;
+        Table = table ?? throw new ArgumentNullException(nameof(table));
         _name = string.Empty;
         Type = string.Empty;
     }
@@ -32,7 +29,7 @@ public sealed class SQLiteColumn
 
             // collation and autoinc can only be read using this method
             Table.Database.CheckError(SQLiteDatabase.Native.sqlite3_table_column_metadata(Table.Database.CheckDisposed(), null, Table.Name, Name,
-                out IntPtr dataType, out IntPtr collation, out int notNull, out int pk, out int autoInc));
+                out _, out IntPtr collation, out _, out _, out int autoInc));
 
             if (collation != IntPtr.Zero)
             {

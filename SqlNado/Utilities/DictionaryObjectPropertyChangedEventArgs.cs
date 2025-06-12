@@ -8,13 +8,10 @@ public class DictionaryObjectPropertyChangedEventArgs : PropertyChangedEventArgs
         if (propertyName == null)
             throw new ArgumentNullException(nameof(propertyName));
 
-        if (newProperty == null)
-            throw new ArgumentNullException(nameof(newProperty));
-
         // existingProperty may be null
 
         ExistingProperty = existingProperty;
-        NewProperty = newProperty;
+        NewProperty = newProperty ?? throw new ArgumentNullException(nameof(newProperty));
     }
 
     public DictionaryObjectProperty? ExistingProperty { get; }

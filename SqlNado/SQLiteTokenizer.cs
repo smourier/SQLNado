@@ -1,6 +1,6 @@
 ﻿namespace SqlNado;
 
-public abstract class SQLiteTokenizer : IDisposable
+public abstract class SQLiteTokenizer(SQLiteDatabase database, string name) : IDisposable
 {
     internal GCHandle _module;
     internal GCHandle _create;
@@ -10,20 +10,8 @@ public abstract class SQLiteTokenizer : IDisposable
     internal GCHandle _next;
     internal GCHandle _languageid;
 
-    protected SQLiteTokenizer(SQLiteDatabase database, string name)
-    {
-        if (database == null)
-            throw new ArgumentNullException(nameof(database));
-
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-
-        Database = database;
-        Name = name;
-    }
-
-    public SQLiteDatabase Database { get; }
-    public string Name { get; }
+    public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
+    public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
     public int Version { get; set; }
 
     public abstract IEnumerable<SQLiteToken> Tokenize(string input);

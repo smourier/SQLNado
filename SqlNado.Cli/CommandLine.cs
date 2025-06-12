@@ -12,7 +12,7 @@ namespace SqlNado.Cli
         static CommandLine()
         {
             _namedArguments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            _positionArguments = new Dictionary<int, string>();
+            _positionArguments = [];
 
             string[] args = Environment.GetCommandLineArgs();
 
@@ -93,7 +93,7 @@ namespace SqlNado.Cli
             {
                 if (arg.StartsWith("-") || arg.StartsWith("/"))
                 {
-                    int pos = arg.IndexOfAny(new[] { '=', ':' }, 1);
+                    int pos = arg.IndexOfAny(['=', ':'], 1);
                     string argName = pos < 0 ? arg.Substring(1) : arg.Substring(1, pos - 1);
                     if (string.Compare(name, argName, StringComparison.OrdinalIgnoreCase) == 0)
                     {
@@ -161,8 +161,7 @@ namespace SqlNado.Cli
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
-
-            return _namedArguments.TryGetValue(name, out string s);
+            return _namedArguments.TryGetValue(name, out _);
         }
 
         public static object GetArgument(string name, object defaultValue, Type conversionType) => GetArgument(name, defaultValue, conversionType, null);

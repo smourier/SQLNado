@@ -19,9 +19,7 @@ public class SQLiteBindType
     public static readonly SQLiteBindType DecimalType;
     public static readonly SQLiteBindType DateTimeType;
 
-#pragma warning disable CA1810 // Initialize reference type static fields inline
     static SQLiteBindType()
-#pragma warning restore CA1810 // Initialize reference type static fields inline
     {
         PassThroughType = new SQLiteBindType(ctx => ctx.Value,
             typeof(bool), typeof(int), typeof(long), typeof(byte[]), typeof(double), typeof(string),
@@ -81,42 +79,21 @@ public class SQLiteBindType
             }
 
             // https://sqlite.org/datatype3.html
-            switch (ctx.Options.DateTimeFormat)
+            return ctx.Options.DateTimeFormat switch
             {
-                case SQLiteDateTimeFormat.Ticks:
-                    return dt.Ticks;
-
-                case SQLiteDateTimeFormat.FileTime:
-                    return dt.ToFileTime();
-
-                case SQLiteDateTimeFormat.OleAutomation:
-                    return dt.ToOADate();
-
-                case SQLiteDateTimeFormat.JulianDayNumbers:
-                    return dt.ToJulianDayNumbers();
-
-                case SQLiteDateTimeFormat.FileTimeUtc:
-                    return dt.ToFileTimeUtc();
-
-                case SQLiteDateTimeFormat.UnixTimeSeconds:
-                    return new DateTimeOffset(dt).ToUnixTimeSeconds();
-
-                case SQLiteDateTimeFormat.UnixTimeMilliseconds:
-                    return new DateTimeOffset(dt).ToUnixTimeMilliseconds();
-
-                case SQLiteDateTimeFormat.Rfc1123:
-                    return dt.ToString("r", CultureInfo.InvariantCulture);
-
-                case SQLiteDateTimeFormat.RoundTrip:
-                    return dt.ToString("o", CultureInfo.InvariantCulture);
-
-                case SQLiteDateTimeFormat.Iso8601:
-                    return dt.ToString("s", CultureInfo.InvariantCulture);
-
+                SQLiteDateTimeFormat.Ticks => dt.Ticks,
+                SQLiteDateTimeFormat.FileTime => dt.ToFileTime(),
+                SQLiteDateTimeFormat.OleAutomation => dt.ToOADate(),
+                SQLiteDateTimeFormat.JulianDayNumbers => dt.ToJulianDayNumbers(),
+                SQLiteDateTimeFormat.FileTimeUtc => dt.ToFileTimeUtc(),
+                SQLiteDateTimeFormat.UnixTimeSeconds => new DateTimeOffset(dt).ToUnixTimeSeconds(),
+                SQLiteDateTimeFormat.UnixTimeMilliseconds => new DateTimeOffset(dt).ToUnixTimeMilliseconds(),
+                SQLiteDateTimeFormat.Rfc1123 => dt.ToString("r", CultureInfo.InvariantCulture),
+                SQLiteDateTimeFormat.RoundTrip => dt.ToString("o", CultureInfo.InvariantCulture),
+                SQLiteDateTimeFormat.Iso8601 => dt.ToString("s", CultureInfo.InvariantCulture),
                 //case SQLiteDateTimeFormat.SQLiteIso8601:
-                default:
-                    return dt.ToString(SQLiteIso8601DateTimeFormat, CultureInfo.InvariantCulture);
-            }
+                _ => dt.ToString(SQLiteIso8601DateTimeFormat, CultureInfo.InvariantCulture),
+            };
         }, typeof(DateTime), typeof(DateTimeOffset));
 
         // fallback
@@ -129,9 +106,6 @@ public class SQLiteBindType
 
     public SQLiteBindType(Func<SQLiteBindContext, object?> convertFunc, params Type[] handledClrType)
     {
-        if (convertFunc == null)
-            throw new ArgumentNullException(nameof(convertFunc));
-
         if (handledClrType == null)
             throw new ArgumentNullException(nameof(handledClrType));
 
@@ -145,7 +119,7 @@ public class SQLiteBindType
         }
 
         HandledClrTypes = handledClrType;
-        ConvertFunc = convertFunc;
+        ConvertFunc = convertFunc ?? throw new ArgumentNullException(nameof(convertFunc));
     }
 
     public Type[] HandledClrTypes { get; }
