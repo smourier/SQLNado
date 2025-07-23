@@ -179,12 +179,11 @@ public class SQLiteBlob : IDisposable
                 Buffer.BlockCopy(buffer, offset, buf, 0, count);
             }
 
-            var left = Math.Min(Blob.Size - count, count);
-            if (left < 0)
-                throw new SqlNadoException("0022: Blob size (" + Blob.Size + " byte(s)) is too small. You must first resize the blob to the exact size.");
+            if (_position + count > Blob.Size)
+                throw new SqlNadoException("0022: Blob size (" + Blob.Size + " byte(s)) is too small to be able to write " + count + " bytes at position " + _position + ". You must first resize the blob to the exact size.");
 
-            Blob.Write(buf, left, _position);
-            _position += left;
+            Blob.Write(buf, count, _position);
+            _position += count;
         }
     }
 }
