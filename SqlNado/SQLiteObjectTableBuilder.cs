@@ -66,7 +66,9 @@ public class SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLite
 
                 if (!indices.TryGetValue(idx.Name, out var atts))
                 {
-                    atts = [];
+#pragma warning disable IDE0028 // Simplify collection initialization
+                    atts = new List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>();
+#pragma warning restore IDE0028 // Simplify collection initialization
                     indices.Add(idx.Name, atts);
                 }
                 ((List<Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>>)atts).Add(new Tuple<SQLiteColumnAttribute, SQLiteIndexAttribute>(attribute, idx));
