@@ -12215,8 +12215,9 @@ namespace SqlNado.Utilities
 	            throw new SqlNadoException("0017: Input stream must support calling the Length property to use this method.", new ArgumentException(null, nameof(inputStream), e));
 	        }
 	
+	        // note here we just enforce max range limit, for SQLite real length limit, you can call db.(Get/Set)Limit(SQLiteLimit.SQLITE_LIMIT_LENGTH)
 	        if (length > int.MaxValue)
-	            throw new ArgumentNullException(nameof(inputStream));
+	            throw new SqlNadoException("0033: Input stream length is too large: " + length + ", maximum is: " + int.MaxValue + ".");
 	
 	        var db = ((ISQLiteObject)Owner).Database;
 	        var table = db!.GetObjectTable(Owner.GetType());
