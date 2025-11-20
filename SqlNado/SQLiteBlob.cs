@@ -11,7 +11,6 @@ public class SQLiteBlob : IDisposable
         Database = database ?? throw new ArgumentNullException(nameof(database));
         _handle = handle;
         TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
-        ColumnName = columnName ?? throw new ArgumentNullException(nameof(columnName));
         RowId = rowId;
         Mode = mode;
     }

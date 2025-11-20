@@ -523,8 +523,6 @@ yourselves";
             var eq = EqualityComparer<string>.Default;
             db.Query<TestQuery>().Where(u => u.Department.Contains("h", sc)).ToTableString(Console.Out);
             db.Query<TestQuery>().Where(u => u.Department.Contains("h", sc)).OrderBy(u => u.Name).ThenByDescending(u => u.MonthlySalary).ToTableString(Console.Out);
-            string h = "h";
-            string r = "r";
             //TableStringExtensions.ToTableString(db.GetTable<TestQuery>(), Console.Out);
             db.GetTable<TestQuery>().Columns.ToTableString(Console.Out);
         }

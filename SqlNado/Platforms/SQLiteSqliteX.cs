@@ -6,6 +6,10 @@
 // 1. download library from https://www.sqlite.org/download.html ("Precompiled Binaries for Android")
 // 2. unzip it and copy "sqlite-android-[some version like 3410000]\jni" directory into your "Platform\Android" directory or somewhere suitable
 // 3. set "Build Action" of all .so to "AndroidNativeLibrary"
+//
+// another way is to
+// 1. add the downloaded sqlite-android-[some version like 3410000].aar as a file into the "Platform\Android" directory
+// 2 set its "Build Action" to "AndroidLibrary"
 public class SQLiteSqliteX : ISQLiteNative, ISQLiteWindows
 {
     // note: always compiled in cdecl

@@ -1359,14 +1359,14 @@ public class StructTableString(object obj) : ObjectTableString(obj)
             var i = 0;
             if (Object != null && Object is not string)
             {
-                foreach (var field in Object.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
+                foreach (var fld in Object.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
                 {
-                    var browsable = field.GetCustomAttribute<BrowsableAttribute>();
+                    var browsable = fld.GetCustomAttribute<BrowsableAttribute>();
                     if (browsable != null && !browsable.Browsable)
                         continue;
 
-                    var value = GetValue(field, Object, ThrowOnPropertyGetError);
-                    list.Add(new Tuple<object?, object?>(field.Name, value));
+                    var value = GetValue(fld, Object, ThrowOnPropertyGetError);
+                    list.Add(new Tuple<object?, object?>(fld.Name, value));
                     i++;
                 }
 

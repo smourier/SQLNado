@@ -22,27 +22,27 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-global using global::SqlNado;
-global using global::SqlNado.Platforms;
-global using global::SqlNado.Utilities;
-global using global::System;
-global using global::System.CodeDom.Compiler;
-global using global::System.Collections;
-global using global::System.Collections.Concurrent;
-global using global::System.Collections.Generic;
-global using global::System.ComponentModel;
-global using global::System.Diagnostics;
-global using global::System.Globalization;
-global using global::System.IO;
-global using global::System.Linq;
-global using global::System.Linq.Expressions;
-global using global::System.Reflection;
-global using global::System.Runtime.CompilerServices;
-global using global::System.Runtime.InteropServices;
-global using global::System.Security.Cryptography;
-global using global::System.Text;
-global using global::System.Threading;
-global using global::System.Threading.Tasks;
+global using SqlNado;
+global using SqlNado.Platforms;
+global using SqlNado.Utilities;
+global using System;
+global using System.CodeDom.Compiler;
+global using System.Collections;
+global using System.Collections.Concurrent;
+global using System.Collections.Generic;
+global using System.ComponentModel;
+global using System.Diagnostics;
+global using System.Globalization;
+global using System.IO;
+global using System.Linq;
+global using System.Linq.Expressions;
+global using System.Reflection;
+global using System.Runtime.CompilerServices;
+global using System.Runtime.InteropServices;
+global using System.Security.Cryptography;
+global using System.Text;
+global using System.Threading;
+global using System.Threading.Tasks;
 
 #pragma warning disable IDE0079 // Remove unnecessary suppression
 #pragma warning disable IDE0130 // Namespace does not match folder structure
@@ -8685,11 +8685,13 @@ namespace SqlNado.Platforms
 	    {
 	        var bd = AppDomain.CurrentDomain.BaseDirectory;
 	        var rsp = AppDomain.CurrentDomain.RelativeSearchPath;
-	        var bitness = IntPtr.Size == 8 ? "64" : "86";
+	        // detect arm64
+	
+	        var processArchitecture = RuntimeInformation.ProcessArchitecture;
 	        var searchRsp = rsp != null && !bd.EqualsIgnoreCase(rsp);
 	
 	        // look for an env variable
-	        var env = GetEnvironmentVariable("SQLNADO_SQLITE_X" + bitness + "_DLL");
+	        var env = GetEnvironmentVariable("SQLNADO_SQLITE_" + processArchitecture.ToString().ToUpperInvariant() + "_DLL");
 	        if (env != null)
 	        {
 	            // full path?
@@ -8707,7 +8709,7 @@ namespace SqlNado.Platforms
 	        }
 	
 	        // look in appdomain path
-	        var name = "sqlite3.x" + bitness + ".dll";
+	        var name = "sqlite3." + processArchitecture.ToString().ToLowerInvariant() + ".dll";
 	        yield return Path.Combine(bd, name);
 	        if (searchRsp)
 	            yield return Path.Combine(rsp!, name);
@@ -8747,9 +8749,7 @@ namespace SqlNado.Platforms
 	    private static extern IntPtr LoadLibrary(string lpLibFileName);
 	
 	    [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
-	#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
 	    private static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string lpProcName);
-	#pragma warning restore CA2101 // Specify marshaling for P/Invoke string arguments
 	
 	    private delegate void cdecl_collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, string strB);
 	    private delegate int cdecl_xCompare(IntPtr arg, int lenA, IntPtr strA, int lenB, IntPtr strB);
@@ -13799,14 +13799,14 @@ namespace SqlNado.Utilities
 	            var i = 0;
 	            if (Object != null && Object is not string)
 	            {
-	                foreach (var field in Object.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
+	                foreach (var fld in Object.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
 	                {
-	                    var browsable = field.GetCustomAttribute<BrowsableAttribute>();
+	                    var browsable = fld.GetCustomAttribute<BrowsableAttribute>();
 	                    if (browsable != null && !browsable.Browsable)
 	                        continue;
 	
-	                    var value = GetValue(field, Object, ThrowOnPropertyGetError);
-	                    list.Add(new Tuple<object?, object?>(field.Name, value));
+	                    var value = GetValue(fld, Object, ThrowOnPropertyGetError);
+	                    list.Add(new Tuple<object?, object?>(fld.Name, value));
 	                    i++;
 	                }
 	

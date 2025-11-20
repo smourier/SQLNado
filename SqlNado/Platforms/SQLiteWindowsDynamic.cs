@@ -227,11 +227,13 @@ public class SQLiteWindowsDynamic : ISQLiteNative, ISQLiteWindows
     {
         var bd = AppDomain.CurrentDomain.BaseDirectory;
         var rsp = AppDomain.CurrentDomain.RelativeSearchPath;
-        var bitness = IntPtr.Size == 8 ? "64" : "86";
+        // detect arm64
+
+        var processArchitecture = RuntimeInformation.ProcessArchitecture;
         var searchRsp = rsp != null && !bd.EqualsIgnoreCase(rsp);
 
         // look for an env variable
-        var env = GetEnvironmentVariable("SQLNADO_SQLITE_X" + bitness + "_DLL");
+        var env = GetEnvironmentVariable("SQLNADO_SQLITE_" + processArchitecture.ToString().ToUpperInvariant() + "_DLL");
         if (env != null)
         {
             // full path?
@@ -249,7 +251,7 @@ public class SQLiteWindowsDynamic : ISQLiteNative, ISQLiteWindows
         }
 
         // look in appdomain path
-        var name = "sqlite3.x" + bitness + ".dll";
+        var name = "sqlite3." + processArchitecture.ToString().ToLowerInvariant() + ".dll";
         yield return Path.Combine(bd, name);
         if (searchRsp)
             yield return Path.Combine(rsp!, name);
@@ -289,9 +291,7 @@ public class SQLiteWindowsDynamic : ISQLiteNative, ISQLiteWindows
     private static extern IntPtr LoadLibrary(string lpLibFileName);
 
     [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
-#pragma warning disable CA2101 // Specify marshaling for P/Invoke string arguments
     private static extern IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string lpProcName);
-#pragma warning restore CA2101 // Specify marshaling for P/Invoke string arguments
 
     private delegate void cdecl_collationNeeded(IntPtr arg, IntPtr db, SQLiteTextEncoding encoding, string strB);
     private delegate int cdecl_xCompare(IntPtr arg, int lenA, IntPtr strA, int lenB, IntPtr strB);

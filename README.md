@@ -28,9 +28,13 @@ On **Android** (Xamarin/MAUI), the only requirement is to have some version of t
 
 You can use the library proposed by sqlite.org itself, ie:
 
-    * download library from https://www.sqlite.org/download.html ("Precompiled Binaries for Android")
-    * unzip it and copy "sqlite-android-[some version like 3410000]\jni" directory into your "Platform\Android" directory or somewhere suitable
-    * set "Build Action" of all .so to "AndroidNativeLibrary"
+ * download library from https://www.sqlite.org/download.html ("Precompiled Binaries for Android")
+ * unzip it and copy `sqlite-android-[some version like 3410000]\jni` directory into your `Platforms\Android` directory or somewhere suitable
+ * set "Build Action" of all .so to "AndroidNativeLibrary"
+
+another way (if you get the *"Unable to find class org/sqlite/database/sqlite/SQLiteCustomFunction"* error) is to:
+ * add the `downloaded sqlite-android-[some version like 3410000].aar` file into the `Platform\Android` directory
+ * set its "Build Action" to "AndroidLibrary"
 
 But you can also used other libraries (like the one from built by https://github.com/ericsink/SQLitePCL.raw).
 

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.5.33424.131
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11217.181 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlNado", "SqlNado\SqlNado.csproj", "{ED748985-55BB-4753-B0A6-EA7CAF31CD07}"
 EndProject
@@ -22,6 +22,7 @@ Global
 		{ED748985-55BB-4753-B0A6-EA7CAF31CD07}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ED748985-55BB-4753-B0A6-EA7CAF31CD07}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2B29E052-B7CE-477C-9A4F-D4AA8E9B981A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B29E052-B7CE-477C-9A4F-D4AA8E9B981A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2B29E052-B7CE-477C-9A4F-D4AA8E9B981A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D184B8AF-6BC4-4E8E-9BE5-F4519374F04B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D184B8AF-6BC4-4E8E-9BE5-F4519374F04B}.Debug|Any CPU.Build.0 = Debug|Any CPU

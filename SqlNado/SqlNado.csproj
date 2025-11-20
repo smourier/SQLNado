@@ -3,10 +3,10 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<Nullable>enable</Nullable>
-		<Version>2.0.4</Version>
+		<Version>2.1.0</Version>
 		<LangVersion>default</LangVersion>
-		<AssemblyVersion>2.0.4.0</AssemblyVersion>
-		<FileVersion>2.0.4.0</FileVersion>
+		<AssemblyVersion>2.1.0.0</AssemblyVersion>
+		<FileVersion>2.1.0.0</FileVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<Authors>Simon Mourier</Authors>
 		<Copyright>Copyright (c) 2017-2025 Simon Mourier. All rights reserved.</Copyright>
@@ -66,6 +66,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<None Update="sqlite3.arm64.dll">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 		<None Update="sqlite3.x64.dll">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
