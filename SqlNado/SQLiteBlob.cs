@@ -8,9 +8,11 @@ public class SQLiteBlob : IDisposable
     {
         if (handle == IntPtr.Zero)
             throw new ArgumentException(null, nameof(handle));
+
         Database = database ?? throw new ArgumentNullException(nameof(database));
         _handle = handle;
         TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+        ColumnName = columnName ?? throw new ArgumentNullException(nameof(columnName));
         RowId = rowId;
         Mode = mode;
     }
