@@ -1,4 +1,7 @@
 # SQLNado
+
+> **Using .NET 10 or NativeAOT?** Check out **[SQLNadoAot](https://github.com/smourier/SQLNadoAot)** — a fully NativeAOT- and trim-compatible, source-generated evolution of SQLNado (net10, uses the platform's own SQLite so it ships no native binary, distributed as a single NuGet package). This repository remains the netstandard2.0 version.
+
 SQLNado (SQLite Not ADO) is a .NET lightweight bloat free object persistence framework based on SQLite.
 
 SQLNado supports all of SQLite features when using SQL commands, and also supports most of SQLite features through .NET:
