@@ -1,6 +1,6 @@
 ﻿namespace SqlNado;
 
-public class SQLiteLoadOptions(SQLiteDatabase database)
+public class SQLiteLoadOptions(SQLiteDatabase database) : SQLiteExecutionOptions
 {
     public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
     public virtual bool ObjectEventsDisabled { get; set; }
@@ -13,7 +13,6 @@ public class SQLiteLoadOptions(SQLiteDatabase database)
     public virtual bool RemoveDuplicates { get; set; }
     public virtual bool TestTableExists { get; set; }
     public virtual Func<Type, SQLiteStatement?, SQLiteLoadOptions?, object?>? GetInstanceFunc { get; set; }
-    public virtual Func<SQLiteError, SQLiteOnErrorAction>? ErrorHandler { get; set; }
 
     public virtual bool TryChangeType(object? input, Type conversionType, out object? value) => Database.TryChangeType(input, conversionType, out value);
 

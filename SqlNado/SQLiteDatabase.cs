@@ -34,10 +34,7 @@ public class SQLiteDatabase : IDisposable
 #if DEBUG
         ErrorOptions |= SQLiteErrorOptions.AddSqlText;
 #endif
-        BindOptions = CreateBindOptions();
-        if (BindOptions == null)
-            throw new InvalidOperationException();
-
+        BindOptions = CreateBindOptions() ?? throw new InvalidOperationException();
         EnsureNativeLoaded();
         CheckError(Native.sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
         _collationNeeded = NativeCollationNeeded;
@@ -168,6 +165,15 @@ public class SQLiteDatabase : IDisposable
             {
                 ClearStatementsCache();
             }
+        }
+    }
+
+    public virtual void SetStatementCache(bool enabled, bool clear = true)
+    {
+        _enableStatementsCache = enabled;
+        if (clear)
+        {
+            ClearStatementsCache();
         }
     }
 
@@ -862,13 +868,13 @@ public class SQLiteDatabase : IDisposable
 
         if (throwOnError)
         {
-            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name), SQLiteExecutionOptions.NoStatementsCache, null);
         }
         else
         {
             try
             {
-                ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+                ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name), SQLiteExecutionOptions.NoStatementsCache, null);
             }
             catch (Exception e)
             {
@@ -1076,10 +1082,7 @@ public class SQLiteDatabase : IDisposable
 
         if (options == null)
         {
-            options = CreateSaveOptions();
-            if (options == null)
-                throw new InvalidOperationException();
-
+            options = CreateSaveOptions() ?? throw new InvalidOperationException();
             options.SynchronizeSchema = true;
             options.SynchronizeIndices = true;
         }
@@ -1101,10 +1104,7 @@ public class SQLiteDatabase : IDisposable
 
         if (options == null)
         {
-            options = CreateSaveOptions();
-            if (options == null)
-                throw new InvalidOperationException();
-
+            options = CreateSaveOptions() ?? throw new InvalidOperationException();
             options.UseSavePoint = true;
             options.SynchronizeSchema = true;
             options.SynchronizeIndices = true;
@@ -1307,15 +1307,11 @@ public class SQLiteDatabase : IDisposable
         {
             if (options.ForeignKeyColumnName != null)
             {
-                fkCol = table.Columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(options.ForeignKeyColumnName));
-                if (fkCol == null)
-                    throw new SqlNadoException("0015: Foreign key column '" + options.ForeignKeyColumnName + "' was not found on table '" + table.Name + "'.");
+                fkCol = table.Columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(options.ForeignKeyColumnName)) ?? throw new SqlNadoException("0015: Foreign key column '" + options.ForeignKeyColumnName + "' was not found on table '" + table.Name + "'.");
             }
             else
             {
-                fkCol = table.Columns.FirstOrDefault(c => c.ClrType == instance.GetType());
-                if (fkCol == null)
-                    throw new SqlNadoException("0016: Foreign key column for table '" + instanceTable.Name + "' was not found on table '" + table.Name + "'.");
+                fkCol = table.Columns.FirstOrDefault(c => c.ClrType == instance.GetType()) ?? throw new SqlNadoException("0016: Foreign key column for table '" + instanceTable.Name + "' was not found on table '" + table.Name + "'.");
             }
         }
 
@@ -1398,7 +1394,7 @@ public class SQLiteDatabase : IDisposable
         if (options.TestTableExists && !TableExists(objectType))
             yield break;
 
-        using var statement = PrepareStatement(sql, options.ErrorHandler, args);
+        using var statement = PrepareStatement(sql, options, options.ErrorHandler, args);
         var index = 0;
         do
         {
@@ -1497,7 +1493,7 @@ public class SQLiteDatabase : IDisposable
             }
         }
 
-        using var statement = PrepareStatement(sql, options.ErrorHandler, args);
+        using var statement = PrepareStatement(sql, options, options.ErrorHandler, args);
         var index = 0;
         do
         {
@@ -1608,10 +1604,7 @@ public class SQLiteDatabase : IDisposable
         var obj = Load(objectType, sql, options, keys).FirstOrDefault();
         if (obj == null && (options?.CreateIfNotLoaded).GetValueOrDefault())
         {
-            obj = table.GetInstance(objectType, null, options);
-            if (obj == null)
-                throw new InvalidOperationException();
-
+            obj = table.GetInstance(objectType, null, options) ?? throw new InvalidOperationException();
             table.SetPrimaryKey(options, obj, keys);
         }
         return obj;
@@ -1728,12 +1721,15 @@ public class SQLiteDatabase : IDisposable
     }
 
     public SQLiteStatement PrepareStatement(string sql, params object[] args) => PrepareStatement(sql, null, args);
-    public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+    public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => PrepareStatement(sql, null, errorHandler, args);
+    public virtual SQLiteStatement PrepareStatement(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
     {
+        errorHandler ??= options?.ErrorHandler;
+
         SQLiteStatement statement;
         if (errorHandler == null)
         {
-            statement = GetOrCreateStatement(sql);
+            statement = GetOrCreateStatement(sql, options);
         }
         else
         {
@@ -1752,12 +1748,13 @@ public class SQLiteDatabase : IDisposable
         return statement;
     }
 
-    protected virtual SQLiteStatement GetOrCreateStatement(string sql)
+    protected virtual SQLiteStatement GetOrCreateStatement(string sql, SQLiteExecutionOptions? options = null)
     {
         if (sql == null)
             throw new ArgumentNullException(nameof(sql));
 
-        if (!EnableStatementsCache)
+        var useCache = options?.UseStatementsCache ?? EnableStatementsCache;
+        if (!useCache)
             return CreateStatement(sql, null);
 
         if (!_statementPools.TryGetValue(sql, out var pool))
@@ -1884,33 +1881,41 @@ public class SQLiteDatabase : IDisposable
     public T? ExecuteScalar<T>(string sql, params object[]? args) => ExecuteScalar(sql, default(T), null, args);
     public T? ExecuteScalar<T>(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, default(T), errorHandler, args);
     public T? ExecuteScalar<T>(string sql, T? defaultValue, params object?[]? args) => ExecuteScalar(sql, defaultValue, null, args);
-    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, defaultValue, null, errorHandler, args);
+    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
     {
-        using var statement = PrepareStatement(sql, errorHandler, args);
+        errorHandler ??= options?.ErrorHandler;
+        using var statement = PrepareStatement(sql, options, errorHandler, args);
         statement.StepOne(errorHandler);
         return statement.GetColumnValue(0, defaultValue);
     }
 
-    public object? ExecuteScalar(string sql, params object?[]? args) => ExecuteScalar(sql, null, args);
-    public virtual object? ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+    public object? ExecuteScalar(string sql, params object?[]? args) => ExecuteScalar(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
+    public virtual object? ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, null, errorHandler, args);
+    public virtual object? ExecuteScalar(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
     {
-        using var statement = PrepareStatement(sql, errorHandler, args);
+        errorHandler ??= options?.ErrorHandler;
+        using var statement = PrepareStatement(sql, options, errorHandler, args);
         statement.StepOne(errorHandler);
         return statement.GetColumnValue(0);
     }
 
-    public int ExecuteNonQuery(string sql, params object?[]? args) => ExecuteNonQuery(sql, null, args);
-    public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+    public int ExecuteNonQuery(string sql, params object?[]? args) => ExecuteNonQuery(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
+    public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteNonQuery(sql, null, errorHandler, args);
+    public virtual int ExecuteNonQuery(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
     {
-        using var statement = PrepareStatement(sql, errorHandler, args);
+        errorHandler ??= options?.ErrorHandler;
+        using var statement = PrepareStatement(sql, options, errorHandler, args);
         statement.StepOne(errorHandler);
         return ChangesCount;
     }
 
-    public IEnumerable<object?[]> LoadObjects(string sql, params object?[]? args) => LoadObjects(sql, null, args);
-    public virtual IEnumerable<object?[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+    public IEnumerable<object?[]> LoadObjects(string sql, params object?[]? args) => LoadObjects(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
+    public virtual IEnumerable<object?[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => LoadObjects(sql, null, errorHandler, args);
+    public virtual IEnumerable<object?[]> LoadObjects(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
     {
-        using var statement = PrepareStatement(sql, errorHandler, args);
+        errorHandler ??= options?.ErrorHandler;
+        using var statement = PrepareStatement(sql, options, errorHandler, args);
         var index = 0;
         do
         {
@@ -1952,10 +1957,12 @@ public class SQLiteDatabase : IDisposable
         while (true);
     }
 
-    public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRows(sql, null, args);
-    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args)
+    public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRows(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
+    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args) => LoadRows(sql, null, errorHandler, args);
+    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args)
     {
-        using var statement = PrepareStatement(sql, errorHandler, args);
+        errorHandler ??= options?.ErrorHandler;
+        using var statement = PrepareStatement(sql, options, errorHandler, args);
         var index = 0;
         do
         {
@@ -2131,7 +2138,7 @@ public class SQLiteDatabase : IDisposable
         {
             sql += " WHERE " + whereExpression;
         }
-        ExecuteNonQuery(sql);
+        ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
     }
 
     public void DeleteIndex(string name) => DeleteIndex(null, name);
@@ -2144,7 +2151,7 @@ public class SQLiteDatabase : IDisposable
         }
 
         sql += name ?? throw new ArgumentNullException(nameof(name));
-        ExecuteNonQuery(sql);
+        ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
     }
 
     protected internal IntPtr CheckDisposed(bool throwOnError = true)

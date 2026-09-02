@@ -306,9 +306,7 @@ public class SQLiteObjectTableBuilder(SQLiteDatabase database, Type type, SQLite
 
         if (att == null)
         {
-            att = CreateColumnAttribute();
-            if (att == null)
-                throw new InvalidOperationException();
+            att = CreateColumnAttribute() ?? throw new InvalidOperationException();
         }
 
         if (att.ClrType == null)

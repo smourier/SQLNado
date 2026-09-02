@@ -1429,9 +1429,7 @@ public class KeyValuePairTableStringColumn : TableStringColumn
             throw new ArgumentNullException(nameof(valueType));
 
         var type = typeof(IDictionary<,>).MakeGenericType(keyType, valueType);
-        Method = type.GetMethod("TryGetValue")!;
-        if (Method == null)
-            throw new NotSupportedException();
+        Method = type.GetMethod("TryGetValue")! ?? throw new NotSupportedException();
     }
 
     public MethodInfo Method { get; }

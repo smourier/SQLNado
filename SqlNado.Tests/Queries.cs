@@ -27,7 +27,7 @@ public class Queries
         Assert.HasCount(2, table.Columns);
         Assert.AreEqual(nameof(SQLiteColumnType.INTEGER), table.GetColumn("Id").Type);
         Assert.AreEqual(nameof(SQLiteColumnType.TEXT), table.GetColumn("Name").Type);
-        Assert.AreEqual(max, db.GetTableRows<Customer1>().Count());
+        Assert.HasCount(max, db.GetTableRows<Customer1>());
 
         var list = db.Query<Customer1>().Where(c => c.Name.StartsWith("name", StringComparison.OrdinalIgnoreCase)).Skip(2).Take(2).ToList();
         Assert.HasCount(2, list);

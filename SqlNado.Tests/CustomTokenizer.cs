@@ -1,9 +1,9 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace SqlNado.Tests;
 
@@ -46,7 +46,7 @@ public class CustomTokenizer
         db.Save(new Mail { docid = 3, Subject = "slow lunch order", Body = "was a software problem" });
 
         // check result
-        Assert.AreEqual(3, db.LoadAll<Mail>().Count());
+        Assert.HasCount(3, db.LoadAll<Mail>());
 
         Assert.AreEqual("1,2", string.Join(",", db.Load<Mail>("WHERE Subject MATCH 'software'").Select(m => m.docid)));
         Assert.AreEqual("2", string.Join(",", db.Load<Mail>("WHERE body MATCH 'feedback'").Select(m => m.docid)));
