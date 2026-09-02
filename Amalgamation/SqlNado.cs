@@ -372,6 +372,7 @@ namespace SqlNado
 	    {
 	        if (handle == IntPtr.Zero)
 	            throw new ArgumentException(null, nameof(handle));
+	
 	        Database = database ?? throw new ArgumentNullException(nameof(database));
 	        _handle = handle;
 	        TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
@@ -849,10 +850,7 @@ namespace SqlNado
 	#if DEBUG
 	        ErrorOptions |= SQLiteErrorOptions.AddSqlText;
 	#endif
-	        BindOptions = CreateBindOptions();
-	        if (BindOptions == null)
-	            throw new InvalidOperationException();
-	
+	        BindOptions = CreateBindOptions() ?? throw new InvalidOperationException();
 	        EnsureNativeLoaded();
 	        CheckError(Native.sqlite3_open_v2(filePath, out _handle, options, IntPtr.Zero));
 	        _collationNeeded = NativeCollationNeeded;
@@ -983,6 +981,15 @@ namespace SqlNado
 	            {
 	                ClearStatementsCache();
 	            }
+	        }
+	    }
+	
+	    public virtual void SetStatementCache(bool enabled, bool clear = true)
+	    {
+	        _enableStatementsCache = enabled;
+	        if (clear)
+	        {
+	            ClearStatementsCache();
 	        }
 	    }
 	
@@ -1677,13 +1684,13 @@ namespace SqlNado
 	
 	        if (throwOnError)
 	        {
-	            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+	            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name), SQLiteExecutionOptions.NoStatementsCache, null);
 	        }
 	        else
 	        {
 	            try
 	            {
-	                ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name));
+	                ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name), SQLiteExecutionOptions.NoStatementsCache, null);
 	            }
 	            catch (Exception e)
 	            {
@@ -1891,10 +1898,7 @@ namespace SqlNado
 	
 	        if (options == null)
 	        {
-	            options = CreateSaveOptions();
-	            if (options == null)
-	                throw new InvalidOperationException();
-	
+	            options = CreateSaveOptions() ?? throw new InvalidOperationException();
 	            options.SynchronizeSchema = true;
 	            options.SynchronizeIndices = true;
 	        }
@@ -1916,10 +1920,7 @@ namespace SqlNado
 	
 	        if (options == null)
 	        {
-	            options = CreateSaveOptions();
-	            if (options == null)
-	                throw new InvalidOperationException();
-	
+	            options = CreateSaveOptions() ?? throw new InvalidOperationException();
 	            options.UseSavePoint = true;
 	            options.SynchronizeSchema = true;
 	            options.SynchronizeIndices = true;
@@ -2122,15 +2123,11 @@ namespace SqlNado
 	        {
 	            if (options.ForeignKeyColumnName != null)
 	            {
-	                fkCol = table.Columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(options.ForeignKeyColumnName));
-	                if (fkCol == null)
-	                    throw new SqlNadoException("0015: Foreign key column '" + options.ForeignKeyColumnName + "' was not found on table '" + table.Name + "'.");
+	                fkCol = table.Columns.FirstOrDefault(c => c.Name.EqualsIgnoreCase(options.ForeignKeyColumnName)) ?? throw new SqlNadoException("0015: Foreign key column '" + options.ForeignKeyColumnName + "' was not found on table '" + table.Name + "'.");
 	            }
 	            else
 	            {
-	                fkCol = table.Columns.FirstOrDefault(c => c.ClrType == instance.GetType());
-	                if (fkCol == null)
-	                    throw new SqlNadoException("0016: Foreign key column for table '" + instanceTable.Name + "' was not found on table '" + table.Name + "'.");
+	                fkCol = table.Columns.FirstOrDefault(c => c.ClrType == instance.GetType()) ?? throw new SqlNadoException("0016: Foreign key column for table '" + instanceTable.Name + "' was not found on table '" + table.Name + "'.");
 	            }
 	        }
 	
@@ -2213,7 +2210,7 @@ namespace SqlNado
 	        if (options.TestTableExists && !TableExists(objectType))
 	            yield break;
 	
-	        using var statement = PrepareStatement(sql, options.ErrorHandler, args);
+	        using var statement = PrepareStatement(sql, options, options.ErrorHandler, args);
 	        var index = 0;
 	        do
 	        {
@@ -2312,7 +2309,7 @@ namespace SqlNado
 	            }
 	        }
 	
-	        using var statement = PrepareStatement(sql, options.ErrorHandler, args);
+	        using var statement = PrepareStatement(sql, options, options.ErrorHandler, args);
 	        var index = 0;
 	        do
 	        {
@@ -2423,10 +2420,7 @@ namespace SqlNado
 	        var obj = Load(objectType, sql, options, keys).FirstOrDefault();
 	        if (obj == null && (options?.CreateIfNotLoaded).GetValueOrDefault())
 	        {
-	            obj = table.GetInstance(objectType, null, options);
-	            if (obj == null)
-	                throw new InvalidOperationException();
-	
+	            obj = table.GetInstance(objectType, null, options) ?? throw new InvalidOperationException();
 	            table.SetPrimaryKey(options, obj, keys);
 	        }
 	        return obj;
@@ -2543,12 +2537,15 @@ namespace SqlNado
 	    }
 	
 	    public SQLiteStatement PrepareStatement(string sql, params object[] args) => PrepareStatement(sql, null, args);
-	    public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => PrepareStatement(sql, null, errorHandler, args);
+	    public virtual SQLiteStatement PrepareStatement(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
+	        errorHandler ??= options?.ErrorHandler;
+	
 	        SQLiteStatement statement;
 	        if (errorHandler == null)
 	        {
-	            statement = GetOrCreateStatement(sql);
+	            statement = GetOrCreateStatement(sql, options);
 	        }
 	        else
 	        {
@@ -2567,12 +2564,13 @@ namespace SqlNado
 	        return statement;
 	    }
 	
-	    protected virtual SQLiteStatement GetOrCreateStatement(string sql)
+	    protected virtual SQLiteStatement GetOrCreateStatement(string sql, SQLiteExecutionOptions? options = null)
 	    {
 	        if (sql == null)
 	            throw new ArgumentNullException(nameof(sql));
 	
-	        if (!EnableStatementsCache)
+	        var useCache = options?.UseStatementsCache ?? EnableStatementsCache;
+	        if (!useCache)
 	            return CreateStatement(sql, null);
 	
 	        if (!_statementPools.TryGetValue(sql, out var pool))
@@ -2699,33 +2697,41 @@ namespace SqlNado
 	    public T? ExecuteScalar<T>(string sql, params object[]? args) => ExecuteScalar(sql, default(T), null, args);
 	    public T? ExecuteScalar<T>(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, default(T), errorHandler, args);
 	    public T? ExecuteScalar<T>(string sql, T? defaultValue, params object?[]? args) => ExecuteScalar(sql, defaultValue, null, args);
-	    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, defaultValue, null, errorHandler, args);
+	    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
-	        using var statement = PrepareStatement(sql, errorHandler, args);
+	        errorHandler ??= options?.ErrorHandler;
+	        using var statement = PrepareStatement(sql, options, errorHandler, args);
 	        statement.StepOne(errorHandler);
 	        return statement.GetColumnValue(0, defaultValue);
 	    }
 	
-	    public object? ExecuteScalar(string sql, params object?[]? args) => ExecuteScalar(sql, null, args);
-	    public virtual object? ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public object? ExecuteScalar(string sql, params object?[]? args) => ExecuteScalar(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
+	    public virtual object? ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, null, errorHandler, args);
+	    public virtual object? ExecuteScalar(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
-	        using var statement = PrepareStatement(sql, errorHandler, args);
+	        errorHandler ??= options?.ErrorHandler;
+	        using var statement = PrepareStatement(sql, options, errorHandler, args);
 	        statement.StepOne(errorHandler);
 	        return statement.GetColumnValue(0);
 	    }
 	
-	    public int ExecuteNonQuery(string sql, params object?[]? args) => ExecuteNonQuery(sql, null, args);
-	    public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public int ExecuteNonQuery(string sql, params object?[]? args) => ExecuteNonQuery(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
+	    public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteNonQuery(sql, null, errorHandler, args);
+	    public virtual int ExecuteNonQuery(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
-	        using var statement = PrepareStatement(sql, errorHandler, args);
+	        errorHandler ??= options?.ErrorHandler;
+	        using var statement = PrepareStatement(sql, options, errorHandler, args);
 	        statement.StepOne(errorHandler);
 	        return ChangesCount;
 	    }
 	
-	    public IEnumerable<object?[]> LoadObjects(string sql, params object?[]? args) => LoadObjects(sql, null, args);
-	    public virtual IEnumerable<object?[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public IEnumerable<object?[]> LoadObjects(string sql, params object?[]? args) => LoadObjects(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
+	    public virtual IEnumerable<object?[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => LoadObjects(sql, null, errorHandler, args);
+	    public virtual IEnumerable<object?[]> LoadObjects(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
-	        using var statement = PrepareStatement(sql, errorHandler, args);
+	        errorHandler ??= options?.ErrorHandler;
+	        using var statement = PrepareStatement(sql, options, errorHandler, args);
 	        var index = 0;
 	        do
 	        {
@@ -2767,10 +2773,12 @@ namespace SqlNado
 	        while (true);
 	    }
 	
-	    public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRows(sql, null, args);
-	    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args)
+	    public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRows(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
+	    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args) => LoadRows(sql, null, errorHandler, args);
+	    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args)
 	    {
-	        using var statement = PrepareStatement(sql, errorHandler, args);
+	        errorHandler ??= options?.ErrorHandler;
+	        using var statement = PrepareStatement(sql, options, errorHandler, args);
 	        var index = 0;
 	        do
 	        {
@@ -2946,7 +2954,7 @@ namespace SqlNado
 	        {
 	            sql += " WHERE " + whereExpression;
 	        }
-	        ExecuteNonQuery(sql);
+	        ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
 	    }
 	
 	    public void DeleteIndex(string name) => DeleteIndex(null, name);
@@ -2959,7 +2967,7 @@ namespace SqlNado
 	        }
 	
 	        sql += name ?? throw new ArgumentNullException(nameof(name));
-	        ExecuteNonQuery(sql);
+	        ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
 	    }
 	
 	    protected internal IntPtr CheckDisposed(bool throwOnError = true)
@@ -3381,6 +3389,28 @@ namespace SqlNado
 	    }
 	}
 	
+	public class SQLiteExecutionOptions
+	{
+	    public static SQLiteExecutionOptions NoStatementsCache { get; } = new ReadOnlyExecutionOptions();
+	
+	    // null  = follow the database default (SQLiteDatabase.EnableStatementsCache),
+	    // false = bypass the cache
+	    // true  = force use the cache
+	    public virtual bool? UseStatementsCache { get; set; }
+	    public virtual Func<SQLiteError, SQLiteOnErrorAction>? ErrorHandler { get; set; }
+	
+	    private sealed class ReadOnlyExecutionOptions : SQLiteExecutionOptions
+	    {
+	        public ReadOnlyExecutionOptions()
+	        {
+	            base.UseStatementsCache = false;
+	        }
+	
+	        public override bool? UseStatementsCache { get => base.UseStatementsCache; set => throw new InvalidOperationException(); }
+	        public override Func<SQLiteError, SQLiteOnErrorAction>? ErrorHandler { get => base.ErrorHandler; set => throw new InvalidOperationException(); }
+	    }
+	}
+	
 	public sealed class SQLiteForeignKey : IComparable<SQLiteForeignKey>
 	{
 	    internal SQLiteForeignKey(SQLiteTable table)
@@ -3700,7 +3730,7 @@ namespace SqlNado
 	    }
 	}
 	
-	public class SQLiteLoadOptions(SQLiteDatabase database)
+	public class SQLiteLoadOptions(SQLiteDatabase database) : SQLiteExecutionOptions
 	{
 	    public SQLiteDatabase Database { get; } = database ?? throw new ArgumentNullException(nameof(database));
 	    public virtual bool ObjectEventsDisabled { get; set; }
@@ -3713,7 +3743,6 @@ namespace SqlNado
 	    public virtual bool RemoveDuplicates { get; set; }
 	    public virtual bool TestTableExists { get; set; }
 	    public virtual Func<Type, SQLiteStatement?, SQLiteLoadOptions?, object?>? GetInstanceFunc { get; set; }
-	    public virtual Func<SQLiteError, SQLiteOnErrorAction>? ErrorHandler { get; set; }
 	
 	    public virtual bool TryChangeType(object? input, Type conversionType, out object? value) => Database.TryChangeType(input, conversionType, out value);
 	
@@ -4739,7 +4768,7 @@ namespace SqlNado
 	
 	    public virtual int SynchronizeSchema(SQLiteSaveOptions? options = null)
 	    {
-	        if (!Columns.Where(c => !c.IsComputed).Any())
+	        if (!Columns.Any(c => !c.IsComputed))
 	            throw new SqlNadoException("0006: Object table '" + Name + "' has no database columns.");
 	
 	        options ??= Database.CreateSaveOptions();
@@ -4812,7 +4841,7 @@ namespace SqlNado
 	            // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
 	            var tempTableName = _tempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
 	            sql = GetCreateSql(tempTableName);
-	            count += Database.ExecuteNonQuery(sql);
+	            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
 	            var dropped = false;
 	            var renamed = false;
 	            try
@@ -4824,7 +4853,7 @@ namespace SqlNado
 	
 	                // https://www.sqlite.org/lang_insert.html
 	                sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Where(c => !c.IsComputed).Select(c => c.EscapedName)) + " FROM " + EscapedName + " WHERE true";
-	                count += Database.ExecuteNonQuery(sql);
+	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
 	
 	                if (options.UseTransactionForSchemaSynchronization)
 	                {
@@ -4832,10 +4861,10 @@ namespace SqlNado
 	                }
 	
 	                sql = "DROP TABLE " + EscapedName;
-	                count += Database.ExecuteNonQuery(sql);
+	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
 	                dropped = true;
 	                sql = "ALTER TABLE " + tempTableName + " RENAME TO " + EscapedName;
-	                count += Database.ExecuteNonQuery(sql);
+	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
 	                renamed = true;
 	
 	                if (options.SynchronizeIndices)
@@ -4861,7 +4890,7 @@ namespace SqlNado
 	        foreach (var column in added)
 	        {
 	            sql = "ALTER TABLE " + EscapedName + " ADD COLUMN " + column.GetCreateSql(SQLiteCreateSqlOptions.ForAlterColumn);
-	            count += Database.ExecuteNonQuery(sql);
+	            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
 	        }
 	
 	        if (options.SynchronizeIndices)
@@ -5179,9 +5208,7 @@ namespace SqlNado
 	
 	        if (att == null)
 	        {
-	            att = CreateColumnAttribute();
-	            if (att == null)
-	                throw new InvalidOperationException();
+	            att = CreateColumnAttribute() ?? throw new InvalidOperationException();
 	        }
 	
 	        if (att.ClrType == null)
@@ -13869,9 +13896,7 @@ namespace SqlNado.Utilities
 	            throw new ArgumentNullException(nameof(valueType));
 	
 	        var type = typeof(IDictionary<,>).MakeGenericType(keyType, valueType);
-	        Method = type.GetMethod("TryGetValue")!;
-	        if (Method == null)
-	            throw new NotSupportedException();
+	        Method = type.GetMethod("TryGetValue")! ?? throw new NotSupportedException();
 	    }
 	
 	    public MethodInfo Method { get; }
