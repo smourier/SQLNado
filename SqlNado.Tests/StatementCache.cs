@@ -19,7 +19,7 @@ public class StatementCache
         Assert.IsGreaterThan(0, baseline);
 
         var noCache = new SQLiteExecutionOptions { UseStatementsCache = false };
-        db.ExecuteNonQuery("DELETE FROM t WHERE Id IN (1, 2, 3)", noCache, null);
+        db.ExecuteNonQuery("DELETE FROM t WHERE Id IN (1, 2, 3)", noCache);
         Assert.HasCount(baseline, db.GetStatementsCacheEntries());
 
         db.ExecuteNonQuery("DELETE FROM t WHERE Id IN (4, 5, 6)");
@@ -84,7 +84,7 @@ public class StatementCache
             ErrorHandler = e => { captured = e; return SQLiteOnErrorAction.Break; },
         };
 
-        db.ExecuteNonQuery("INSERT INTO u (Id) VALUES (1)", opts, null);
+        db.ExecuteNonQuery("INSERT INTO u (Id) VALUES (1)", opts);
         Assert.IsNotNull(captured);
     }
 
@@ -96,7 +96,7 @@ public class StatementCache
         db.ExecuteNonQuery("CREATE TABLE t (Id INTEGER PRIMARY KEY)");
 
         var baseline = db.GetStatementsCacheEntries().Length;
-        db.ExecuteNonQuery("DELETE FROM t WHERE Id IN (11, 22)", SQLiteExecutionOptions.NoStatementsCache, null);
+        db.ExecuteNonQuery("DELETE FROM t WHERE Id IN (11, 22)", SQLiteExecutionOptions.NoStatementsCache);
         Assert.HasCount(baseline, db.GetStatementsCacheEntries());
 
         var threw = false;
@@ -110,6 +110,18 @@ public class StatementCache
         }
         Assert.IsTrue(threw);
         Assert.AreEqual(false, SQLiteExecutionOptions.NoStatementsCache.UseStatementsCache);
+    }
+
+    [TestMethod]
+    public void OptionsNotBoundAsQueryParameter()
+    {
+        using var db = new SQLiteDatabase(":memory:");
+        db.ExecuteNonQuery("CREATE TABLE t (Id INTEGER PRIMARY KEY, V INTEGER)");
+        var noCache = new SQLiteExecutionOptions { UseStatementsCache = false };
+
+        // (sql, options) and (sql, options, queryArgs) must NOT bind the options object as a SQL parameter (SQLITE_RANGE)
+        db.ExecuteNonQuery("INSERT INTO t (Id, V) VALUES (?, ?)", noCache, 50, 500);
+        Assert.AreEqual(500, db.ExecuteScalar<int>("SELECT V FROM t WHERE Id = ?", noCache, 50));
     }
 
     private sealed class Item

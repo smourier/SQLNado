@@ -632,7 +632,7 @@ public class SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuild
             // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
             var tempTableName = _tempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
             sql = GetCreateSql(tempTableName);
-            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
             var dropped = false;
             var renamed = false;
             try
@@ -644,7 +644,7 @@ public class SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuild
 
                 // https://www.sqlite.org/lang_insert.html
                 sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Where(c => !c.IsComputed).Select(c => c.EscapedName)) + " FROM " + EscapedName + " WHERE true";
-                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
 
                 if (options.UseTransactionForSchemaSynchronization)
                 {
@@ -652,10 +652,10 @@ public class SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuild
                 }
 
                 sql = "DROP TABLE " + EscapedName;
-                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
                 dropped = true;
                 sql = "ALTER TABLE " + tempTableName + " RENAME TO " + EscapedName;
-                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
                 renamed = true;
 
                 if (options.SynchronizeIndices)
@@ -681,7 +681,7 @@ public class SQLiteObjectTable(SQLiteDatabase database, string name, SQLiteBuild
         foreach (var column in added)
         {
             sql = "ALTER TABLE " + EscapedName + " ADD COLUMN " + column.GetCreateSql(SQLiteCreateSqlOptions.ForAlterColumn);
-            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
         }
 
         if (options.SynchronizeIndices)
