@@ -1684,13 +1684,13 @@ namespace SqlNado
 	
 	        if (throwOnError)
 	        {
-	            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name), SQLiteExecutionOptions.NoStatementsCache, null);
+	            ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name), SQLiteExecutionOptions.NoStatementsCache);
 	        }
 	        else
 	        {
 	            try
 	            {
-	                ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name), SQLiteExecutionOptions.NoStatementsCache, null);
+	                ExecuteNonQuery("DROP TABLE IF EXISTS " + SQLiteStatement.EscapeName(name), SQLiteExecutionOptions.NoStatementsCache);
 	            }
 	            catch (Exception e)
 	            {
@@ -2210,7 +2210,7 @@ namespace SqlNado
 	        if (options.TestTableExists && !TableExists(objectType))
 	            yield break;
 	
-	        using var statement = PrepareStatement(sql, options, options.ErrorHandler, args);
+	        using var statement = PrepareStatementCore(sql, options, options.ErrorHandler, args);
 	        var index = 0;
 	        do
 	        {
@@ -2309,7 +2309,7 @@ namespace SqlNado
 	            }
 	        }
 	
-	        using var statement = PrepareStatement(sql, options, options.ErrorHandler, args);
+	        using var statement = PrepareStatementCore(sql, options, options.ErrorHandler, args);
 	        var index = 0;
 	        do
 	        {
@@ -2536,9 +2536,10 @@ namespace SqlNado
 	        return blob;
 	    }
 	
-	    public SQLiteStatement PrepareStatement(string sql, params object[] args) => PrepareStatement(sql, null, args);
-	    public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => PrepareStatement(sql, null, errorHandler, args);
-	    public virtual SQLiteStatement PrepareStatement(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public SQLiteStatement PrepareStatement(string sql, params object[] args) => PrepareStatementCore(sql, null, null, args);
+	    public virtual SQLiteStatement PrepareStatement(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => PrepareStatementCore(sql, null, errorHandler, args);
+	    public virtual SQLiteStatement PrepareStatement(string sql, SQLiteExecutionOptions? options, params object?[]? args) => PrepareStatementCore(sql, options, null, args);
+	    protected virtual SQLiteStatement PrepareStatementCore(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
 	        errorHandler ??= options?.ErrorHandler;
 	
@@ -2691,47 +2692,53 @@ namespace SqlNado
 	                list.Add(o);
 	            }
 	        }
+	
 	        return [.. list];
 	    }
 	
-	    public T? ExecuteScalar<T>(string sql, params object[]? args) => ExecuteScalar(sql, default(T), null, args);
-	    public T? ExecuteScalar<T>(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, default(T), errorHandler, args);
-	    public T? ExecuteScalar<T>(string sql, T? defaultValue, params object?[]? args) => ExecuteScalar(sql, defaultValue, null, args);
-	    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, defaultValue, null, errorHandler, args);
-	    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public T? ExecuteScalar<T>(string sql, params object[]? args) => ExecuteScalarCore(sql, default(T), null, null, args);
+	    public T? ExecuteScalar<T>(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalarCore(sql, default(T), null, errorHandler, args);
+	    public T? ExecuteScalar<T>(string sql, T? defaultValue, params object?[]? args) => ExecuteScalarCore(sql, defaultValue, null, null, args);
+	    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalarCore(sql, defaultValue, null, errorHandler, args);
+	    public virtual T? ExecuteScalar<T>(string sql, T? defaultValue, SQLiteExecutionOptions? options, params object?[]? args) => ExecuteScalarCore(sql, defaultValue, options, null, args);
+	    public virtual T? ExecuteScalar<T>(string sql, SQLiteExecutionOptions? options, params object?[]? args) => ExecuteScalarCore(sql, default(T), options, null, args);
+	    protected virtual T? ExecuteScalarCore<T>(string sql, T? defaultValue, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
 	        errorHandler ??= options?.ErrorHandler;
-	        using var statement = PrepareStatement(sql, options, errorHandler, args);
+	        using var statement = PrepareStatementCore(sql, options, errorHandler, args);
 	        statement.StepOne(errorHandler);
 	        return statement.GetColumnValue(0, defaultValue);
 	    }
 	
-	    public object? ExecuteScalar(string sql, params object?[]? args) => ExecuteScalar(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
-	    public virtual object? ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalar(sql, null, errorHandler, args);
-	    public virtual object? ExecuteScalar(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public object? ExecuteScalar(string sql, params object?[]? args) => ExecuteScalarObjectCore(sql, null, null, args);
+	    public virtual object? ExecuteScalar(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteScalarObjectCore(sql, null, errorHandler, args);
+	    public virtual object? ExecuteScalar(string sql, SQLiteExecutionOptions? options, params object?[]? args) => ExecuteScalarObjectCore(sql, options, null, args);
+	    protected virtual object? ExecuteScalarObjectCore(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
 	        errorHandler ??= options?.ErrorHandler;
-	        using var statement = PrepareStatement(sql, options, errorHandler, args);
+	        using var statement = PrepareStatementCore(sql, options, errorHandler, args);
 	        statement.StepOne(errorHandler);
 	        return statement.GetColumnValue(0);
 	    }
 	
-	    public int ExecuteNonQuery(string sql, params object?[]? args) => ExecuteNonQuery(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
-	    public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteNonQuery(sql, null, errorHandler, args);
-	    public virtual int ExecuteNonQuery(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public int ExecuteNonQuery(string sql, params object?[]? args) => ExecuteNonQueryCore(sql, null, null, args);
+	    public virtual int ExecuteNonQuery(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => ExecuteNonQueryCore(sql, null, errorHandler, args);
+	    public virtual int ExecuteNonQuery(string sql, SQLiteExecutionOptions? options, params object?[]? args) => ExecuteNonQueryCore(sql, options, null, args);
+	    protected virtual int ExecuteNonQueryCore(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
 	        errorHandler ??= options?.ErrorHandler;
-	        using var statement = PrepareStatement(sql, options, errorHandler, args);
+	        using var statement = PrepareStatementCore(sql, options, errorHandler, args);
 	        statement.StepOne(errorHandler);
 	        return ChangesCount;
 	    }
 	
-	    public IEnumerable<object?[]> LoadObjects(string sql, params object?[]? args) => LoadObjects(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
-	    public virtual IEnumerable<object?[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => LoadObjects(sql, null, errorHandler, args);
-	    public virtual IEnumerable<object?[]> LoadObjects(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
+	    public IEnumerable<object?[]> LoadObjects(string sql, params object?[]? args) => LoadObjectsCore(sql, null, null, args);
+	    public virtual IEnumerable<object?[]> LoadObjects(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args) => LoadObjectsCore(sql, null, errorHandler, args);
+	    public virtual IEnumerable<object?[]> LoadObjects(string sql, SQLiteExecutionOptions? options, params object?[]? args) => LoadObjectsCore(sql, options, null, args);
+	    protected virtual IEnumerable<object?[]> LoadObjectsCore(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object?[]? args)
 	    {
 	        errorHandler ??= options?.ErrorHandler;
-	        using var statement = PrepareStatement(sql, options, errorHandler, args);
+	        using var statement = PrepareStatementCore(sql, options, errorHandler, args);
 	        var index = 0;
 	        do
 	        {
@@ -2773,12 +2780,13 @@ namespace SqlNado
 	        while (true);
 	    }
 	
-	    public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRows(sql, (Func<SQLiteError, SQLiteOnErrorAction>?)null, args);
-	    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args) => LoadRows(sql, null, errorHandler, args);
-	    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args)
+	    public IEnumerable<SQLiteRow> LoadRows(string sql, params object[] args) => LoadRowsCore(sql, null, null, args);
+	    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args) => LoadRowsCore(sql, null, errorHandler, args);
+	    public virtual IEnumerable<SQLiteRow> LoadRows(string sql, SQLiteExecutionOptions? options, params object[] args) => LoadRowsCore(sql, options, null, args);
+	    protected virtual IEnumerable<SQLiteRow> LoadRowsCore(string sql, SQLiteExecutionOptions? options, Func<SQLiteError, SQLiteOnErrorAction>? errorHandler, params object[] args)
 	    {
 	        errorHandler ??= options?.ErrorHandler;
-	        using var statement = PrepareStatement(sql, options, errorHandler, args);
+	        using var statement = PrepareStatementCore(sql, options, errorHandler, args);
 	        var index = 0;
 	        do
 	        {
@@ -2954,7 +2962,7 @@ namespace SqlNado
 	        {
 	            sql += " WHERE " + whereExpression;
 	        }
-	        ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+	        ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
 	    }
 	
 	    public void DeleteIndex(string name) => DeleteIndex(null, name);
@@ -2967,7 +2975,7 @@ namespace SqlNado
 	        }
 	
 	        sql += name ?? throw new ArgumentNullException(nameof(name));
-	        ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+	        ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
 	    }
 	
 	    protected internal IntPtr CheckDisposed(bool throwOnError = true)
@@ -4841,7 +4849,7 @@ namespace SqlNado
 	            // We currently deliberately let it fail (with SQLite error message) so the caller can fix it.
 	            var tempTableName = _tempTablePrefix + "_" + Name + "_" + Guid.NewGuid().ToString("N");
 	            sql = GetCreateSql(tempTableName);
-	            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+	            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
 	            var dropped = false;
 	            var renamed = false;
 	            try
@@ -4853,7 +4861,7 @@ namespace SqlNado
 	
 	                // https://www.sqlite.org/lang_insert.html
 	                sql = "INSERT INTO " + tempTableName + " SELECT " + string.Join(",", Columns.Where(c => !c.IsComputed).Select(c => c.EscapedName)) + " FROM " + EscapedName + " WHERE true";
-	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
 	
 	                if (options.UseTransactionForSchemaSynchronization)
 	                {
@@ -4861,10 +4869,10 @@ namespace SqlNado
 	                }
 	
 	                sql = "DROP TABLE " + EscapedName;
-	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
 	                dropped = true;
 	                sql = "ALTER TABLE " + tempTableName + " RENAME TO " + EscapedName;
-	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+	                count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
 	                renamed = true;
 	
 	                if (options.SynchronizeIndices)
@@ -4890,7 +4898,7 @@ namespace SqlNado
 	        foreach (var column in added)
 	        {
 	            sql = "ALTER TABLE " + EscapedName + " ADD COLUMN " + column.GetCreateSql(SQLiteCreateSqlOptions.ForAlterColumn);
-	            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache, null);
+	            count += Database.ExecuteNonQuery(sql, SQLiteExecutionOptions.NoStatementsCache);
 	        }
 	
 	        if (options.SynchronizeIndices)
